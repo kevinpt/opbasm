@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language id="picoblaze" _name="Picoblaze" version="2.0" _section="Source">
+  <metadata>
+    <property name="mimetypes">text/x-asm</property>
+    <property name="globs">*.psm</property>
+  </metadata>
+  <styles>
+    <style id="comment" _name="Comment" map-to="def:comment"/>
+    <style id="instruction" _name="Instruction" map-to="def:keyword"/>
+    <style id="directive" _name="Directive" map-to="def:preprocessor"/>
+    <style id="string" _name="String" map-to="def:string"/>
+    <style id="number" _name="Number" map-to="def:number"/>
+    <style id="constant" _name="Constant" map-to="def:identifier"/>
+    <style id="label" _name="Label" map-to="def:identifier"/>
+    <style id="operator" _name="Operator" map-to="def:operator"/>
+  </styles>
+
+  <default-regex-options case-sensitive="false"/>
+
+  <definitions>
+
+    <context id="picoblaze">
+      <include>
+
+        <context id="comment" style-ref="comment">
+          <start>;</start>
+          <end>$</end>
+        </context>
+
+
+        <context id="string" end-at-line-end="true" style-ref="string">
+          <start>"</start>
+          <end>"</end>
+        </context>
+
+        <context id="directives" style-ref="directive">
+          <keyword>address</keyword>
+          <keyword>constant</keyword>
+          <keyword>namereg</keyword>
+          <keyword>include</keyword>
+          <keyword>default_jump</keyword>
+          <keyword>string</keyword>
+          <keyword>table</keyword>
+        </context>
+
+
+        <context id="instructions" style-ref="instruction">
+          <keyword>add</keyword>
+          <keyword>addcy</keyword>
+          <keyword>and</keyword>
+          <keyword>call</keyword>
+          <keyword>compare</keyword>
+          <keyword>disable</keyword>
+          <keyword>enable</keyword>
+          <keyword>fetch</keyword>
+          <keyword>input</keyword>
+          <keyword>jump</keyword>
+          <keyword>load</keyword>
+          <keyword>or</keyword>
+          <keyword>output</keyword>
+          <keyword>return</keyword>
+          <keyword>returni</keyword>
+          <keyword>rl</keyword>
+          <keyword>rr</keyword>
+          <keyword>sl0</keyword>
+          <keyword>sl1</keyword>
+          <keyword>slx</keyword>
+          <keyword>sla</keyword>
+          <keyword>sr0</keyword>
+          <keyword>sr1</keyword>
+          <keyword>sra</keyword>
+          <keyword>srx</keyword>
+          <keyword>store</keyword>
+          <keyword>sub</keyword>
+          <keyword>subcy</keyword>
+          <keyword>test</keyword>
+          <keyword>xor</keyword>
+          <keyword>inst</keyword>
+          <keyword>call@</keyword>
+          <keyword>comparecy</keyword>
+          <keyword>hwbuild</keyword>
+          <keyword>jump@</keyword>
+          <keyword>load&amp;return</keyword>
+          <keyword>outputk</keyword>
+          <keyword>regbank</keyword>
+          <keyword>star</keyword>
+          <keyword>testcy</keyword>
+          <keyword>inst</keyword>
+          <keyword>interrupt</keyword>
+        </context>
+
+        <define-regex id="flag" extended="true">
+          (?&lt;![\w\.]) (c|z|nc|nz) (?![\w\.])
+        </define-regex>
+
+        <context id="flag" style-ref="constant">
+          <match>\%{flag}</match>
+        </context>
+
+
+        <define-regex id="decimal" extended="true">
+          (?&lt;![\w\.]) ([0-9]+'d) (?![\w\.])
+        </define-regex>
+
+        <context id="decimal" style-ref="number">
+          <match>\%{decimal}</match>
+        </context>
+
+        <define-regex id="binary" extended="true">
+          (?&lt;![\w\.]) ([01]+'b) (?![\w\.])
+        </define-regex>
+
+        <context id="binary" style-ref="number">
+          <match>\%{binary}</match>
+        </context>
+
+        <define-regex id="hexadecimal" extended="true">
+          (?&lt;![\w\.]) ([0-9a-f]+) (?![\w\.])
+        </define-regex>
+
+        <context id="hexadecimal" style-ref="number">
+          <match>\%{hexadecimal}</match>
+        </context>
+
+
+        <define-regex id="register" extended="true">
+          (?&lt;![\w\.]) (s[0-9a-f]) (?![\w\.])
+        </define-regex>
+
+        <context id="register" style-ref="constant">
+          <match>\%{register}</match>
+        </context>
+
+
+
+        <define-regex id="operator" extended="true">
+          (?&lt;![\w\.]) (~)
+        </define-regex>
+
+        <context id="operator" style-ref="operator">
+          <match>\%{operator}</match>
+        </context>
+
+        <define-regex id="operator-suf" extended="true">
+          ('lower|'upper) (?![\w\.])
+        </define-regex>
+
+        <context id="operator-suf" style-ref="operator">
+          <match>\%{operator-suf}</match>
+        </context>
+
+
+        <define-regex id="label" extended="true">
+          (?&lt;![\w\.]) (\w+:) (?![\w\.])
+        </define-regex>
+
+        <context id="label" style-ref="label">
+          <match>\%{label}</match>
+        </context>
+
+      </include>
+    </context>
+  </definitions>
+</language>
