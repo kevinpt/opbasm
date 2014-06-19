@@ -120,12 +120,11 @@ architecture rtl of picoblaze_rom is
     -- Read a .mem or .hex file as produced by KCPSM3 and KCPSM6 assemblers
     file fh       : text open read_mode is File_name;
     variable ln   : line;
-    variable addr : natural := 0;
     variable word : std_logic_vector(Instruction'length-1 downto 0);
     variable rom  : rom_mem;
 
     procedure read_hex(ln : inout line; hex : out std_logic_vector) is
-      -- The standard hread() procedure doesn't work well when the target bit vector
+      -- The hread() procedure doesn't work well when the target bit vector
       -- is not a multiple of four. This wrapper provides better behavior.
       variable hex4 : std_logic_vector(((hex'length + 3) / 4) * 4 - 1 downto 0);
     begin
@@ -133,22 +132,45 @@ architecture rtl of picoblaze_rom is
       hex := hex4(hex'length-1 downto 0); -- Trim upper bits
     end procedure;
 
+    -- Convert a string to lower case
+    function to_lower( source : string ) return string is
+      variable r : string(source'range) := source;
+    begin
+      for c in r'range loop
+        if character'pos(r(c)) >= character'pos('A')
+            or character'pos(r(c)) <= character'pos('Z') then
+
+          -- This would work except that XST has regressed into not supporting
+          -- character'val. Presumably this is "fixed" in Vivado and will never get
+          -- corrected in poor old XST.
+          r(c) := character'val(character'pos(r(c)) + 16#20#);
+        end if;
+      end loop;
+
+      return r;
+    end function;
   begin
 
-    while addr < MEM_SIZE loop
+    -- Can't call to_lower() for case-insensitive comparison because of XST limitation
+    --if to_lower(File_name(File_name'length-3 to File_name'length)) = ".mem" then
+    if File_name(File_name'length-3 to File_name'length) = ".mem" then
+      -- Read the first address line of a .mem file and discard it; Assume memory starts at 0
+      readline(fh, ln);
+    end if;
+
+
+    -- XST isn't happy with a while loop because of its low default iteration limit setting
+    -- so we have to use a for loop.
+    for addr in 0 to MEM_SIZE-1 loop
       if endfile(fh) then
         exit;
       end if;
 
       readline(fh, ln);
-      if ln(1) = '@' then -- Skip .mem address line; Assume memory starts at 0
-        next;
-      end if;
 
       read_hex(ln, word); -- Convert hex string to bits
       rom(addr) := to_bitvector(word);
 
-      addr := addr + 1;
     end loop;
 
     return rom;
