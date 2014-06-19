@@ -1374,19 +1374,19 @@ def get_templates():
   # Look relative to installed library
   try:
     lib_dir = os.path.dirname(sys.modules['opbasm_lib'].__file__)
-    data_dir = os.path.normpath(os.path.join(lib_dir, '../data'))
+    tpl_dir = os.path.normpath(os.path.join(lib_dir, '../templates'))
   except KeyError:
     # Look relative to this script
-    data_dir = os.path.normpath(os.path.join(os.path.realpath(__file__), '../data'))
+    tpl_dir = os.path.normpath(os.path.join(os.path.realpath(__file__), '../templates'))
 
-  if not os.path.exists(data_dir):
+  if not os.path.exists(tpl_dir):
     print('  No template directory found')
     sys.exit(1)
 
-  files = os.listdir(data_dir)
+  files = os.listdir(tpl_dir)
   print(','.join(files))
   for f in files:
-    p = os.path.join(data_dir, f)
+    p = os.path.join(tpl_dir, f)
     if not os.path.isfile(p): continue # Skip anything that isn't a file
     if os.path.isfile(f): continue # Skip files that already exist in the current directory
 
@@ -1402,11 +1402,6 @@ def main():
   if options.get_templates:
     get_templates()
     sys.exit(0)
-
-  #if options.use_pb6:
-  #  hex_mem_file = options.module_name + '.hex' # PB-6 uses hex memory listing (no address header)
-  #else:
-  #  hex_mem_file = options.module_name + '.mem' # PB-3 uses Xilinx mem listing (first line header)
 
   if options.hex_output:
     hex_mem_file = options.module_name + '.hex'
