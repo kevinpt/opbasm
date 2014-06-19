@@ -11,6 +11,16 @@ import re
 from optparse import OptionParser
 from subprocess import check_call, CalledProcessError
 
+try:
+  from opbasm_lib.color import *
+except ImportError:
+  # Provide dummy functions if the color module isn't found
+  def note(t): return t
+  def success(t): return t
+  def warn(t): return t
+  def error(t): return t
+
+
 def parse_command_line():
     progname = os.path.basename(sys.argv[0])
     usage = '{} -m <mem file> -n <NCD file> [-r <RAM inst name>] [-o <output bit file>]'.format(progname)
@@ -28,13 +38,14 @@ def parse_command_line():
 
     return options
 
-def error(*args, **kwargs):
-  print('ERROR:', *args, file=sys.stderr)
+def report_error(*args, **kwargs):
+  print(error('ERROR:'), *args, file=sys.stderr)
   if 'exit' in kwargs:
     sys.exit(kwargs['exit'])
 
 
 def main():
+    print(note('Picoblaze ROM updater'))
     options = parse_command_line()
 
     # Set up file names
@@ -49,13 +60,13 @@ def main():
 
     # Check for existence of input files
     if not os.path.exists(options.mem_file):
-        error('mem file not found', exit=1)
+        report_error('mem file not found', exit=1)
 
     if not os.path.exists(options.ncd_file):
-        error('NCD file not found', exit=1)
+        report_error('NCD file not found', exit=1)
 
     if not os.path.exists(bit_file):
-        error('bit file not found', exit=1)
+        report_error('bit file not found ({})'.format(bit_file), exit=1)
 
     # Check timestamp of XDL and NCD to see if we need to update the XDL
     run_xdl = True
@@ -69,17 +80,17 @@ def main():
         try:
           check_call(['xdl', '-ncd2xdl', options.ncd_file, xdl_file])
         except CalledProcessError:
-          error('XDL failure', exit=1)
+          report_error('XDL failure', exit=1)
 
     if not os.path.exists(xdl_file):
-        error('XDL file not generated', exit=1)
+        report_error('XDL file not generated', exit=1)
 
     # Find RAMB16 instances in XDL file
     ram_insts = find_ram_instances(xdl_file)
     inames = ram_insts.keys()
 
     if len(inames) == 0:
-        error('No RAM instances found', exit=1)
+        report_error('No RAM instances found', exit=1)
 
     prompt_user = True
     if len(inames) == 1: # Don't bother with prompt if only one RAM is in the netlist
@@ -92,7 +103,7 @@ def main():
             sel = inames.index(options.ram_inst)
             prompt_user = False
         else:
-            error('Named RAM instance does not exist ({})'.format(options.ram_inst))
+            report_error('Named RAM instance does not exist ({})'.format(options.ram_inst))
             print(' Available RAM instances:', file=sys.stderr)
             for n in inames:
                 print('  ', n, file=sys.stderr)
@@ -109,7 +120,7 @@ def main():
             sel = -1
 
         if sel < 0 or sel >= len(inames):
-            error('Invalid selection', exit=1)
+            report_error('Invalid selection', exit=1)
 
     print('\nSelected instance:', inames[sel], 'placed at', ram_insts[inames[sel]])
 
@@ -135,10 +146,10 @@ END_ADDRESS_SPACE;
     try:
       check_call(d2m_cmd)
     except CalledProcessError:
-      error('data2mem failure', exit=1)
+      report_error('data2mem failure', exit=1)
 
 
-    print('Generated updated bit file:', options.out_bit_file)
+    print(success('Generated updated bit file:'), options.out_bit_file)
     sys.exit(0)
 
 
