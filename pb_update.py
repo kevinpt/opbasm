@@ -142,7 +142,7 @@ END_ADDRESS_SPACE;
     sys.exit(0)
 
 
-inst_re = re.compile('inst "([^"]+)" "RAMB16",.+RAMB16_(\w+) *,')
+inst_re = re.compile('inst "([^"]+)" "RAMB\d+.*",.+RAMB\d+_(\w+) *,')
 
 def find_ram_instances(xdl_file):
     with open(xdl_file, 'r') as fh:
