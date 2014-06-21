@@ -1,6 +1,9 @@
 --# picoblaze_rom.vhdl - Flexible synthesizable ROM for Picoblaze
 --#
---# Copyright Â© 2014 Kevin Thibedeau
+--# Freely available from Opbasm (http://code.google.com/p/opbasm)
+--#
+--# Copyright © 2010 Kevin Thibedeau
+--# (kevin 'period' thibedeau 'at' gmail 'punto' com)
 --#
 --# Permission is hereby granted, free of charge, to any person obtaining a
 --# copy of this software and associated documentation files (the "Software"),
