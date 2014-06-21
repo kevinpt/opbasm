@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright © 2010 Kevin Thibedeau
+# Copyright © 2014 Kevin Thibedeau
 # (kevin 'period' thibedeau 'at' gmail 'punto' com)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
