@@ -36,16 +36,19 @@ setup(name='opbasm',
         'console_scripts': ['opbasm = opbasm:main', 'pb_update = pb_update:main']
     },
     include_package_data = True,
+
+    use_2to3 = True,
     
     keywords='Picoblaze assembler',
-    license='LGPLv3',
+    license='MIT',
     classifiers=['Development Status :: 5 - Production/Stable',
         'Operating System :: OS Independent',
         'Intended Audience :: Developers',
         'Natural Language :: English',
-        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
         'Programming Language :: Assembly',
-        'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
+        'License :: OSI Approved :: MIT License',
         'Topic :: Utilities'
         ]
     )

@@ -1,15 +1,15 @@
 =Open Picoblaze Assembler=
 
-Opbasm is a free cross-platform assembler for the Picoblaze-3 (PB3) and Picoblaze-6 (PB6) microcontrollers [http://www.xilinx.com/products/intellectual-property/picoblaze.htm provided by Xilinx]. It should run readily on any platform with a functional Python intepreter. Opbasm provides a better perfoming solution to assembling Picoblaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.
+Opbasm is a free cross-platform assembler for the Picoblaze-3 (PB3) and Picoblaze-6 (PB6) microcontrollers [http://www.xilinx.com/products/intellectual-property/picoblaze.htm provided by Xilinx]. It will run readily on any platform with a functional Python intepreter. Opbasm provides a better perfoming solution to assembling Picoblaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.
 
 Support for the full Picoblaze-6 syntax is provided as well as [#Picoblaze-3_Enhancements enabling most of the new PB6 syntax enhancements in Picoblaze-3 code]. The original templating system for ROM components is supported as well as a more flexible [#Generic_ROM_component generic ROM component] that can read _.mem_ and _.hex_ files directly during synthesis and simulation. A utility script is included that permits updating the ROM contents of a bitstream file without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
 
-Files generated on non-Windows platforms will not have DOS line endings and Picoblaze-3 files are not restricted to 8.3 file names.
+As a bonus, files generated on non-Windows platforms will not have DOS line endings and Picoblaze-3 files are not restricted to 8.3 file names.
 
 
 ==Requirements==
 
-Opbasm requires Python 2.7 and the pyparsing library. The installation script depends on setuptools which will be installed if it isn't currently present in your Python distribution.
+Opbasm requires the pyparsing library and either Python 2.7 or Python 3.x. The installation script depends on setuptools which will be installed if it isn't currently present in your Python distribution. You can get optional colorized output from the scripts by installing the Python colorama package. The source is written in Python 2.7 syntax but will convert cleanly to Python 3 when the installer passes it through 2to3.
 
 
 ==Download==
@@ -30,6 +30,8 @@ After extracting the archive you can install Opbasm with the following command:
 On Linux systems you may need to install with root privileges using the _sudo_ command.
 
 After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the <Python root>\Scripts directory is in your %PATH% environment variable.
+
+If you can't use the installer script, it is possible to run _opbasm.py_ directly without installation.
 
 
 ==Using Opbasm==
@@ -101,8 +103,7 @@ By default, Opbasm outputs _.mem_ format ROM listings as produced by KCPSM3. If 
 
 ===Picoblaze-3 Enhancements===
 
-You can use all Picoblaze-6 syntax extensions in Picoblaze-3 code that don't
-depend on PB6 specific instructions.
+You can use all Picoblaze-6 syntax extensions in Picoblaze-3 code that don't depend on PB6 specific instructions. This makes writing PB3 code much less painful.
 
 For Picoblaze-3 you can use the following syntax extensions from Picoblaze-6:
   * Decimal, binary, and character literals (`41'd, 01000001'b, "A"`)
@@ -129,9 +130,9 @@ The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory.
 
 All of the official KCPSM-provided HDL templates are supported. Any custom templates you have created can be used unchanged. Because of improvements to XST's support for synthesis of BRAM generics since the original release of KCPSM3, an updated Spartan-3 template [https://code.google.com/p/opbasm/source/browse/templates/ROM_form_S3_1K.vhdl ROM_form_S3_1K.vhdl] is included that eliminates the warnings from redundant attribute declarations. Templates for Picoblaze-6 devices can be found in the KCPSM6 distribution.
 
-Because Opbasm is more flexible in the naming of output files, the original template system's assumption that the "{name}" field matches the input source file isn't necessarily valid. a new field "{source file}" is added that clearly indicates the original top level source file used to populate a template. This field is optional and only used in a comment so it is not critical to include it in your templates.
+Because Opbasm is more flexible in the naming of modules, the original template system's assumption that the "{name}" field matches the input source file isn't necessarily valid. a new field "{source file}" is added that clearly indicates the original top level source file used to populate a template. This field is optional and only used in a comment so it is not critical to include it in your templates.
 
-The native KCPSM assemblers are hard coded to look for a template named _ROM_form.vhd_ or _ROM_form.v_. Opbasm searches for templates by those names (as well as _ROM_form.vhdl_) but you can also pass the _-t <template file>_ option to specify a different template. If your OS supports symbolic links it is recommended to maintain a link from the original template to _ROM_form.xxx_ rather than renaming it to one of the generic defaults.
+The native KCPSM assemblers are hard-coded to look for a template named _ROM_form.vhd_ or _ROM_form.v_. Opbasm searches for templates by those names (as well as _ROM_form.vhdl_) but you can also pass the _-t <template file>_ option to specify a different template. If your OS supports symbolic links it is recommended to maintain a link from the original template to _ROM_form.xxx_ rather than renaming it to one of the generic defaults.
 
 To save the bother of hunting down templates when you start a new project, you can generate copies of the default templates included with Opbasm using the following command:
 

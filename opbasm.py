@@ -222,7 +222,9 @@ def picoblaze_parser(op_info):
   bin_literal = Combine(Word('01') + "'b")
   dec_literal = Combine(Word(nums) + "'d")
   string_literal = dblQuotedString.setName('string')
-  q_string_literal = Combine(Literal('""') + Word(string.printable.translate(None, '"')) + Literal('""'))
+
+  non_q_chars = ''.join(c for c in string.printable if c != '"')
+  q_string_literal = Combine(Literal('""') + Word(non_q_chars) + Literal('""'))
   literal = (q_string_literal | string_literal | dec_literal | bin_literal | hex_literal)
 
   table_def = Group(Suppress('[') + delimitedList(hex_literal) + \
@@ -235,7 +237,7 @@ def picoblaze_parser(op_info):
 
   #bad_tok = Word(alphas).setParseAction(fail)
 
-  inst_kw = Or([CaselessKeyword(k) for k in op_info['opcodes'].keys()])
+  inst_kw = Or([CaselessKeyword(k) for k in op_info['opcodes'].iterkeys()])
 
   reg_keys = ['s{}'.format(n) for n in xrange(10)] + ['sa', 'sb', 'sc', 'sd', 'se', 'sf']
   reg_kw = Or([CaselessKeyword(k) for k in reg_keys])
@@ -999,7 +1001,7 @@ def asm_error(*args, **kwargs):
 
 #    # Build map of environment variables in upper case
 #    # This allows the same case insensitive behavior on Linux as Windows.
-#    self.upper_env_names = dict(((k.upper(), k) for k in os.environ.keys()))
+#    self.upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
 
 
 
@@ -1120,7 +1122,7 @@ def code_stats(assembled_code):
 
 def instruction_usage(assembled_code, asm):
   '''Analyze assembled code to determine instruction histogram'''
-  stats = dict((k, 0) for k in asm.op_info['opcodes'].keys())
+  stats = dict((k, 0) for k in asm.op_info['opcodes'].iterkeys())
   del stats['inst'] # Not a real opcode
 
   for s in assembled_code:
@@ -1177,13 +1179,13 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize):
       printf(s.format(show_addr=True, colorize=colorize))
 
     printf('\n\n' + underline('PSM files that have been assembled'))
-    for f in asm.sources.keys():
+    for f in asm.sources.iterkeys():
       printf('   ', os.path.abspath(f))
 
     printf('\n\n' + underline('List of defined constants'))
     headings = ['CONSTANT name', 'Value', 'Source PSM file']
     rows = [(c, asm.constants[c].val_text, asm.constants[c].source_file) \
-      for c in sorted(asm.constants.keys())]
+      for c in sorted(asm.constants.iterkeys())]
     for r in format_table(rows, headings, indent=3):
       printf(r)
 
@@ -1195,7 +1197,7 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize):
       printf('\n\n' + underline('List of defined tables'))
       headings = ['TABLE name', 'Value', 'Source PSM file']
       rows = [(t, asm.tables[t].val_text, asm.tables[t].source_file) \
-        for t in sorted(asm.tables.keys())]
+        for t in sorted(asm.tables.iterkeys())]
       for r in format_table(rows, headings, indent=3):
         printf(r)
 
@@ -1204,17 +1206,17 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize):
     printf('\n\n' + underline('List of text strings'))
     headings = ['STRING name', 'Value', 'Source PSM file']
     rows = [(s, asm.strings[s].val_text, asm.strings[s].source_file) \
-      for s in sorted(asm.strings.keys())]
+      for s in sorted(asm.strings.iterkeys())]
     for r in format_table(rows, headings, indent=3):
       printf(r)
     
 
     printf('\n\n' + underline('List of line labels'))
-    show_caption = not all(l.in_use for l in asm.labels.values())
+    show_caption = not all(l.in_use for l in asm.labels.itervalues())
     headings = ['   Label', 'Addr', 'Source PSM file']
     rows = [(('   ' if asm.labels[l].in_use else '*  ') + l, \
       '{:03X}'.format(asm.labels[l].value), asm.labels[l].source_file) \
-      for l in sorted(asm.labels.keys())]
+      for l in sorted(asm.labels.iterkeys())]
     for r in format_table(rows, headings, indent=1):
       printf(r)
 
@@ -1226,7 +1228,7 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize):
     inst_usage = instruction_usage(assembled_code, asm)
     headings = ['Instruction', 'Instances']
     rows = [(i.upper(), inst_usage[i] if inst_usage[i] > 0 else '-') \
-      for i in sorted(inst_usage.keys())]
+      for i in sorted(inst_usage.iterkeys())]
     for r in format_table(rows, headings, indent=3):
       printf(r)
 
@@ -1436,7 +1438,7 @@ def main():
     options.mem_size, options.scratch_size))
 
   timestamp = get_timestamp()
-  upper_env_names = dict(((k.upper(), k) for k in os.environ.keys()))
+  upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
   asm = Assembler(options.input_file, timestamp, options, upper_env_names)
 
   try:
@@ -1464,7 +1466,7 @@ def main():
 
   if len(templates) > 0:
     print('\n  Found template{}:'.format('s' if len(templates) > 1 else ''))
-    for f in templates.values():
+    for f in templates.itervalues():
       print('   ', f)
 
 
@@ -1498,7 +1500,7 @@ def main():
 
 
   print('\n  Formatted source:')
-  for fname, source in asm.sources.items():
+  for fname, source in asm.sources.iteritems():
     fname = os.path.splitext(os.path.basename(fname))[0] + '.fmt'
     print('   ', fname)
     with open(fname, 'w') as fh:
