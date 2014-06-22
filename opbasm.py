@@ -202,7 +202,7 @@ def fail(s, loc, tokens):
 
 def picoblaze_parser(op_info):
   '''Creates a Pyparsing parser object that processes individual lines of assembly'''
-  EOL = StringEnd() #Suppress(OneOrMore(LineEnd()))
+  EOL = StringEnd()
 
   base_identifier = Word(alphanums + '_', alphanums + '_').setName('identifier')
   not_identifier = Combine(Literal('~') + base_identifier)
@@ -235,7 +235,6 @@ def picoblaze_parser(op_info):
 
   comment = (Suppress(';') + restOfLine + EOL).setName('comment').setResultsName('comment')
 
-  #bad_tok = Word(alphas).setParseAction(fail)
 
   inst_kw = Or([CaselessKeyword(k) for k in op_info['opcodes'].iterkeys()])
 
@@ -401,8 +400,6 @@ def parse_lines(lines, op_info):
       ptree = parser.parseString(l)
     except ParseException, e:
       print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i, l))
-      #print('>>>', e)
-      #raise
       sys.exit(1)
 
     statements.append(Statement(ptree['statement'], i+1))
@@ -963,7 +960,7 @@ class Assembler(object):
 def hex_to_int(s):
   '''Convert a hex string literal into an integer. Returns None on failure.'''
   try:
-    return int(s, 16) #int('0x' + s, 0)
+    return int(s, 16)
   except ValueError:
     return None
 
@@ -993,15 +990,6 @@ def asm_error(*args, **kwargs):
     print( '  line {}:  {}'.format(s.line, s.format().lstrip()))
   if 'exit' in kwargs:
     sys.exit(kwargs['exit'])
-
-
-#class OPBAsmApp(object):
-#  def __init__(self, options):
-#    self.options = options
-
-#    # Build map of environment variables in upper case
-#    # This allows the same case insensitive behavior on Linux as Windows.
-#    self.upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
 
 
 
@@ -1242,7 +1230,6 @@ def build_xilinx_mem_init(mmap, split_data=False):
     # Lower 16-bits are put in INIT
     for a in xrange(len(mmap) // 16):
       mline = mmap[a*16:(a+1)*16]
-      #print('@@@ mline len', len(mline))
       init = ''.join('{:04X}'.format(w & 0xFFFF) for w in reversed(mline))
       minit['INIT_{:02X}'.format(a)] = init
 
@@ -1287,7 +1274,6 @@ def build_9_bit_mem_init(mmap, minit, bit_range):
     for i in xrange(0, len(mline), 4):
       nibbles.append((mline[i] >> 8) + ((mline[i+1] >> 7) & 0x02) + \
         ((mline[i+2] >> 6) & 0x04) + ((mline[i+3] >> 5) & 0x08))
-      #nibbles.append((mline[i] >> 16) + ((mline[i+1] >> 14) & 0xC))
 
     init = ''.join('{:01X}'.format(n & 0xF) for n in reversed(nibbles))
     minit['[{}]_INITP_{:02X}'.format(bit_range, a)] = init

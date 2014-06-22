@@ -1,3 +1,2 @@
 recursive-include templates *
 include README.txt
-include COPYING
