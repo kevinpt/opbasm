@@ -1329,7 +1329,7 @@ def find_templates(template_file):
   if template_file is not None:
     if os.path.exists(template_file):
       ext = os.path.splitext(template_file)[1]
-      if ext.lower() in ('.vhd', 'vhdl'):
+      if ext.lower() in ('.vhd', '.vhdl'):
         templates['vhdl'] = template_file
       else:
         templates['verilog'] = template_file
