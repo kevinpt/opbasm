@@ -59,7 +59,7 @@ else:
         return ''.join([code, t, Style.RESET_ALL])
 
     def note(t):
-        return colorize(t, Fore.BLUE)
+        return colorize(t, Fore.MAGENTA)
 
     def success(t):
         return colorize(t, Fore.GREEN)
