@@ -29,9 +29,11 @@ After extracting the archive you can install Opbasm with the following command:
 
 On Linux systems you may need to install with root privileges using the _sudo_ command.
 
-After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the <Python root>\Scripts directory is in your %PATH% environment variable.
-
 If you can't use the installer script, it is possible to run _opbasm.py_ directly without installation.
+
+On Windows you can download and run the executable installer as an alternative to manually running _setup.py_ from the command line.
+
+After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the <Python root>\Scripts directory is in your %PATH% environment variable.
 
 
 ==Using Opbasm==
