@@ -25,7 +25,7 @@ def weighted_choice(choices):
     if r < 0.0:
       return c
 
-class random_asm(object):
+class random_pb3(object):
 
   def __init__(self):
     self.label_ix = 0
@@ -53,13 +53,13 @@ class random_asm(object):
 
     ptree = {}
 
-    if random_bool():
+    if weighted_choice([(True, 0.3), (False, 1)]):
       ptree['label'] = ['L_{:03}'.format(self.label_ix)]
       self.label_ix += 1
       self.labels.add(ptree['label'][0])
 
     if random_bool():
-      ptree['comment'] = [' comnt ' + ''.join([random.choice(string.letters) for _ in xrange(10)])]
+      ptree['comment'] = [''.join([random.choice(string.letters) for _ in xrange(10)])]
 
     if random.random() > 0.1:
       # Generate command
@@ -70,7 +70,7 @@ class random_asm(object):
     return Statement(ptree, 1)
 
   def random_command(self):
-    f = weighted_choice([(self.interrupt_command, 0.2), (self.control_command, 1), \
+    f = weighted_choice([(self.interrupt_command, 0.1), (self.control_command, 0.1), \
       (self.one_arg_command, 1), (self.two_arg_command, 1), (self.constant_def, 0.2)])
 
     return f()
@@ -146,10 +146,69 @@ class random_asm(object):
     return addr
 
 
-if __name__ == '__main__':
-  ra = random_asm()
 
-  #for s in ra.statements(int(sys.argv[1])):
-  #  print(s.format())
-  ra.write_file('foobar.psm', 40)
+class random_pb6(random_pb3):
+  def __init__(self):
+    random_pb3.__init__(self)
+
+    self.two_reg_opcodes.add('comparecy')
+    self.two_reg_opcodes.add('testcy')
+
+  def random_command(self):
+    f = weighted_choice([(random_pb3.random_command.__get__(self), 1),
+      (self.random_regbank, 0.03), (self.random_star, 0.03),
+      (self.random_load_return, 0.03), (self.random_outputk, 0.03)])
+    #f = random_pb3.random_command.__get__(self)
+
+    return f()
+
+
+  def control_command(self):
+    cmd = [random.choice(('jump', 'call', 'return', 'jump@', 'call@'))]
+
+    if cmd[0][-1] != '@':
+      flag = random.choice(('', 'z', 'nz', 'c', 'nc'))
+
+      if len(flag) > 0: cmd.append(flag)
+
+      if cmd[0] != 'return': cmd.append(self.random_address())
+
+    else: # PB6 *@ command
+      cmd.append([self.random_register(), self.random_register()])
+      #cmd.append(self.random_register())
+      cmd.append('iaddr')
+
+    return cmd
+
+
+  def random_constant(self):
+    c = random.randint(0, 255)
+    choices = ['{:02X}'.format(c), "{}'d".format(c), "{:08b}'b".format(c),
+      '"{}"'.format(random.choice(string.letters))]
+
+    if len(self.constants) > 0:
+      choices.append(random.sample(self.constants.keys(), 1)[0])
+      choices.append('~' + choices[-1])
+
+    return weighted_choice(zip(choices, [1]*len(choices)))
+
+  def random_regbank(self):
+    return ['regbank', '{}'.format(random.choice(('a', 'b')))]
+
+
+  def random_star(self):
+    return ['star', self.random_register(), self.random_register()]
+
+  def random_load_return(self):
+    return ['load&return', self.random_register(), self.random_constant()]
+
+  def random_outputk(self):
+    return ['outputk', self.random_constant(), '{:01X}'.format(random.randint(0, 15))]
+
+if __name__ == '__main__':
+  ra = random_pb6()
+
+  for s in ra.statements(int(sys.argv[1])):
+    print(s.format())
+  #ra.write_file('foobar.psm', 40)
 

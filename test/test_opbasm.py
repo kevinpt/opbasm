@@ -11,6 +11,7 @@ import psm_gen
 import subprocess as subp
 import filecmp
 import string
+import shutil
 
 class RandomSeededTestCase(unittest.TestCase):
     def __init__(self, methodName='runTest', seedVarName='TEST_SEED'):
@@ -54,7 +55,30 @@ class RandomSeededTestCase(unittest.TestCase):
             raise self.failureException(msg)
 
 
+
+
+def dos_to_unix(fname):
+  with open(fname, 'r') as fh:
+    lines = fh.readlines()
+
+  with open(fname, 'w') as fh:
+    fh.writelines(string.replace(l, '\r\n', '\n') for l in lines)
+
+
+
 class TestPicoblaze(RandomSeededTestCase):
+
+  def setUp(self):
+    RandomSeededTestCase.setUp(self)
+    test_output = 'test/testo'
+    if not os.path.exists(test_output):
+      os.makedirs(test_output)
+
+    # KCPSM3 requires templates to be present in same directory as psm file
+    kcpsm3_files = ['ROM_form.vhd', 'ROM_form.v', 'ROM_form.coe']
+
+    for f in kcpsm3_files:
+      shutil.copyfile(os.path.join('test/kcpsm3/Assembler', f), os.path.join(test_output, f))
 
   
   @unittest.skip('debug')
@@ -70,9 +94,9 @@ class TestPicoblaze(RandomSeededTestCase):
       basename = 'pb3_{:02}'.format(i)
 
       # Generate random source code
-      ra = psm_gen.random_asm()
+      ra = psm_gen.random_pb3()
       psm_file = basename + '.psm'
-      ra.write_file(psm_file, 100)
+      ra.write_file(psm_file, 800)
 
       # Run opbasm on the source
       opbasm = subp.Popen(['opbasm', '-n', basename + '.opbasm', psm_file], stdin=subp.PIPE,
@@ -99,17 +123,14 @@ class TestPicoblaze(RandomSeededTestCase):
       kcpsm_mem = basename + '.mem'
 
       # Convert DOS to unix line endings
-      with open(kcpsm_mem, 'r') as fh:
-        lines = fh.readlines()
-
-      with open(kcpsm_mem, 'w') as fh:
-        fh.writelines(string.replace(l, '\r\n', '\n') for l in lines)
+      dos_to_unix(kcpsm_mem)
 
       # Compare mem files
       self.assertTrue(filecmp.cmp(opbasm_mem, kcpsm_mem, False),
         'Mem file mismatch {}'.format(kcpsm_mem))
 
 
+  #@unittest.skip('debug')
   def test_pb6(self):
     self.test_name = 'Picoblaze 6 test'
     self.trial_count = 10
@@ -122,9 +143,9 @@ class TestPicoblaze(RandomSeededTestCase):
       basename = 'pb6_{:02}'.format(i)
 
       # Generate random source code
-      ra = psm_gen.random_asm()
+      ra = psm_gen.random_pb6()
       psm_file = basename + '.psm'
-      ra.write_file(psm_file, 100)
+      ra.write_file(psm_file, 800)
 
       # Run opbasm on the source
       opbasm = subp.Popen(['opbasm', '-6', '-n', basename + '.opbasm', '-x', psm_file], stdin=subp.PIPE,
@@ -151,13 +172,10 @@ class TestPicoblaze(RandomSeededTestCase):
       kcpsm_mem = basename + '.hex'
 
       # Convert DOS to unix line endings
-      with open(kcpsm_mem, 'r') as fh:
-        lines = fh.readlines()
-
-      with open(kcpsm_mem, 'w') as fh:
-        fh.writelines(string.replace(l, '\r\n', '\n') for l in lines)
+      dos_to_unix(kcpsm_mem)
 
       # Compare mem files
       self.assertTrue(filecmp.cmp(opbasm_mem, kcpsm_mem, False),
         'Mem file mismatch {}'.format(kcpsm_mem))
+
 
