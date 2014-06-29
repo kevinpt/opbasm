@@ -72,6 +72,7 @@ from optparse import OptionParser
 import datetime
 import copy
 import string
+import io
 
 try:
   from opbasm_lib.color import *
@@ -89,7 +90,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '0.9'
+__version__ = '1.0'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -1284,7 +1285,7 @@ def build_9_bit_mem_init(mmap, minit, bit_range):
 def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp):
   '''Insert INIT strings and other fields into an HDL template'''
   # Read template
-  with open(hdl_template, 'r') as fh:
+  with io.open(hdl_template, 'r', encoding='latin1') as fh:
     template = fh.readlines()
 
   # Remove template header
@@ -1349,7 +1350,7 @@ def template_data_size(template_file):
   This scans a template file to see what format of init placeholder is
   used for address 00.
   '''
-  with open(template_file, 'r') as fh:
+  with io.open(template_file, 'r', encoding='latin1') as fh:
     for l in fh:
       if '{[8:0]_INIT_00}' in l:
         return 9
