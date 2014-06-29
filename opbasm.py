@@ -280,6 +280,13 @@ class Statement(object):
     self.indirect_addr = False
     self.table_def = False
 
+    # Instruction fields
+    self.address = 0
+    self.opcode = 0
+    self.regx = 0
+    self.regy = 0
+    self.immediate = 0
+
     if 'instruction' in ptree:
       ifields = ptree['instruction']
       self.command = ifields[0]
@@ -289,9 +296,11 @@ class Statement(object):
           self.arg1 = ifields[1][0]
           self.arg2 = ifields[1][1]
           self.indirect_addr = True
+          return
 
         else: # Normal operand
           self.arg1 = ifields[1]
+
       if len(ifields) > 2:
         if 'table' in ifields:
           self.arg2 = ifields[2]
@@ -301,13 +310,6 @@ class Statement(object):
           self.indirect_reg = True
         else:
           self.arg2 = ifields[2]
-
-    # Instruction fields
-    self.address = 0
-    self.opcode = 0
-    self.regx = 0
-    self.regy = 0
-    self.immediate = 0
 
 
   def machine_word(self):
@@ -1359,7 +1361,7 @@ def template_data_size(template_file):
 
 import shutil
 
-def get_templates():
+def get_standard_templates():
   '''Create copies of standard templates from the installed package'''
   print('Retrieving default templates...')
 
@@ -1388,11 +1390,12 @@ def get_templates():
 
 def main():
   '''Main application code'''
+  print(note('OPBASM - Open Picoblaze Assembler'))
   options = parse_command_line()
 
 
   if options.get_templates:
-    get_templates()
+    get_standard_templates()
     sys.exit(0)
 
   if options.hex_output:
@@ -1417,7 +1420,6 @@ def main():
     asm_error('Input file not found', exit=1)
 
 
-  print(note('OPBASM - Open Picoblaze Assembler'))
   print(note('Running in ') + success('Picoblaze-{}'.format(6 if options.use_pb6 else 3)) + note(' mode'))
 
   print('  Device configuration:\n    Memory size: {}, Scratchpad size: {}\n'.format(\
@@ -1494,6 +1496,8 @@ def main():
         print(s.format(), file=fh)
 
   print('')
+
+  sys.exit(0)
 
 
 if __name__ == '__main__':

@@ -4,8 +4,9 @@ Opbasm is a free cross-platform assembler for the Picoblaze-3 (PB3) and Picoblaz
 
 Support for the full Picoblaze-6 syntax is provided as well as [#Picoblaze-3_Enhancements enabling most of the new PB6 syntax enhancements in Picoblaze-3 code]. The original templating system for ROM components is supported as well as a more flexible [#Generic_ROM_component generic ROM component] that can read _.mem_ and _.hex_ files directly during synthesis and simulation. A utility script is included that permits updating the ROM contents of a bitstream file without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
 
-As a bonus, files generated on non-Windows platforms will not have DOS line endings and Picoblaze-3 files are not restricted to 8.3 file names.
+As a bonus, files generated on non-Windows platforms will not have DOS line endings and Picoblaze-3 files are not restricted to 8.3 file names. Opbasm also runs significantly faster than the native implementation:
 
+http://opbasm.googlecode.com/hg/doc/opbasm_perf.png
 
 ==Requirements==
 
@@ -19,6 +20,8 @@ You can access the Opbasm Mercurial repository from [https://code.google.com/p/o
 
 ==Installation==
 
+You must have Python installed first. Most modern Linux distributions and OS/X have it available by default. There are a number of options available for Windows. If you don't already have a favorite, I recommend getting one of the [http://www.scipy.org/install.html "full-stack" Python distros] that are geared toward scientific computing such as Anaconda or Python(x,y).
+
 If your OS has a package manager, it may be preferable to install Python setuptools and pyparsing through that tool before attempting to install Opbasm. Otherwise, the installation script will install these packages directly without registering them with the OS package manager.
 
 After extracting the archive you can install Opbasm with the following command:
@@ -31,7 +34,7 @@ On Linux systems you may need to install with root privileges using the _sudo_ c
 
 If you can't use the installer script, it is possible to run _opbasm.py_ directly without installation.
 
-On Windows you can download and run the executable installer as an alternative to manually running _setup.py_ from the command line.
+On Windows you can download and run the executable installer as an alternative to manually running _setup.py_ from the command line. If you have multiple Python installations you will be prompted to select which one to install into.
 
 After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the <Python root>\Scripts directory is in your %PATH% environment variable.
 
@@ -102,6 +105,7 @@ Running in Picoblaze-6 mode
 
 By default, Opbasm outputs _.mem_ format ROM listings as produced by KCPSM3. If you want to output the _.hex_ format listings produced by KCPSM6 pass the _-x_ option. The only difference is that _.mem_ format includes an "@nnn" address directive setting the starting offset for the memory.
 
+Opbasm returns 0 on success and can be used with automated builds using make or another build/scripting system.
 
 ===Picoblaze-3 Enhancements===
 
@@ -130,11 +134,11 @@ The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory.
 
 ===Templating===
 
-All of the official KCPSM-provided HDL templates are supported. Any custom templates you have created can be used unchanged. Because of improvements to XST's support for synthesis of BRAM generics since the original release of KCPSM3, an updated Spartan-3 template [https://code.google.com/p/opbasm/source/browse/templates/ROM_form_S3_1K.vhdl ROM_form_S3_1K.vhdl] is included that eliminates the warnings from redundant attribute declarations. Templates for Picoblaze-6 devices can be found in the KCPSM6 distribution.
+All of the official KCPSM-provided HDL templates are supported. Any custom templates you have created can be used unchanged. Because of improvements to XST's support for synthesis of BRAM generics since the last release of KCPSM3, an updated Spartan-3 template [https://code.google.com/p/opbasm/source/browse/templates/ROM_form_S3_1K.vhdl ROM_form_S3_1K.vhdl] is included that eliminates the warnings from redundant attribute declarations. Templates for Picoblaze-6 devices can be found in the KCPSM6 distribution.
 
-Because Opbasm is more flexible in the naming of modules, the original template system's assumption that the "{name}" field matches the input source file isn't necessarily valid. a new field "{source file}" is added that clearly indicates the original top level source file used to populate a template. This field is optional and only used in a comment so it is not critical to include it in your templates.
+Because Opbasm is more flexible in the naming of modules, the original template system's assumption that the "{name}" field matches the input source file isn't necessarily valid. A new field "{source file}" is added that clearly indicates the original top level source file used to populate a template. This field is optional and only used in a comment so it is not critical to include it in your templates.
 
-The native KCPSM assemblers are hard-coded to look for a template named _ROM_form.vhd_ or _ROM_form.v_. Opbasm searches for templates by those names (as well as _ROM_form.vhdl_) but you can also pass the _-t <template file>_ option to specify a different template. If your OS supports symbolic links it is recommended to maintain a link from the original template to _ROM_form.xxx_ rather than renaming it to one of the generic defaults.
+The native KCPSM assemblers are hard-coded to look for a template named _ROM_form.vhd_ or _ROM_form.v_. Opbasm searches for templates by those names (as well as _ROM_form.vhdl_) but you can also pass the _-t <template file>_ option to specify a different template with any arbitrary name. If your OS supports symbolic links it is recommended to maintain a link from the original template to _ROM_form.xxx_ rather than renaming it to one of the generic defaults.
 
 To save the bother of hunting down templates when you start a new project, you can generate copies of the default templates included with Opbasm using the following command:
 
@@ -153,6 +157,7 @@ As an alternative to the templating system, a generic, synthesizable VHDL ROM is
 
 XST doesn't infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The "`ROM_form_S6_4K_<date>.vhd`" template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.
 
+It is not necessary to have an HDL template file present if you are using the generic ROM.
 
 ==Updating bit files==
 
