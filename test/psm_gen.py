@@ -150,14 +150,21 @@ class random_pb3(object):
 class random_pb6(random_pb3):
   def __init__(self):
     random_pb3.__init__(self)
-
+    self.string_ix = 0
+    self.strings = {}
+    self.prev_string = None
     self.two_reg_opcodes.add('comparecy')
     self.two_reg_opcodes.add('testcy')
 
   def random_command(self):
+    if self.prev_string is not None:
+      cmd = ['load&return', self.random_register(), self.prev_string]
+      self.prev_string = None
+      return cmd
+
     f = weighted_choice([(random_pb3.random_command.__get__(self), 1),
       (self.random_regbank, 0.03), (self.random_star, 0.03),
-      (self.random_load_return, 0.03), (self.random_outputk, 0.03)])
+      (self.random_load_return, 0.03), (self.random_string, 0.03), (self.random_outputk, 0.03)])
     #f = random_pb3.random_command.__get__(self)
 
     return f()
@@ -201,6 +208,15 @@ class random_pb6(random_pb3):
 
   def random_load_return(self):
     return ['load&return', self.random_register(), self.random_constant()]
+
+  def random_string(self):
+    sn = 'S_{:03}$'.format(self.string_ix)
+    self.string_ix += 1
+    sv = ''.join([random.choice(string.letters) for _ in xrange(random.randint(2, 10))])
+    self.strings[sn] = sv
+
+    self.prev_string = sn
+    return ['string', sn, '"{}"'.format(sv)]
 
   def random_outputk(self):
     return ['outputk', self.random_constant(), '{:01X}'.format(random.randint(0, 15))]
