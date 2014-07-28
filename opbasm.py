@@ -90,7 +90,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.0'
+__version__ = '1.01'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -282,7 +282,7 @@ class Statement(object):
     self.table_def = False
 
     # Instruction fields
-    self.address = 0
+    self.address = -1
     self.opcode = 0
     self.regx = 0
     self.regy = 0
@@ -354,6 +354,8 @@ class Statement(object):
         op = '{:05X}'.format(self.machine_word())
         op = note(op) if colorize else op # blue text
         addr = '{:03X}  {}'.format(self.address, op)
+      elif self.address >= 0:
+        addr = '{:03X}       '.format(self.address)
       else:
         addr = '          '
     else:
@@ -726,6 +728,14 @@ class Assembler(object):
         if cur_addr >= self.mem_size:
           raise FatalError(s, 'Address exceeds memory bounds: {:03X} (limit {:03X})'.format(\
             cur_addr, self.mem_size-1))
+
+    # Assign phony addresses to non-instruction lines with comment or label
+    for s in reversed(slist):
+      if s.is_instruction():
+        cur_addr = s.address
+        continue
+      elif s.label or s.comment or s.command:
+        s.address = cur_addr
 
 
     # Pass 3: Validate and assemble instructions
