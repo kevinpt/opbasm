@@ -129,7 +129,7 @@ explanation of the new Picoblaze-6 syntax.
 
 ===Picoblaze-6 Enhancements===
 
-The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory. OPBASM provides -m to do the same as well as -s to limit the scratchpad memory size to 64 or 128 bytes. MEM format files are output by default. KCPSM6-style HEX format is activated with -x.
+The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory. Opbasm provides -m to do the same as well as -s to limit the scratchpad memory size to 64 or 128 bytes. MEM format files are output by default. KCPSM6-style HEX format is activated with -x.
 
 
 ===Templating===
