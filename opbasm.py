@@ -1318,7 +1318,7 @@ def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp):
   hdl = hdl.replace('{name}', os.path.splitext(hdl_file)[0])
   hdl = hdl.replace('{timestamp}', timestamp)
 
-  with open(hdl_file, 'w') as fh:
+  with io.open(hdl_file, 'w', encoding='latin1') as fh:
     fh.write(hdl)
 
 
