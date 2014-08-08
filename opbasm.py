@@ -73,6 +73,7 @@ import datetime
 import copy
 import string
 import io
+import re
 
 try:
   from opbasm_lib.color import *
@@ -263,6 +264,87 @@ def picoblaze_parser(op_info):
   return statement
 
 
+regex_parser = re.compile(r'''
+  (?:
+    (?P<label>\w+):\s*
+  )?
+  (?:
+    (?P<cmd>[\w&@]+)\s*
+    (?:
+        (?P<arg1>(?:[\w~'#$"]+))\s*
+        (?:,\s*(?P<arg2>[\w~'%#$]+)|,\s*\(\s*(?P<arg2b>[\w~'"%]+)\s*\)
+        |,\s*\[(?P<arg2t>[^\]]+\]('[db])?)|,\s*(?P<arg2s>".+"))?
+        |\(\s*(?P<addr1>[\w~']+)\s*,\s*(?P<addr2>[\w~']+)\s*\)
+    )?\s*
+  )?
+  (?P<cmnt>;.*)?$
+''', re.VERBOSE)
+
+regex_register = re.compile(r's[0-9A-F]', re.IGNORECASE)
+
+def regex_parse_statement(l):
+  '''Regex based parser that performs significantly faster than the pyparsing
+  based recursive descent parser
+  '''
+
+  ptree = {}
+
+  m = regex_parser.search(l)
+  if m:
+    if m.group('label'): ptree['label'] = [m.group('label')]
+    if m.group('cmnt'): ptree['comment'] = [m.group('cmnt')[1:]]
+
+    args = []
+    if m.group('arg1'): args.append(m.group('arg1'))
+    if m.group('arg2'): args.append(m.group('arg2'))
+    if m.group('arg2b'):
+      args.append([m.group('arg2b')])
+      args.append('ireg') # Flag to indicate indirect addressing
+
+    if m.group('arg2t'): # Table definition
+      tdata, tend = m.group('arg2t').split(']')
+      tdata = [d.strip() for d in tdata.split(',')]
+      tdata.append(']' + tend)
+      args.append(tdata)
+
+    if m.group('arg2s'): # String definition
+      args.append(m.group('arg2s'))
+      
+
+    # Picoblaze-6 *@ instructions
+    if m.group('addr1') and m.group('addr2'):
+      args.append([m.group('addr1'), m.group('addr2')])
+      args.append('iaddr')
+
+    # Convert default register names (s*) to lowercase
+    lcargs = []
+    for a in args:
+      try:
+        if regex_register.match(a):
+          lcargs.append(a.lower())
+        else:
+          lcargs.append(a)
+      except TypeError: # Argument is a list
+        a2 = []
+        for sa in a:
+          if regex_register.match(sa):
+            a2.append(sa.lower())
+          else:
+            a2.append(sa)
+        lcargs.append(a2)
+          
+    args = lcargs
+
+    if m.group('cmd'):
+      cmd = [m.group('cmd').lower()]
+      cmd.extend(args)
+      ptree['instruction'] = cmd
+
+  return {'statement': ptree}
+
+
+
+
 class Statement(object):
   '''Low level representation of a statement (instructions, directives, comments)'''
   def __init__(self, ptree, line):
@@ -270,6 +352,7 @@ class Statement(object):
     ptree : pyparsing parse tree object for a single statement
     line : source line number
     '''
+
     self.line = line
     self.label = ptree['label'][0] if 'label' in ptree else None
     self.comment = ptree['comment'][0] if 'comment' in ptree else None
@@ -402,19 +485,21 @@ def parse_lines(lines, op_info):
   statements = []
   for i, l in enumerate(lines):
     try:
-      ptree = parser.parseString(l)
+      #ptree = parser.parseString(l)
+      ptree = regex_parse_statement(l)
     except ParseException, e:
       print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i, l))
       sys.exit(1)
 
     statements.append(Statement(ptree['statement'], i+1))
+    #print('### ptree:', i+1, ptree['statement'])
 
   return statements
 
 
 class Assembler(object):
   '''Main object for running assembler and tracking symbol information'''
-  def __init__(self, top_source_file, timestamp, options, upper_env_names): #FIXME
+  def __init__(self, top_source_file, timestamp, options, upper_env_names):
     self.top_source_file = top_source_file
     self.mem_size = options.mem_size
     self.scratch_size = options.scratch_size
@@ -552,7 +637,7 @@ class Assembler(object):
         if s.arg1 in self.strings:
           raise FatalError(s, 'Redefinition of string:', s.arg1)
         if s.arg2[0] != '"' or s.arg2[-1] != '"':
-          asm.error('Not a valid string:', s.arg2)
+          raise FatalError(s, 'Not a valid string:', s.arg2)
 
         self.strings[s.arg1] = Symbol(s.arg1, s.arg2[1:-1], s.arg2, \
             source_file=source_file, source_line=s.line)
