@@ -161,7 +161,7 @@ def get_op_info(use_pb6):
 
       # New Picoblaze-6 instructions:
       'call@': 0x24000, 'comparecy': 0x1f000, 'hwbuild': 0x14080, 'jump@': 0x26000, \
-      'load&return': 0x21000, 'outputk': 0x2b000, 'regbank': 0x37000, 'star': 0x16000, \
+      'load&return': 0x21000, 'outputk': 0x2b000, 'regbank': 0x37000, 'star': 0x17000, \
       'testcy': 0x0f000, 'inst': 0x00000 \
     }
 
@@ -478,18 +478,20 @@ class Symbol(object):
       return self._val_text
 
 
-def parse_lines(lines, op_info):
+def parse_lines(lines, op_info, use_pyparsing):
   '''Parse a list of text lines into Statement objects'''
   parser = picoblaze_parser(op_info)
 
   statements = []
   for i, l in enumerate(lines):
-    try:
-      #ptree = parser.parseString(l)
+    if not use_pyparsing:
       ptree = regex_parse_statement(l)
-    except ParseException, e:
-      print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i, l))
-      sys.exit(1)
+    else:
+      try:
+        ptree = parser.parseString(l)
+      except ParseException, e:
+        print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i, l))
+        sys.exit(1)
 
     statements.append(Statement(ptree['statement'], i+1))
     #print('### ptree:', i+1, ptree['statement'])
@@ -563,7 +565,7 @@ class Assembler(object):
 
 
 
-  def process_includes(self, source_file=None):
+  def process_includes(self, use_pyparsing, source_file=None):
     '''Scan a list of statements for INCLUDE directives and recursively
     read each included source file. Constant, string, and table definitions
     are also processed to keep track of where they are defined.
@@ -575,7 +577,7 @@ class Assembler(object):
     with open(source_file, 'r') as fh:
       source = [s.rstrip() for s in fh.readlines()]
 
-    slist = parse_lines(source, self.op_info)
+    slist = parse_lines(source, self.op_info, use_pyparsing)
     self.sources[source_file] = slist
 
     # Scan for include directives
@@ -598,7 +600,7 @@ class Assembler(object):
           if not os.path.exists(include_file):
             raise FatalError(s, 'Include file not found:', include_file)
 
-          for inc_file in self.process_includes(include_file):
+          for inc_file in self.process_includes(use_pyparsing, include_file):
             yield inc_file
         else:
           raise FatalError(s, 'Invalid include parameter', s.arg1)
@@ -1004,9 +1006,23 @@ class Assembler(object):
           else:
             raise FatalError(s, 'Invalid register:', s.arg1)
 
+          # PB6 has an undocumented STAR sX, kk variant so we will accept a constant
+          # as the second argument as well as a register.
+          # http://forums.xilinx.com/t5/PicoBlaze/obscure-undocumented-property-of-REGBANK-instruction/m-p/489774#M2375
+
           s.regy = self.get_register(s.arg2)
-          if s.regy is None:
-            raise FatalError(s, 'Invalid register:', s.arg2)
+          if s.regy is not None: # Using y register opcode
+            s.opcode += self.op_info['two_reg_op_offset'] # Adjust opcode
+
+          else: # The second arg was not a register
+            s.regy = 0
+            s.immediate = self.get_constant(s.arg2)
+
+            if s.immediate is None:
+              raise FatalError(s, 'Invalid operand:', s.arg2)
+            if not (0 <= s.immediate < 256):
+              raise FatalError(s, 'Immediate value out of range:', s.immediate)
+
 
         elif s.command == 'inst':
           # NOTE: INST is really a directive but we need to reserve a space in the
@@ -1115,6 +1131,8 @@ def parse_command_line():
         help='Get default template files')
   parser.add_option('-v', '--version', dest='version', action='store_true', default=False, \
         help='Show OPBASM version')
+  parser.add_option('--pyparsing', dest='use_pyparsing', action='store_true', default=False, \
+        help='Use alternate pyparsing parser')
 
   options, args = parser.parse_args()
 
@@ -1527,7 +1545,7 @@ def main():
 
   try:
     # Read input source
-    for fname in asm.process_includes():
+    for fname in asm.process_includes(options.use_pyparsing):
       print('  Reading source:', fname)
 
     # Assemble program
