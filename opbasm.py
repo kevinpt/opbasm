@@ -54,6 +54,8 @@ For Picoblaze-3 you CANNOT use the following:
   * Picoblaze-6 instructions (CALL@, COMPARECY, HWBUILD, JUMP@, LOAD&RETURN,
                               OUTPUTK, REGBANK, STAR, TESTCY)
 
+Note that you can use the m4 macro package to get enhanced string processing on PB-3.
+
 Picoblaze-6 enhancements:
   KCPSM6.exe has the -c switch to limit the size of memory. OPBASM provides -m to do the same
   as well as -s to limit the scratchpad memory size to 64 or 128 bytes.
@@ -68,6 +70,8 @@ from __future__ import print_function, division
 
 import sys
 import os
+import errno
+import subprocess
 from optparse import OptionParser
 import datetime
 import copy
@@ -271,8 +275,8 @@ regex_parser = re.compile(r'''
   (?:
     (?P<cmd>[\w&@]+)\s*
     (?:
-        (?P<arg1>(?:[\w~'#$"]+))\s*
-        (?:,\s*(?P<arg2>[\w~'%#$]+)|,\s*\(\s*(?P<arg2b>[\w~'"%]+)\s*\)
+        (?P<arg1>(?:[-\w~'#$."]+))\s*
+        (?:,\s*(?P<arg2>[-\w~'%#$]+)|,\s*\(\s*(?P<arg2b>[\w~'"%]+)\s*\)
         |,\s*\[(?P<arg2t>[^\]]+\]('[db])?)|,\s*(?P<arg2s>".+"))?
         |\(\s*(?P<addr1>[\w~']+)\s*,\s*(?P<addr2>[\w~']+)\s*\)
     )?\s*
@@ -490,7 +494,7 @@ def parse_lines(lines, op_info, use_pyparsing):
       try:
         ptree = parser.parseString(l)
       except ParseException, e:
-        print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i, l))
+        print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i, l+1))
         sys.exit(1)
 
     statements.append(Statement(ptree['statement'], i+1))
@@ -506,6 +510,9 @@ class Assembler(object):
     self.mem_size = options.mem_size
     self.scratch_size = options.scratch_size
     self.use_pb6 = options.use_pb6
+    self.use_m4 = options.use_m4
+    self.output_dir = options.output_dir
+    self.use_pyparsing = options.use_pyparsing
     self.timestamp = timestamp
 
     self.constants = self._init_constants()
@@ -563,9 +570,29 @@ class Assembler(object):
 
     return strings
 
+  def preprocess_with_m4(self, source_file):
+    '''Determine if file should be preprocessed for m4 macros and generate
+    expanded file with ".gen.psm" extension
+    '''
+    if (not self.use_m4) and os.path.splitext(source_file)[1] not in ('.psm4', '.m4'): # No change
+      return source_file
+
+    pp_source_file = os.path.splitext(source_file)[0] + '.gen.psm'
+    pp_source_file = add_output_dir(self.output_dir, pp_source_file)
+
+    # Look for common picoblaze.m4 macro definitions
+    macro_defs = find_standard_m4_macros()
+    proc_mode = 'PB6' if self.use_pb6 else 'PB3' # Definition for active processor type
+
+    cmd = 'm4 -D{} {} {} > {}'.format(proc_mode, macro_defs, source_file, pp_source_file)
+    p = subprocess.Popen(cmd, shell=True)
+    p.wait()
+    if p.returncode:
+      asm_error('m4 failure on file', source_file, exit=1)
+    return pp_source_file
 
 
-  def process_includes(self, use_pyparsing, source_file=None):
+  def process_includes(self, source_file=None):
     '''Scan a list of statements for INCLUDE directives and recursively
     read each included source file. Constant, string, and table definitions
     are also processed to keep track of where they are defined.
@@ -573,11 +600,18 @@ class Assembler(object):
     if source_file is None: source_file = self.top_source_file
     if source_file in self.sources: return
 
-    yield source_file
-    with open(source_file, 'r') as fh:
+    pp_source_file = self.preprocess_with_m4(source_file)
+
+    if pp_source_file != source_file:
+      yield source_file + ' (m4)'
+    else:
+      yield source_file
+
+
+    with open(pp_source_file, 'r') as fh:
       source = [s.rstrip() for s in fh.readlines()]
 
-    slist = parse_lines(source, self.op_info, use_pyparsing)
+    slist = parse_lines(source, self.op_info, self.use_pyparsing)
     self.sources[source_file] = slist
 
     # Scan for include directives
@@ -600,7 +634,7 @@ class Assembler(object):
           if not os.path.exists(include_file):
             raise FatalError(s, 'Include file not found:', include_file)
 
-          for inc_file in self.process_includes(use_pyparsing, include_file):
+          for inc_file in self.process_includes(include_file):
             yield inc_file
         else:
           raise FatalError(s, 'Invalid include parameter', s.arg1)
@@ -667,6 +701,11 @@ class Assembler(object):
           tbl = [int(e, radix) for e in s.arg2[:-1]]
         except ValueError:
           raise FatalError(s, 'Invalid table element (radix {})'.format(radix))
+
+        # Ensure table values are within range
+        for e in tbl:
+          if not (0 <= e < 256):
+            raise FatalError(s, 'Table value out of range:', e)
 
         val_text = '[' + ', '.join(s.arg2[:-1]) + s.arg2[-1]
         self.tables[s.arg1] = Symbol(s.arg1, tbl, val_text, \
@@ -968,7 +1007,7 @@ class Assembler(object):
           elif s.arg1.endswith('#'):
             elems = [(e, '{:02X}'.format(e)) for e in self.tables[s.arg1].value]
 
-          if len(elems) > 0:
+          if len(elems) > 0: # Table or string argument
             for i, (e, e_text) in enumerate(elems):
               new_s = copy.copy(s)
               new_s.immediate = (e << 4) + port
@@ -978,10 +1017,12 @@ class Assembler(object):
               instructions.append(new_s)
             continue
 
-          else:
+          else: # Single constant argument
             const = self.get_constant(s.arg1)
             if const is None:
               raise FatalError(s, 'Invalid operand:', s.arg1)
+            if not (0 <= const < 256):
+              raise FatalError(s, 'Immediate value out of range:', const)
 
           s.immediate = (const << 4) + port
 
@@ -1110,7 +1151,8 @@ def asm_error(*args, **kwargs):
 def parse_command_line():
   '''Process command line arguments'''
   progname = os.path.basename(sys.argv[0])
-  usage = '''{} [-i] <input file> [-n <name>] [-t <template>] [-6] [-m <mem size>] [-s <scratch size>]
+  usage = '''{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
+              [-o <output dir>] [--m4] [--pyparsing]
        {} -g'''.format(progname, progname)
   parser = OptionParser(usage=usage)
 
@@ -1119,18 +1161,23 @@ def parse_command_line():
   parser.add_option('-t', '--template', dest='template_file', help='Template file')
   parser.add_option('-6', '--pb6', dest='use_pb6', action='store_true', default=False, \
         help='Assemble Picoblaze-6 code')
+  parser.add_option('-3', '--pb3', dest='use_pb3', action='store_true', default=False, \
+        help='Assemble Picoblaze-3 code')
   parser.add_option('-m', '--mem-size', dest='mem_size', \
                     default=0, type=int, help='Program memory size')
   parser.add_option('-s', '--scratch-size', dest='scratch_size', \
                     default=0, type=int, help='Scratchpad memory size')
   parser.add_option('-x', '--hex', dest='hex_output', action='store_true', default=False, \
         help='Write HEX in place of MEM file')
+  parser.add_option('-o', '--outdir', dest='output_dir', default='.', help='Output directory')
   parser.add_option('-c', '--color-log', dest='color_log', action='store_true', default=False, \
         help='Colorize log file')
   parser.add_option('-g', '--get-templates', dest='get_templates', action='store_true', default=False, \
         help='Get default template files')
   parser.add_option('-v', '--version', dest='version', action='store_true', default=False, \
         help='Show OPBASM version')
+  parser.add_option('--m4', dest='use_m4', action='store_true', default=False, \
+        help='Use m4 preprocessor on all source files')
   parser.add_option('--pyparsing', dest='use_pyparsing', action='store_true', default=False, \
         help='Use alternate pyparsing parser')
 
@@ -1150,6 +1197,9 @@ def parse_command_line():
     if not options.module_name:
       options.module_name = os.path.splitext(os.path.basename(options.input_file))[0]
 
+    if options.use_pb3 and options.use_pb6:
+      parser.error('Cannot select both Picoblaze architectures')
+
     if options.use_pb6:
       scratch_sizes = (64, 128, 256)
       max_mem_size = 4096
@@ -1166,7 +1216,6 @@ def parse_command_line():
       options.mem_size = max_mem_size
     elif options.mem_size > max_mem_size:
       parser.error('Memory size is too large')
-
 
   return options
 
@@ -1473,6 +1522,24 @@ def template_data_size(template_file):
   return 18
 
 
+def find_standard_m4_macros():
+  # Look relative to installed library
+  try:
+    lib_dir = os.path.dirname(sys.modules['opbasm_lib'].__file__)
+  except KeyError:
+    # Look relative to this script
+    lib_dir = os.path.realpath(__file__)
+
+  macro_file = os.path.join(lib_dir, 'picoblaze.m4')
+
+  if not os.path.exists(macro_file):
+    print('  No m4 macro directory found', macro_file)
+    sys.exit(1)
+
+  return macro_file
+
+
+
 import shutil
 
 def get_standard_templates():
@@ -1502,20 +1569,24 @@ def get_standard_templates():
     shutil.copyfile(p, f)
 
 
+def add_output_dir(output_dir, fname):
+  base, f = os.path.split(fname)
+  return os.path.normpath(os.path.join(base, output_dir, f))
+
+
 def main():
   '''Main application code'''
   print(note('OPBASM - Open Picoblaze Assembler'))
   options = parse_command_line()
-
 
   if options.get_templates:
     get_standard_templates()
     sys.exit(0)
 
   if options.hex_output:
-    hex_mem_file = options.module_name + '.hex'
+    hex_mem_file = add_output_dir(options.output_dir, options.module_name + '.hex')
   else:
-    hex_mem_file = options.module_name + '.mem'
+    hex_mem_file = add_output_dir(options.output_dir, options.module_name + '.mem')
 
   templates = find_templates(options.template_file)
 
@@ -1525,9 +1596,10 @@ def main():
   else:
     vhdl_ext = '.vhdl'
 
-  vhdl_file = options.module_name + vhdl_ext
-  verilog_file = options.module_name + '.v'
-  log_file = options.module_name + '.log'
+  vhdl_file = add_output_dir(options.output_dir, options.module_name + vhdl_ext)
+  verilog_file = add_output_dir(options.output_dir, options.module_name + '.v')
+  log_file = add_output_dir(options.output_dir, options.module_name + '.log')
+
   
   # Check for existence of input files
   if not os.path.exists(options.input_file):
@@ -1543,9 +1615,17 @@ def main():
   upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
   asm = Assembler(options.input_file, timestamp, options, upper_env_names)
 
+  # Create output directory(ies) if it doesn't exist
+  try:
+    os.makedirs(options.output_dir)
+  except OSError as e:
+    if e.errno != errno.EEXIST:
+      raise  # Some other OS error
+
+
   try:
     # Read input source
-    for fname in asm.process_includes(options.use_pyparsing):
+    for fname in asm.process_includes():
       print('  Reading source:', fname)
 
     # Assemble program
@@ -1604,6 +1684,7 @@ def main():
   print('\n  Formatted source:')
   for fname, source in asm.sources.iteritems():
     fname = os.path.splitext(os.path.basename(fname))[0] + '.fmt'
+    fname = add_output_dir(options.output_dir, fname)
     print('   ', fname)
     with open(fname, 'w') as fh:
       for s in source:

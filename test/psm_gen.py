@@ -204,7 +204,12 @@ class random_pb6(random_pb3):
 
 
   def random_star(self):
-    return ['star', self.random_register(), self.random_register()]
+    cmd = ['star', self.random_register()]
+    if True: #random_bool(): # FIXME: Allow random constant for arg2 once kcpsm6 is updated
+      cmd.append(self.random_register())
+    else:
+      cmd.append(self.random_constant())
+    return cmd
 
   def random_load_return(self):
     return ['load&return', self.random_register(), self.random_constant()]

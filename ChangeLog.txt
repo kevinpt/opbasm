@@ -1,0 +1,20 @@
+=================
+Opbasm change log
+=================
+
+v1.? / 2014-??-??
+================
+
+  Changes
+  -------
+  * Add new regex based parser that is 6x faster than original pyparsing parser
+  * New m4 preprocessor support and built-in macro package
+  * Add support for undocumented STAR sX, kk instruction
+  * New output directory command line option
+  * Log file has phony addresses for non-instruction statements to match KCPSM behavior
+
+  Bug fixes
+  ---------
+
+  * Fixed bug in writing latin1 HDL files
+
