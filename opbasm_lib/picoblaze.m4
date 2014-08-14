@@ -29,11 +29,6 @@ changecom(;)
 ; DEALINGS IN THE SOFTWARE.
 
 
-;---------------------------------
-; No-op macros
-define(`nop', `load sF, sF  ; NOP')
-define(`NOP', `load sF, sF  ; NOP')
-
 ;=============== LITERAL OPERATIONS ===============
 
 ;---------------------------------
@@ -73,6 +68,27 @@ define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
 define(`asciiord', `esyscmd(`python -c "import sys; sys.stdout.write(\", \".join(str(ord(c)) for c in \"$1\"))"')') 
 
+;=============== MISCELLANEOUS OPERATIONS ===============
+
+;---------------------------------
+; No-op macros
+define(`nop', `load sF, sF  ; NOP')
+define(`NOP', `load sF, sF  ; NOP')
+
+;---------------------------------
+; Swap registers
+; Arg1: Register 1
+; Arg2: Register 2
+; Ex:  swap(s0, s1)
+define(`swap', `xor $1, $2  ; Swap
+xor $2, $1
+xor $1, $2')
+
+;---------------------------------
+; Generate a random name for a label
+; Arg1: Optional prefix to name
+; Ex:   randlabel(PREFIX_)  --> PREFIX_????????
+define(`randlabel', `esyscmd(`python -c "import sys; import random; import string; sys.stdout.write(\"$1\" + \"\".join([random.choice(string.letters) for _ in xrange(4)]))"')')
 
 ;=============== CARRY FLAG OPERATIONS ===============
 
@@ -173,6 +189,55 @@ define(`calllt', `call c, $1  ; if less than')
 ;     callge(greater)    ; call if s3 >= 24
 
 
+;=============== CONDITIONAL IF-THEN-ELSE ===============
+
+;---------------------------------
+; Conditional if macros: ifeq, ifne, ifge, iflt
+; Arg1: True clause
+; Arg2: Optional else clause
+; These macros insert labels and jump instructions to implement the behavior of
+; an if-then or if-then-else statement testing for equality, inequality,
+; greater-or-equal, or less-than
+; Ex: compare s0, s1
+;     ifeq(`load s3, 20
+;           output s3, MY_PORT',
+;     ; else
+;          `load s3, 30
+;           output s3, MY_OTHER_PORT')
+
+; If equal
+define(`ifeq', `pushdef(`_neq', randlabel(NEQ_))'`pushdef(`_endif', randlabel(ENDIF_))'`jump nz, _neq
+$1
+ifelse($2,,,`jump _endif')
+_neq:
+$2
+_endif:'`popdef(`_neq')'`popdef(`_endif')')
+
+; If not equal
+define(`ifne', `pushdef(`_eq', randlabel(EQ_))'`pushdef(`_endif', randlabel(ENDIF_))'`jump z, _eq
+$1
+ifelse($2,,,`jump _endif')
+_eq:
+$2
+_endif:'`popdef(`_eq')'`popdef(`_endif')')
+
+; If greater or equal
+define(`ifge', `pushdef(`_lt', randlabel(LT_))'`pushdef(`_endif', randlabel(ENDIF_))'`jump c, _lt
+$1
+ifelse($2,,,`jump _endif')
+_lt:
+$2
+_endif:'`popdef(`_lt')'`popdef(`_endif')')
+
+; If less than
+define(`iflt', `pushdef(`_ge', randlabel(GE_))'`pushdef(`_endif', randlabel(ENDIF_))'`jump nc, _ge
+$1
+ifelse($2,,,`jump _endif')
+_ge:
+$2
+_endif:'`popdef(`_ge')'`popdef(`_endif')')
+
+
 ;=============== SHIFT AND ROTATE OPERATIONS ===============
 
 ;---------------------------------
@@ -180,7 +245,7 @@ define(`calllt', `call c, $1  ; if less than')
 ; Arg1: Instruction or macro string to repeat
 ; Arg2: Numper of repetitions
 define(`repeat', `ifelse($#,0, ``$0'', eval($2>0),1, `$1
-$0($1, decr($2))')')
+$0(`$1', decr($2))')')
 
 ;---------------------------------
 ; Repeated shifts
@@ -227,25 +292,26 @@ define(`pop', `add _stackptr, 01  ; Pop
 fetch $1, (_stackptr)')
 
 ;---------------------------------
-; Retrieve values from the stack without modification
-; Arg1: Register to save value in
-; Arg2: Offset from stack pointer (offset 1 is the first value)
-; Ex: getstack(s3, 2) ; Get the second value relative to the stack pointer
-define(`getstack', `add _stackptr, eval($2)  ; Fetch stack offset $2
-fetch $1, (_stackptr)
-sub _stackptr, eval($2)')
-
-;---------------------------------
 ; Retrieve multiple contiguous values from the stack without modification
 ; Arg1-Argn: Registers to save values in
 ;            The first register corresponds to the highest address
-; Ex: getstackregs(s3, s4, s5) ; Get stack offset SP+3, SP+2, and SP+1 into s3, s4, s5
-define(`getstackregs', `add _stackptr, $#  ; Get stack registers
+; Ex: getstack(s3, s4, s5) ; Get stack offset SP+3, SP+2, and SP+1 into s3, s4, s5
+define(`getstack', `add _stackptr, $#  ; Get stack registers
 _gsr($@)')
 
 define(`_gsr', `ifelse(`$1',,,`fetch $1, (_stackptr)
 sub _stackptr, 01
 $0(shift($@))')')
+
+;---------------------------------
+; Retrieve values from the stack without modification
+; Arg1: Register to save value in
+; Arg2: Offset from stack pointer (offset 1 is the first value) or a register
+; Ex: getstackat(s3, 2)  ; Get the second value relative to the stack pointer
+;     getstackat(s3, s0) ; Get stack value pointed at by s0
+define(`getstackat', `add _stackptr, evalx($2, 16, 2)  ; Fetch stack offset $2
+fetch $1, (_stackptr)
+sub _stackptr, evalx($2, 16, 2)')
 
 ;---------------------------------
 ; Drop values stored on the stack
@@ -690,6 +756,131 @@ define(`sr0_16', `repeat(`_sr0_16($1, $2)', eval($3))')
 define(`sr1_16', `repeat(`_sr1_16($1, $2)', eval($3))')
 define(`sra_16', `repeat(`_sra_16($1, $2)', eval($3))')
 define(`srx_16', `repeat(`_srx_16($1, $2)', eval($3))')
+
+
+define(`_rl_16', `pushdef(`_rnc',randlabel(RL16_))'`sl0 $2
+sla $1
+jump nc, _rnc
+or $2, 01
+_rnc:
+'`popdef(`_rnc')')
+
+define(`rl_16', `repeat(`_rl_16($1, $2)', eval($3))')
+
+define(`_rr_16', `pushdef(`_rnc',randlabel(RR16_))'`sr0 $1
+sra $2
+jump nc, _rnc
+or $1, 80
+_rnc:
+'`popdef(`_rnc')')
+
+define(`rr_16', `repeat(`_rr_16($1, $2)', eval($3))')
+
+
+;=============== 16-bit I/O OPERATIONS ===============
+
+;---------------------------------
+; 16-bit fetch
+; Arg1, Arg2: MSB, LSB of target
+; 3 arguments: Fetch from indirect register
+;   Arg3: Register with pointer to low byte
+;         Incremented twice to permit sequential use of fetch16()
+; 4 arguments: MSB, LSB addresses to fetch from
+;   Arg3, Arg4: MSB, LSB of source
+; Result in Arg1, Arg2
+; Ex: constant M_ACCUM_L, 1a
+;     constant M_ACCUM_H, 1b
+;     reg16(M_ACCUM, M_ACCUM_H, M_ACCUM_L)
+;     reg16(rx, s4, s3)
+;     fetch16(rx, M_ACCUM)  ; Fetch direct from address
+;     load s0, M_ACCUM_L
+;     fetch16(rx, s0)       ; Fetch from indirect pointer
+;     fetch16(rx, s0)       ; Fetch next word
+define(`fetch16', `ifelse($#,4,`_fetch16($@)',`_fetch16i($@)')')
+
+define(`_fetch16', `fetch $2, $4
+fetch $1, $3')
+
+define(`_fetch16i', `fetch $2, ($3)
+add $3, 01
+fetch $1, ($3)
+add $3, 01')
+
+
+;---------------------------------
+; 16-bit store
+; Arg1, Arg2: MSB, LSB of source
+; 3 arguments: Fetch to indirect register
+;   Arg3: Register with pointer to low byte
+;         Incremented twice to permit sequential use of store16()
+; 4 arguments: MSB, LSB addresses to store to
+;   Arg3, Arg4: MSB, LSB of target (LSB sent first)
+; Ex: load16(rx, 2014)
+;     store16(rx, M_ACCUM)  ; Store direct to address
+;     load s0, M_ACCUM_L
+;     store16(rx, s0)       ; Store to indirect pointer
+;     store16(rx, s0)       ; Store next word
+define(`store16', `ifelse($#,4,`_store16($@)',`_store16i($@)')')
+
+define(`_store16', `store $2, $4
+store $1, $3')
+
+define(`_store16i', `store $2, ($3)
+add $3, 01
+store $1, ($3)
+add $3, 01')
+
+
+;---------------------------------
+; 16-bit input
+; Arg1, Arg2: MSB, LSB of target
+; 3 arguments: Input from indirect register
+;   Arg3: Register with pointer to low byte
+;         Incremented twice to permit sequential use of input16()
+; 4 arguments: MSB, LSB port addresses to input from
+;   Arg3, Arg4: MSB, LSB of source port
+; Result in Arg1, Arg2
+; Ex: constant P_ACCUM_L, 1a
+;     constant P_ACCUM_H, 1b
+;     reg16(P_ACCUM, P_ACCUM_H, P_ACCUM_L)
+;     reg16(rx, s4, s3)
+;     input16(rx, P_ACCUM)  ; Input direct from address
+;     load s0, P_ACCUM_L
+;     input16(rx, s0)       ; Input from indirect pointer
+;     input16(rx, s0)       ; Input next word
+define(`input16', `ifelse($#,4,`_input16($@)',`_input16i($@)')')
+
+define(`_input16', `input $2, $4
+input $1, $3')
+
+define(`_input16i', `input $2, ($3)
+add $3, 01
+input $1, ($3)
+add $3, 01')
+
+
+;---------------------------------
+; 16-bit output
+; Arg1, Arg2: MSB, LSB of source
+; 3 arguments: Output to indirect register
+;   Arg3: Register with pointer to low byte
+;         Incremented twice to permit sequential use of output16()
+; 4 arguments: MSB, LSB port addresses to output to
+;   Arg3, Arg4: MSB, LSB of target (LSB sent first)
+; Ex: load16(rx, 2014)
+;     output16(rx, P_ACCUM)  ; Output direct to port address
+;     load s0, P_ACCUM_L
+;     output16(rx, s0)       ; Output to indirect pointer
+;     output16(rx, s0)       ; Output next word
+define(`output16', `ifelse($#,4,`_output16($@)',`_output16i($@)')')
+
+define(`_output16', `output $2, $4
+output $1, $3')
+
+define(`_output16i', `output $2, ($3)
+add $3, 01
+output $1, ($3)
+add $3, 01')
 
 
 divert(0)dnl
