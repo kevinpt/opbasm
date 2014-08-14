@@ -47,9 +47,16 @@ define(`evalh', `eval(($1) & 0xFF, 16, 2)  ; $1')
 ; Evaluate expression as an 8-bit binary number
 define(`evalb', `eval(($1) & 0xFF, 2, 8)''b  `;' $1)
 
+; Only evaluate valid expressions, otherwise reproduce the original text in the
+; first argument
+define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($2,,`pushdef(`_evalx', `eval($1)')',`pushdef(`_evalx', `eval($1, $2)')'),`pushdef(`_evalx', `eval($1, $2, $3)')'),`pushdef(`_evalx', $1)')'_evalx`'popdef(`_evalx'))
+
 ; Ex: constant cname,  evalh(20 + 6)      -->  constant cname,  1a
 ;     constant cname2, evald(20 * 4 - 1)  -->  constant cname2, 79'd
 ;     constant cname3, evalh(250 + 6)     -->  constant cname3, 01
+;
+;     evalx(some_name)  --> some_name
+;     evalx(1+3)        --> 4
 
 
 ;=============== TYPE CONVERSION ===============
@@ -65,17 +72,6 @@ define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x
 ; Arg1: String to convert
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
 define(`asciiord', `esyscmd(`python -c "import sys; sys.stdout.write(\", \".join(str(ord(c)) for c in \"$1\"))"')') 
-
-;---------------------------------
-; Express a decimal in Picoblaze hex (without any comment)
-; Arg1: Number to convert
-define(`dec', `eval(($1) & 0xFF, 16, 2)')
-
-;---------------------------------
-; Convert a number 0-9 to its ASCII code in Picoblaze hex format
-; Arg1: Digit to convert
-; Ex: asciinum(0)  ; Expands to 30
-define(`asciinum', `eval(($1) + 0x30, 16, 2)')
 
 
 ;=============== CARRY FLAG OPERATIONS ===============
@@ -284,7 +280,7 @@ call $1'
 
 ;---------------------------------
 ; Repeated string output operation
-; Arg1: Output port in Picoblaze hex format
+; Arg1: Output port in m4 integer format or a constant name
 ; Arg2: Register used to hold characters
 ; Arg3: String to split into characters
 ; Ex: constant UART_PORT, 0a
@@ -295,8 +291,10 @@ call $1'
 ;        load s1, "y"
 ;        output s1, UART_PORT
 ;        ...
+;
+;     outputstring(0x0a, s1, `My string') ; Without using a constant
 define(`outputstring', `ifelse($3,,,`load $2, "substr(`$3', 0,1)"
-output $2, $1'
+output $2, evalx($1, 16, 2)'
 `$0($1, $2, substr(`$3',1))')')
 
 ;---------------------------------
@@ -327,7 +325,7 @@ call _sname'
 
 ;---------------------------------
 ; Output a table of constants
-; Arg1: Output port in Picoblaze hex format
+; Arg1: Output port in m4 integer format or a constant name
 ; Arg2: Temporary register for each constant
 ; Arg3 - Argn: Decimal values to output to port
 ; Ex: constant UART_PORT, 0a
@@ -336,7 +334,7 @@ call _sname'
 define(`outputtable', `pushdef(`_oreg', $1)`'pushdef(`_treg', $2)'`_ot(shift(shift($@)))'`popdef(`_oreg')`'popdef(`_treg')')
 
 define(`_ot', `ifelse(`$1',,,`load _treg, eval($1, 16, 2)
-output _treg, _oreg'
+output _treg, evalx(_oreg, 16, 2)'
 `_ot(shift($@))'dnl
 )')
 
