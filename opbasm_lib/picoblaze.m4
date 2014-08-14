@@ -34,7 +34,6 @@ changecom(;)
 define(`nop', `load sF, sF  ; NOP')
 define(`NOP', `load sF, sF  ; NOP')
 
-
 ;=============== LITERAL OPERATIONS ===============
 
 ;---------------------------------
@@ -52,13 +51,30 @@ define(`evalb', `eval(($1) & 0xFF, 2, 8)''b  `;' $1)
 ;     constant cname2, evald(20 * 4 - 1)  -->  constant cname2, 79'd
 ;     constant cname3, evalh(250 + 6)     -->  constant cname3, 01
 
+
+;=============== TYPE CONVERSION ===============
+
 ;---------------------------------
-; Express a decimal in hex (without any comment)
+; Convert a list of values in Picoblaze hex format to decimal
+; Arg1-Argn: Hex values to convert
+; Ex: pbhex(01, 02, 03, 0a, ff)  ; Expands to 1, 2, 3, 10, 255
+define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x$1)')')
+
+;---------------------------------
+; Convert a string to a list of decimal ASCII codes
+; Arg1: String to convert
+; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
+define(`asciiord', `esyscmd(`python -c "import sys; sys.stdout.write(\", \".join(str(ord(c)) for c in \"$1\"))"')') 
+
+;---------------------------------
+; Express a decimal in Picoblaze hex (without any comment)
+; Arg1: Number to convert
 define(`dec', `eval(($1) & 0xFF, 16, 2)')
 
 ;---------------------------------
-; Convert a number 0-9 to ASCII
+; Convert a number 0-9 to its ASCII code in Picoblaze hex format
 ; Arg1: Digit to convert
+; Ex: asciinum(0)  ; Expands to 30
 define(`asciinum', `eval(($1) + 0x30, 16, 2)')
 
 
@@ -75,7 +91,7 @@ define(`clearcy', `and sF, sF  ; Clear carry')
 define(`setcy', `load $1, 00  ; Set carry
 compare $1, 01')
 
-;=============== BITWISE OPERATIONS ===============
+;=============== BITFIELD OPERATIONS ===============
 
 ;---------------------------------
 ; Set and clear bits in a register
@@ -195,16 +211,16 @@ define(`rr', `ifelse($#,0, ``$0'', `repeat(`rr $1', eval($2))')')
 ; Initialize and define stack pointer register.
 ; ** Only invoke once. Must be executed before any push() or pop() macros **
 ; Arg1: Stack pointer register
-; Arg2: Scratchpad address for top of stack in picoblaze hex format
+; Arg2: Scratchpad address for top of stack
 ; Ex: namereg sA, SP ; Reserve stack pointer register 
-;     stackinit(SP, 3F) ; Start stack at end of 64-byte scratchpad
-define(`stackinit', `load $1, $2' `define(`_stackptr', $1)')
+;     stackinit(SP, 0x3F) ; Start stack at end of 64-byte scratchpad
+define(`stackinit', `load $1, eval($2, 16, 2)' `define(`_stackptr', $1)')
 
 ;---------------------------------
 ; Pseudo-stack operations using the scratchpad RAM
 ; The stack pointer grows from the end of the scratchpad to the start
 ; Arg1: Register with value to push or pop
-; Ex: stackinit(sa, 3F)
+; Ex: stackinit(sa, 0x3F)
 ;     push(s0)
 ;     push(s1)
 ;     pop(s1)
@@ -213,6 +229,40 @@ sub _stackptr, 01')
 
 define(`pop', `add _stackptr, 01  ; Pop
 fetch $1, (_stackptr)')
+
+;---------------------------------
+; Retrieve values from the stack without modification
+; Arg1: Register to save value in
+; Arg2: Offset from stack pointer (offset 1 is the first value)
+; Ex: getstack(s3, 2) ; Get the second value relative to the stack pointer
+define(`getstack', `add _stackptr, eval($2)  ; Fetch stack offset $2
+fetch $1, (_stackptr)
+sub _stackptr, eval($2)')
+
+;---------------------------------
+; Retrieve multiple contiguous values from the stack without modification
+; Arg1-Argn: Registers to save values in
+;            The first register corresponds to the highest address
+; Ex: getstackregs(s3, s4, s5) ; Get stack offset SP+3, SP+2, and SP+1 into s3, s4, s5
+define(`getstackregs', `add _stackptr, $#  ; Get stack registers
+_gsr($@)')
+
+define(`_gsr', `ifelse(`$1',,,`fetch $1, (_stackptr)
+sub _stackptr, 01
+$0(shift($@))')')
+
+;---------------------------------
+; Drop values stored on the stack
+; Arg1: Number of values to drop from the stack
+; Ex: dropstack(2)  ; Remove 2 values
+define(`dropstack', `add _stackptr, eval($1, 16, 2)  ; Remove stack values')
+
+;---------------------------------
+; Drop values stored on the stack using a register
+; Arg1: Number of values to drop from the stack
+; Ex: dropstackreg(s1)  ; Remove number of values specified in s1 register
+define(`dropstackreg', `add _stackptr, $1  ; Remove stack values')
+
 
 ;=============== STRING AND TABLE OPERATIONS ===============
 
@@ -265,49 +315,83 @@ store $2, ($1)'
 ; Repeated function call on a table of constants
 ; Arg1: Subroutine to call for each byte
 ; Arg2: Temporary register for each constant
-; Arg3 - Argn: Picoblaze format Hex or char constants representing table bytes
-               (decimal and binary literals are unsupported)
-; Ex: calltable(my_subroutine, sf, DE,AD,BE,EF) ; Pass DE,AD,BE,EF to subroutine
+; Arg3 - Argn: Decimal values representing table bytes
+; Ex: calltable(my_subroutine, sf, pbhex(DE,AD,BE,EF)) ; Pass DE,AD,BE,EF to subroutine
 
-define(`calltable', `define(_sname, $1)`'define(_treg, $2)'`pb_ct(shift(shift($@)))'`undefine(_sname)`'undefine(`_treg')')
+define(`calltable', `pushdef(`_sname', $1)`'pushdef(`_treg', $2)'`_ct(shift(shift($@)))'`popdef(`_sname')`'popdef(`_treg')')
 
-define(`pb_ct', `ifelse(`$1',,,`load _treg, `$1'
+define(`_ct', `ifelse(`$1',,,`load _treg, eval($1, 16, 2)
 call _sname'
-`pb_ct(shift($@))'dnl
+`_ct(shift($@))'dnl
 )')
 
 ;---------------------------------
 ; Output a table of constants
 ; Arg1: Output port in Picoblaze hex format
 ; Arg2: Temporary register for each constant
-; Arg3 - Argn: Picoblaze format Hex or char constants representing table bytes
-               (decimal and binary literals are unsupported)
+; Arg3 - Argn: Decimal values to output to port
 ; Ex: constant UART_PORT, 0a
-;     outputtable(UART_PORT, sf, DE,AD,BE,EF) ; Output DE,AD,BE,EF to port
+;     outputtable(UART_PORT, sf, pbhex(DE,AD,BE,EF)) ; Output DE,AD,BE,EF to port
 
-define(`outputtable', `define(_oreg, $1)`'define(_treg, $2)'`pb_ot(shift(shift($@)))'`undefine(_oreg)`'undefine(`_treg')')
+define(`outputtable', `pushdef(`_oreg', $1)`'pushdef(`_treg', $2)'`_ot(shift(shift($@)))'`popdef(`_oreg')`'popdef(`_treg')')
 
-define(`pb_ot', `ifelse(`$1',,,`load _treg, `$1'
+define(`_ot', `ifelse(`$1',,,`load _treg, eval($1, 16, 2)
 output _treg, _oreg'
-`pb_ot(shift($@))'dnl
+`_ot(shift($@))'dnl
 )')
+
 
 ;---------------------------------
 ; Store a table of constants in scratchpad RAM
 ; Arg1: Pointer register to scratchpad address
 ; Arg2: Temporary register for each constant
-; Arg3 - Argn: Picoblaze format Hex or char constants to load in scratchpad
-               (decimal and binary literals are unsupported)
+; Arg3 - Argn: Decimal values to load in scratchpad
 ; Ex: load s1, my_array
-;     storetable(s1, sf, DE,AD,BE,EF) ; Load DE,AD,BE,EF into memory
-;     storetable(s1, sf, dec(10), dec(11), dec(12))  ; Decimal literals with hex conversion
-define(`storetable', `define(_preg, $1)`'define(_treg, $2)'`pb_st(shift(shift($@)))'`undefine(`_preg')`'undefine(`_treg')')
+;     storetable(s1, sf, pbhex(DE,AD,BE,EF)) ; Load DE,AD,BE,EF into memory
+;     storetable(s1, sf, 10, 11, 12)         ; Load decimals
+define(`storetable', `pushdef(`_preg', $1)`'pushdef(`_treg', $2)'`_st(shift(shift($@)))'`popdef(`_preg')`'popdef(`_treg')')
 
-define(`pb_st', `ifelse(`$1',,,`load _treg, `$1'
+define(`_st', `ifelse(`$1',,,`load _treg, eval($1, 16, 2)
 store _treg, (_preg)'
 `ifelse(eval($#>1),1,`add _preg, 01')'
-`pb_st(shift($@))'dnl
+`_st(shift($@))'dnl
 )')
+
+
+;---------------------------------
+; Generate an INST directive from a pair of decimal values
+; Arg1: High 10-bits
+; Arg2: Low byte
+; Ex: instdata(pbhex(0a, 0b))  ; Expands to inst 00a0b
+define(`instdata', `inst eval((($1) << 8) + (($2) & 0xFF), 16, 5)')
+
+;---------------------------------
+; Convert a list of data into a series of INST directives in little-endian byte order
+; Arg1-Argn: Data to convert in decimal format
+; Ex: insttable_le(pbhex(0b, 0b, 0c))
+;     Expands to:  inst 00b0a
+;                  inst 0000c
+;
+;     insttable_le(asciiord(`Pack strings into ROM'))
+;
+;       inst 06150
+;       inst 06b63
+;       inst 07320
+;       ...
+;       inst 0206f
+;       inst 04f52
+;       inst 0004d
+define(`insttable_le', `ifelse(eval($#>1),1,`instdata($2, $1)
+$0(shift(shift($@)))',$1,,,`instdata(00, $1)')')
+
+;---------------------------------
+; Convert a list of data into a series of INST directives in big-endian byte order
+; Arg1-Argn: Data to convert in decimal format
+; Ex: insttable_be(pbhex(0b, 0b, 0c))
+;     Expands to:  inst 00a0b
+;                  inst 00c00
+define(`insttable_be', `ifelse(eval($#>1),1,`instdata($1, $2)
+$0(shift(shift($@)))',$1,,,`instdata($1, 00)')')
 
 
 ;=============== ARITHMETIC OPERATIONS ===============
