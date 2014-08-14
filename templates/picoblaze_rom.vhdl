@@ -49,6 +49,14 @@
 --#   smaller than 4K.
 --# * For Picoblaze-3 the Enable input must be tied high.
 --#
+--# An additional picoblaze_dp_rom component is available which is a
+--# dual-ported implementation with a second read/write port. Both ports run
+--# on the same clock domain for simplicity but the design can be trivially
+--# altered to use separate clocks if desired. The second port provides access
+--# to data packed with INST directives and the ability to use a portion of the
+--# memory as RAM.
+--#
+--#
 --# Supported ROM configurations:
 --#
 --#                      ROM size
@@ -86,10 +94,28 @@ package picoblaze_rom_pkg is
       ROM_FILE : string -- ROM memory contents in .mem or .hex format
     );
     port (
-      Clock       : in std_logic;
-      Enable      : in std_logic;
-      Address     : in std_logic_vector;
+      Clock       : in  std_logic;
+      Enable      : in  std_logic;
+      Address     : in  std_logic_vector;
       Instruction : out std_logic_vector(17 downto 0)
+    );
+  end component;
+
+  component picoblaze_dp_rom is
+    generic (
+      ROM_FILE : string -- ROM memory contents in .mem or .hex format
+    );
+    port (
+      Clock           : in  std_logic;
+      Enable          : in  std_logic;
+      Address         : in  std_logic_vector;
+      Instruction     : out std_logic_vector(17 downto 0);
+
+      -- Second Read/Write port
+      Address2        : in  std_logic_vector;
+      Instruction2    : out std_logic_vector(17 downto 0);
+      We              : in  std_logic;
+      Wr_instruction2 : in  std_logic_vector(17 downto 0)
     );
   end component;
 
@@ -108,9 +134,9 @@ entity picoblaze_rom is
     ROM_FILE : string -- ROM memory contents in .mem or .hex format
   );
   port (
-    Clock       : in std_logic;
-    Enable      : in std_logic;
-    Address     : in std_logic_vector;
+    Clock       : in  std_logic;
+    Enable      : in  std_logic;
+    Address     : in  std_logic_vector;
     Instruction : out std_logic_vector(17 downto 0)
   );
 end entity;
@@ -194,4 +220,119 @@ begin
   end process;
 
 end architecture;
+
+
+
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use ieee.std_logic_textio.all;
+
+use std.textio.all;
+
+entity picoblaze_dp_rom is
+  generic (
+    ROM_FILE : string -- ROM memory contents in .mem or .hex format
+  );
+  port (
+    Clock           : in  std_logic;
+    Enable          : in  std_logic;
+    Address         : in  std_logic_vector;
+    Instruction     : out std_logic_vector(17 downto 0);
+
+    -- Second Read/Write port
+    Address2        : in  std_logic_vector;
+    Instruction2    : out std_logic_vector(17 downto 0);
+    We              : in  std_logic;
+    Wr_instruction2 : in  std_logic_vector(17 downto 0)
+  );
+end entity;
+
+architecture rtl of picoblaze_dp_rom is
+  constant MEM_SIZE : positive := 2 ** Address'length;
+  type rom_mem is array (0 to MEM_SIZE-1) of bit_vector(Instruction'length-1 downto 0);
+
+  impure function read_mem_file(File_name: string) return rom_mem is
+    -- Read a .mem or .hex file as produced by KCPSM3 and KCPSM6 assemblers
+    file fh       : text open read_mode is File_name;
+    variable ln   : line;
+    variable word : std_logic_vector(Instruction'length-1 downto 0);
+    variable rom  : rom_mem;
+
+    procedure read_hex(ln : inout line; hex : out std_logic_vector) is
+      -- The hread() procedure doesn't work well when the target bit vector
+      -- is not a multiple of four. This wrapper provides better behavior.
+      variable hex4 : std_logic_vector(((hex'length + 3) / 4) * 4 - 1 downto 0);
+    begin
+      hread(ln, hex4);
+      hex := hex4(hex'length-1 downto 0); -- Trim upper bits
+    end procedure;
+
+    -- Convert a string to lower case
+    function to_lower( source : string ) return string is
+      variable r : string(source'range) := source;
+    begin
+      for c in r'range loop
+        if character'pos(r(c)) >= character'pos('A')
+            or character'pos(r(c)) <= character'pos('Z') then
+
+          -- This would work except that XST has regressed into not supporting
+          -- character'val. Presumably this is "fixed" in Vivado and will never get
+          -- corrected in poor old XST.
+          r(c) := character'val(character'pos(r(c)) + 16#20#);
+        end if;
+      end loop;
+
+      return r;
+    end function;
+  begin
+
+    -- Can't call to_lower() for case-insensitive comparison because of XST limitation
+    --if to_lower(File_name(File_name'length-3 to File_name'length)) = ".mem" then
+    if File_name(File_name'length-3 to File_name'length) = ".mem" then
+      -- Read the first address line of a .mem file and discard it; Assume memory starts at 0
+      readline(fh, ln);
+    end if;
+
+
+    -- XST isn't happy with a while loop because of its low default iteration limit setting
+    -- so we have to use a for loop.
+    for addr in 0 to MEM_SIZE-1 loop
+      if endfile(fh) then
+        exit;
+      end if;
+
+      readline(fh, ln);
+
+      read_hex(ln, word); -- Convert hex string to bits
+      rom(addr) := to_bitvector(word);
+
+    end loop;
+
+    return rom;
+  end function;
+
+  -- Initialize ROM with file contents
+  signal pb_rom : rom_mem := read_mem_file(ROM_FILE);
+begin
+
+  -- Infer ROM with synchronous enable and dual read port
+  rd: process(Clock)
+  begin
+    if rising_edge(Clock) then
+      if Enable = '1' then
+        -- Read port 1
+        Instruction  <= to_stdlogicvector(pb_rom(to_integer(unsigned(Address))));
+
+        -- Read/write port 2
+        Instruction2 <= to_stdlogicvector(pb_rom(to_integer(unsigned(Address2))));
+        if We = '1' then
+          pb_rom(to_integer(unsigned(Address2))) <= to_bitvector(Wr_instruction2);
+        end if;
+      end if;
+    end if;
+  end process;
+
+end architecture;
+
 
