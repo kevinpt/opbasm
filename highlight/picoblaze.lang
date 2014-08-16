@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<language id="picoblaze" _name="Picoblaze" version="2.0" _section="Source">
+<language id="picoblaze" _name="Picoblaze" version="2.0" _section="Sources">
   <metadata>
     <property name="mimetypes">text/x-asm</property>
-    <property name="globs">*.psm</property>
+    <property name="globs">*.psm;*.psm4</property>
   </metadata>
+
   <styles>
     <style id="comment" _name="Comment" map-to="def:comment"/>
     <style id="instruction" _name="Instruction" map-to="def:keyword"/>
     <style id="directive" _name="Directive" map-to="def:preprocessor"/>
+    <style id="macro" _name="Macro" map-to="def:preprocessor"/>
     <style id="string" _name="String" map-to="def:string"/>
     <style id="number" _name="Number" map-to="def:number"/>
     <style id="constant" _name="Constant" map-to="def:identifier"/>
@@ -88,6 +90,102 @@
           <keyword>inst</keyword>
           <keyword>interrupt</keyword>
         </context>
+
+        <context id="macros" style-ref="macro">
+          <keyword>eval</keyword>
+          <keyword>define</keyword>
+          <keyword>ifdef</keyword>
+
+          <keyword>evald</keyword>
+          <keyword>evalh</keyword>
+          <keyword>evala</keyword>
+          <keyword>evalb</keyword>
+          <keyword>evalx</keyword>
+          <keyword>pbhex</keyword>
+          <keyword>asciiord</keyword>
+          <keyword>nop</keyword>
+          <keyword>swap</keyword>
+          <keyword>randlabel</keyword>
+          <keyword>uniqlabel</keyword>
+          <keyword>len</keyword>
+          <keyword>reverse</keyword>
+          <keyword>clearcy</keyword>
+          <keyword>setcy</keyword>
+          <keyword>setbit</keyword>
+          <keyword>clearbit</keyword>
+          <keyword>mask</keyword>
+          <keyword>maskh</keyword>
+          <keyword>setmask</keyword>
+          <keyword>clearmask</keyword>
+          <keyword>testbit</keyword>
+          <keyword>jne</keyword>
+          <keyword>jeq</keyword>
+          <keyword>jge</keyword>
+          <keyword>jlt</keyword>
+          <keyword>callne</keyword>
+          <keyword>calleq</keyword>
+          <keyword>callge</keyword>
+          <keyword>calllt</keyword>
+          <keyword>ifeq</keyword>
+          <keyword>ifne</keyword>
+          <keyword>ifge</keyword>
+          <keyword>iflt</keyword>
+          <keyword>repeat</keyword>
+          <keyword>stackinit</keyword>
+          <keyword>push</keyword>
+          <keyword>pop</keyword>
+          <keyword>getstack</keyword>
+          <keyword>getstackat</keyword>
+          <keyword>dropstack</keyword>
+          <keyword>dropstackreg</keyword>
+          <keyword>callstring</keyword>
+          <keyword>outputstring</keyword>
+          <keyword>storestring</keyword>
+          <keyword>storestringat</keyword>
+          <keyword>calltable</keyword>
+          <keyword>outputtable</keyword>
+          <keyword>storetable</keyword>
+          <keyword>storetableat</keyword>
+          <keyword>instdata</keyword>
+          <keyword>insttable_le</keyword>
+          <keyword>insttable_be</keyword>
+          <keyword>negate</keyword>
+          <keyword>not</keyword>
+          <keyword>multiply8x8</keyword>
+          <keyword>divide8x8</keyword>
+          <keyword>multiply8xk</keyword>
+          <keyword>multiply8xk_small</keyword>
+          <keyword>divide8xk</keyword>
+          <keyword>reg16</keyword>
+          <keyword>mem16</keyword>
+          <keyword>regupper</keyword>
+          <keyword>reglower</keyword>
+          <keyword>constupper</keyword>
+          <keyword>constlower</keyword>
+          <keyword>load16</keyword>
+          <keyword>add16</keyword>
+          <keyword>sub16</keyword>
+          <keyword>negate16</keyword>
+          <keyword>not16</keyword>
+          <keyword>and16</keyword>
+          <keyword>or16</keyword>
+          <keyword>xor16</keyword>
+          <keyword>sl0_16</keyword>
+          <keyword>sl1_16</keyword>
+          <keyword>sla_16</keyword>
+          <keyword>slx_16</keyword>
+          <keyword>sr0_16</keyword>
+          <keyword>sr1_16</keyword>
+          <keyword>sra_16</keyword>
+          <keyword>srx_16</keyword>
+          <keyword>rl16</keyword>
+          <keyword>rr16</keyword>
+          <keyword>fetch16</keyword>
+          <keyword>store16</keyword>
+          <keyword>input16</keyword>
+          <keyword>output16</keyword>
+        </context>
+
 
         <define-regex id="flag" extended="true">
           (?&lt;![\w\.]) (c|z|nc|nz) (?![\w\.])
