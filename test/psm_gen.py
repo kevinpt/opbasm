@@ -59,7 +59,7 @@ class random_pb3(object):
       self.labels.add(ptree['label'][0])
 
     if random_bool():
-      ptree['comment'] = [''.join([random.choice(string.letters) for _ in xrange(10)])]
+      ptree['comment'] = [''.join([random.choice(string.ascii_letters) for _ in xrange(10)])]
 
     if random.random() > 0.1:
       # Generate command
@@ -191,7 +191,7 @@ class random_pb6(random_pb3):
   def random_constant(self):
     c = random.randint(0, 255)
     choices = ['{:02X}'.format(c), "{}'d".format(c), "{:08b}'b".format(c),
-      '"{}"'.format(random.choice(string.letters))]
+      '"{}"'.format(random.choice(string.ascii_letters))]
 
     if len(self.constants) > 0:
       choices.append(random.sample(self.constants.keys(), 1)[0])
@@ -217,7 +217,7 @@ class random_pb6(random_pb3):
   def random_string(self):
     sn = 'S_{:03}$'.format(self.string_ix)
     self.string_ix += 1
-    sv = ''.join([random.choice(string.letters) for _ in xrange(random.randint(2, 10))])
+    sv = ''.join([random.choice(string.ascii_letters) for _ in xrange(random.randint(2, 10))])
     self.strings[sn] = sv
 
     self.prev_string = sn
