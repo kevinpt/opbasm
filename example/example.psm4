@@ -1,0 +1,72 @@
+
+  namereg sE, SP ; Protect use of sE as the stack pointer
+  stackinit(SP, 0x3F)
+
+  ; Port words
+  mem16(P_ADDR, 0x01, 0x00) ; RAM address
+  mem16(P_DATA, 0x03, 0x02) ; RAM data
+
+  constant P_TERM, ff  ; Port written to terminate simulation
+
+  ; Scratchpad words
+  mem16(M_ADDR, 0x01, 0x00)
+  mem16(M_DATA, 0x03, 0x02)
+
+  reg16(rx, s8, s7)  ; General purpose 16-bit register
+
+
+  define(`R_DATA', 0x200)
+  define(`CONST_DATA', `pbhex(42, 43, 44, 45, 46, 47, 48, 49)')
+
+
+  jump main
+
+read_ram:
+  push(rx)
+  fetch16(rx, M_ADDR)   ; Get address
+  output16(rx, P_ADDR)
+  add16(rx, 1)          ; Increment the address
+  store16(rx, M_ADDR)
+  input16(rx, P_DATA)   ; Read data
+  store16(rx, s3)
+  pop(rx)
+  return
+
+main:
+  ; Load constant data stored in BRAM into scratchpad memory
+
+  load16(rx, R_DATA)
+  store16(rx, M_ADDR)
+  load s3, M_DATA_L
+  load s0, evalh(len(CONST_DATA) / 2)
+
+read_bram_loop:
+  call read_ram
+  sub s0, 01
+  compare s0, 00
+  jump nz, read_bram_loop
+
+
+  ; Loop over data in scratchpad and push each byte onto the stack
+
+  load s0, evalh(len(CONST_DATA))
+  load s3, M_DATA_L
+out_loop:
+  fetch s4, (s3)
+  push(s4)
+  add s3, 01
+  sub s0, 01
+  compare s0, 00
+  jump nz, out_loop
+
+
+  load s0, ff
+end_prog:
+  output s0, P_TERM
+  jump end_prog
+
+
+  ; Assemble constant data into BRAM at designated offset
+  address evala(R_DATA)
+  insttable_le(CONST_DATA)
+
