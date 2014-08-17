@@ -39,6 +39,10 @@ define(`evald', `eval($1)''d  `;' $1)
 ; Evaluate expression as an 8-bit hex number
 define(`evalh', `eval(($1) & 0xFF, 16, 2)  ; $1')
 
+; Evaluate expression as an 12-bit hex number for addresses
+define(`evala', `eval(($1) & 0xFFF, 16, 3)  ; $1')
+
+
 ; Evaluate expression as an 8-bit binary number
 define(`evalb', `eval(($1) & 0xFF, 2, 8)''b  `;' $1)
 
@@ -73,7 +77,6 @@ define(`asciiord', `esyscmd(`python -c "import sys; sys.stdout.write(\", \".join
 ;---------------------------------
 ; No-op macros
 define(`nop', `load sF, sF  ; NOP')
-define(`NOP', `load sF, sF  ; NOP')
 
 ;---------------------------------
 ; Swap registers
@@ -87,8 +90,28 @@ xor $1, $2')
 ;---------------------------------
 ; Generate a random name for a label
 ; Arg1: Optional prefix to name
-; Ex:   randlabel(PREFIX_)  --> PREFIX_????????
-define(`randlabel', `esyscmd(`python -c "import sys; import random; import string; sys.stdout.write(\"$1\" + \"\".join([random.choice(string.letters) for _ in xrange(4)]))"')')
+; Ex:   randlabel(PREFIX_)  --> PREFIX_?????
+define(`randlabel', `esyscmd(`python -c "import sys; import random; import string; sys.stdout.write(\"$1\" + \"\".join([random.choice(string.ascii_letters) for _ in xrange(5)]))"')')
+
+;---------------------------------
+; Generate a unique name for a label
+; Arg1: Optional prefix to name
+; Ex:   uniqlabel(PREFIX_)  --> PREFIX_f0_0001
+ifdef(`M4_FILE_NUM',,`define(`M4_FILE_NUM', 0)')
+define(`_uniq_ix', 0)
+
+define(`uniqlabel', `define(`_uniq_ix', incr(_uniq_ix))dnl
+$1f`'eval(M4_FILE_NUM)_`'eval(_uniq_ix, 10, 4)')
+
+;---------------------------------
+; Return number of arguments
+; Ex: len(1,2,3)  --> 3
+define(`len', `ifelse(`$1',,0,$#)')
+
+;---------------------------------
+; Reverse arguments
+; Ex: reverse(1,2,3)  --> 3,2,1
+define(`reverse', `ifelse(eval($# > 1), 1, `reverse(shift($@)), `$1'', ``$1'')')
 
 ;=============== CARRY FLAG OPERATIONS ===============
 
@@ -206,36 +229,36 @@ define(`calllt', `call c, $1  ; if less than')
 ;           output s3, MY_OTHER_PORT')
 
 ; If equal
-define(`ifeq', `pushdef(`_neq', randlabel(NEQ_))'`pushdef(`_endif', randlabel(ENDIF_))'`jump nz, _neq
+define(`ifeq', `pushdef(`_neq', uniqlabel(NEQ_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump nz, _neq
 $1
-ifelse($2,,,`jump _endif')
+ifelse(`$2',,,`jump _endif')
 _neq:
 $2
 _endif:'`popdef(`_neq')'`popdef(`_endif')')
 
 ; If not equal
-define(`ifne', `pushdef(`_eq', randlabel(EQ_))'`pushdef(`_endif', randlabel(ENDIF_))'`jump z, _eq
+define(`ifne', `pushdef(`_eq', uniqlabel(EQ_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump z, _eq
 $1
-ifelse($2,,,`jump _endif')
+ifelse(`$2',,,`jump _endif')
 _eq:
 $2
 _endif:'`popdef(`_eq')'`popdef(`_endif')')
 
 ; If greater or equal
-define(`ifge', `pushdef(`_lt', randlabel(LT_))'`pushdef(`_endif', randlabel(ENDIF_))'`jump c, _lt
+define(`ifge', `pushdef(`_lt', uniqlabel(LT_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump c, _lt
 $1
-ifelse($2,,,`jump _endif')
+ifelse(`$2',,,`jump _endif')
 _lt:
 $2
 _endif:'`popdef(`_lt')'`popdef(`_endif')')
 
 ; If less than
-define(`iflt', `pushdef(`_ge', randlabel(GE_))'`pushdef(`_endif', randlabel(ENDIF_))'`jump nc, _ge
+define(`iflt', `pushdef(`_xge', uniqlabel(GE_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump nc, _xge
 $1
-ifelse($2,,,`jump _endif')
-_ge:
+ifelse(`$2',,,`jump _endif')
+_xge:
 $2
-_endif:'`popdef(`_ge')'`popdef(`_endif')')
+_endif:'`popdef(`_xge')'`popdef(`_endif')')
 
 
 ;=============== SHIFT AND ROTATE OPERATIONS ===============
@@ -280,16 +303,23 @@ define(`stackinit', `load $1, eval($2, 16, 2)' `define(`_stackptr', $1)')
 ;---------------------------------
 ; Pseudo-stack operations using the scratchpad RAM
 ; The stack pointer grows from the end of the scratchpad to the start
-; Arg1: Register with value to push or pop
+; Arg1-Argn: Registers with values to push or pop
 ; Ex: stackinit(sa, 0x3F)
 ;     push(s0)
-;     push(s1)
 ;     pop(s1)
-define(`push', `store $1, (_stackptr)  ; Push
-sub _stackptr, 01')
+;     push(s3, s4, s5)  ; Push and pop multiple registers at once
+;     pop(s3, s4, s5)   ; Pop is performed in reverse order from push
+define(`push', `ifelse(`$1',,,`store $1, (_stackptr)  ; Push
+sub _stackptr, 01
+$0(shift($@))')')
 
-define(`pop', `add _stackptr, 01  ; Pop
-fetch $1, (_stackptr)')
+
+define(`pop', `_pop(reverse($@))')
+
+define(`_pop', `ifelse(`$1',,,`add _stackptr, 01  ; Pop
+fetch $1, (_stackptr)
+$0(shift($@))')')
+
 
 ;---------------------------------
 ; Retrieve multiple contiguous values from the stack without modification
@@ -297,9 +327,9 @@ fetch $1, (_stackptr)')
 ;            The first register corresponds to the highest address
 ; Ex: getstack(s3, s4, s5) ; Get stack offset SP+3, SP+2, and SP+1 into s3, s4, s5
 define(`getstack', `add _stackptr, $#  ; Get stack registers
-_gsr($@)')
+_gs($@)')
 
-define(`_gsr', `ifelse(`$1',,,`fetch $1, (_stackptr)
+define(`_gs', `ifelse(`$1',,,`fetch $1, (_stackptr)
 sub _stackptr, 01
 $0(shift($@))')')
 
@@ -363,12 +393,23 @@ define(`outputstring', `ifelse($3,,,`load $2, "substr(`$3', 0,1)"
 output $2, evalx($1, 16, 2)'
 `$0($1, $2, substr(`$3',1))')')
 
+
+;---------------------------------
+; Store a string to scratchpad RAM
+; Arg1: Adress of first byte
+; Arg2: Temporary register for each character
+; Arg3: String to store
+define(`storestring', `ifelse($3,,,`load $2, "substr(`$3', 0,1)"
+store $2, eval($1, 16, 2)'
+`$0(eval(($1) + 1), $2, substr(`$3',1))')')
+
+
 ;---------------------------------
 ; Store a string to scratchpad RAM
 ; Arg1: Pointer register to scratchpad address
 ; Arg2: Temporary register for each character
 ; Arg3: String to store
-define(`storestring', `ifelse($3,,,`load $2, "substr(`$3', 0,1)"
+define(`storestringat', `ifelse($3,,,`load $2, "substr(`$3', 0,1)"
 store $2, ($1)'
 `ifelse(eval(len($3)>1),1,`add $1, 01')'
 `$0($1, $2, substr(`$3',1))')')
@@ -407,18 +448,34 @@ output _treg, evalx(_oreg, 16, 2)'
 
 ;---------------------------------
 ; Store a table of constants in scratchpad RAM
+; Arg1: Address of first byte
+; Arg2: Temporary register for each constant
+; Arg3 - Argn: Decimal values to load in scratchpad
+; Ex: load s1, my_array
+;     storetable(0x10, sf, pbhex(DE,AD,BE,EF)) ; Load DE,AD,BE,EF into memory
+;     storetable(0x10, sf, 10, 11, 12)         ; Load decimals
+define(`storetable', `pushdef(`_treg', $2)'`_st($1, shift(shift($@)))'`popdef(`_treg')')
+
+define(`_st', `ifelse(`$2',,,`load _treg, eval($2, 16, 2)
+store _treg, eval($1, 16, 2)'
+`_st(eval(($1) + 1), shift(shift($@)))'dnl
+)')
+
+
+;---------------------------------
+; Store a table of constants in scratchpad RAM
 ; Arg1: Pointer register to scratchpad address
 ; Arg2: Temporary register for each constant
 ; Arg3 - Argn: Decimal values to load in scratchpad
 ; Ex: load s1, my_array
-;     storetable(s1, sf, pbhex(DE,AD,BE,EF)) ; Load DE,AD,BE,EF into memory
-;     storetable(s1, sf, 10, 11, 12)         ; Load decimals
-define(`storetable', `pushdef(`_preg', $1)`'pushdef(`_treg', $2)'`_st(shift(shift($@)))'`popdef(`_preg')`'popdef(`_treg')')
+;     storetableat(s1, sf, pbhex(DE,AD,BE,EF)) ; Load DE,AD,BE,EF into memory
+;     storetableat(s1, sf, 10, 11, 12)         ; Load decimals
+define(`storetableat', `pushdef(`_preg', $1)`'pushdef(`_treg', $2)'`_sta(shift(shift($@)))'`popdef(`_preg')`'popdef(`_treg')')
 
-define(`_st', `ifelse(`$1',,,`load _treg, eval($1, 16, 2)
+define(`_sta', `ifelse(`$1',,,`load _treg, eval($1, 16, 2)
 store _treg, (_preg)'
 `ifelse(eval($#>1),1,`add _preg, 01')'
-`_st(shift($@))'dnl
+`_sta(shift($@))'dnl
 )')
 
 
@@ -594,6 +651,18 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return')
 define(`reg16', `define(`$1', `$2, $3')')
 
 ;---------------------------------
+; Create a constant for 16-bit memory and port addresses
+; Named constants with "_H" and "_L" suffixes are created and usable for
+; byte access.
+; Arg1: Name of constant
+; Arg2: MSB address
+; Arg3: LSB address
+; Ex: mem16(M_DATA, 0x05, 0x04) ; Allocate scratchpad 05, 04 for use as M_DATA
+define(`mem16', `constant $1_H, evalx($2, 16, 2)
+constant $1_L, evalx($3, 16, 2)'
+`reg16($1, $1_H, $1_L)')
+
+;---------------------------------
 ; Get the upper and lower registers from a reg16 definition
 ; Arg1, Arg2: MSB, LSB of 16-bit register
 ; Ex: reg16(rx, s5, s4)
@@ -707,7 +776,7 @@ or $1, eval(constupper($3), 16, 2)')
 ; 16-bit xor
 ; Arg1, Arg2: MSB1, LSB1
 ; 3 arguments: xor with constant
-;   Arg3: Decimal constant xor expression
+;   Arg3: Decimal constant or expression
 ; 4 arguments: xor with register
 ;   Arg3, Arg4: MSB2, LSB2
 ; Result in Arg1, Arg2
@@ -718,6 +787,35 @@ xor $1, $3')
 
 define(`_xor16k', `xor $2, eval(constlower($3), 16, 2)  ; $3
 xor $1, eval(constupper($3), 16, 2)')
+
+
+;---------------------------------
+; 16-bit test
+; Arg1, Arg2: MSB1, LSB1
+; 3 arguments: test with constant
+;   Arg3: Decimal constant or expression
+; 4 arguments: test with register
+;   Arg3, Arg4: MSB2, LSB2
+; NOTE: On Picoblaze-3 only the Z flag is set properly
+ifdef(`PB3', `define(`test16', `ifelse($#,4,`_test16pb3($@)',`_test16kpb3($@)')')',
+`define(`test16', `ifelse($#,4,`_test16($@)',`_test16k($@)')')')
+
+define(`_test16', `test $2, $4
+testcy $1, $3')
+
+define(`_test16k', `test $2, eval(constlower($3), 16, 2)  ; $3
+testcy $1, eval(constupper($3), 16, 2)')
+
+
+define(`_test16pb3', `pushdef(`_tnz', uniqlabel(NZ_))'`test $2, $4
+jump nz, _tnz
+test $1, $3
+_tnz:'`popdef(`_tnz')')
+
+define(`_test16kpb3', `pushdef(`_tnz', uniqlabel(NZ_))'`test $2, eval(constlower($3), 16, 2)  ; $3
+jump nz, _tnz
+test $1, eval(constupper($3), 16, 2)
+_tnz:'`popdef(`_tnz')')
 
 
 ;---------------------------------
@@ -758,23 +856,23 @@ define(`sra_16', `repeat(`_sra_16($1, $2)', eval($3))')
 define(`srx_16', `repeat(`_srx_16($1, $2)', eval($3))')
 
 
-define(`_rl_16', `pushdef(`_rnc',randlabel(RL16_))'`sl0 $2
+define(`_rl16', `pushdef(`_rnc',uniqlabel(RL16_))'`sl0 $2
 sla $1
 jump nc, _rnc
 or $2, 01
 _rnc:
 '`popdef(`_rnc')')
 
-define(`rl_16', `repeat(`_rl_16($1, $2)', eval($3))')
+define(`rl16', `repeat(`_rl16($1, $2)', eval($3))')
 
-define(`_rr_16', `pushdef(`_rnc',randlabel(RR16_))'`sr0 $1
+define(`_rr16', `pushdef(`_rnc',uniqlabel(RR16_))'`sr0 $1
 sra $2
 jump nc, _rnc
 or $1, 80
 _rnc:
 '`popdef(`_rnc')')
 
-define(`rr_16', `repeat(`_rr_16($1, $2)', eval($3))')
+define(`rr16', `repeat(`_rr16($1, $2)', eval($3))')
 
 
 ;=============== 16-bit I/O OPERATIONS ===============
@@ -882,5 +980,101 @@ add $3, 01
 output $1, ($3)
 add $3, 01')
 
+
+;=============== UPPERCASE MACROS ===============
+
+define(`EVALD', `evald($@)')
+define(`EVALH', `evalh($@)')
+define(`EVALB', `evalb($@)')
+define(`EVALX', `evalx($@)')
+define(`PBHEX', `pbhex($@)')
+define(`ASCIIORD', `asciiord($@)')
+define(`NOP', `nop($@)')
+define(`SWAP', `swap($@)')
+define(`RANDLABEL', `randlabel($@)')
+define(`CLEARCY', `clearcy($@)')
+define(`SETCY', `setcy($@)')
+define(`SETBIT', `setbit($@)')
+define(`CLEARBIT', `clearbit($@)')
+define(`MASK', `mask($@)')
+define(`MASKH', `maskh($@)')
+define(`SETMASK', `setmask($@)')
+define(`CLEARMASK', `clearmask($@)')
+define(`TESTBIT', `testbit($@)')
+define(`JNE', `jne($@)')
+define(`JEQ', `jeq($@)')
+define(`JGE', `jge($@)')
+define(`JLT', `jlt($@)')
+define(`CALLNE', `callne($@)')
+define(`CALLEQ', `calleq($@)')
+define(`CALLGE', `callge($@)')
+define(`CALLLT', `calllt($@)')
+define(`IFEQ', `ifeq($@)')
+define(`IFNE', `ifne($@)')
+define(`IFGE', `ifge($@)')
+define(`IFLT', `iflt($@)')
+define(`REPEAT', `repeat($@)')
+define(`SL0', `sl0($@)')
+define(`SL1', `sl1($@)')
+define(`SLA', `sla($@)')
+define(`SLX', `slx($@)')
+define(`SR0', `sr0($@)')
+define(`SR1', `sr1($@)')
+define(`SRA', `sra($@)')
+define(`SRX', `srx($@)')
+define(`RL', `rl($@)')
+define(`RR', `rr($@)')
+define(`STACKINIT', `stackinit($@)')
+define(`PUSH', `push($@)')
+define(`POP', `pop($@)')
+define(`GETSTACK', `getstack($@)')
+define(`GETSTACKAT', `getstackat($@)')
+define(`DROPSTACK', `dropstack($@)')
+define(`DROPSTACKREG', `dropstackreg($@)')
+define(`CALLSTRING', `callstring($@)')
+define(`OUTPUTSTRING', `outputstring($@)')
+define(`STORESTRING', `storestring($@)')
+define(`STORESTRINGAT', `storestringat($@)')
+define(`CALLTABLE', `calltable($@)')
+define(`OUTPUTTABLE', `outputtable($@)')
+define(`STORETABLE', `storetable($@)')
+define(`STORETABLEAT', `storetableat($@)')
+define(`INSTDATA', `instdata($@)')
+define(`INSTTABLE_LE', `insttable_le($@)')
+define(`INSTTABLE_BE', `insttable_be($@)')
+define(`NEGATE', `negate($@)')
+define(`NOT', `not($@)')
+define(`MULTIPLY8X8', `multiply8x8($@)')
+define(`DIVIDE8X8', `divide8x8($@)')
+define(`MULTIPLY8XK', `multiply8xk($@)')
+define(`MULTIPLY8XK_SMALL', `multiply8xk_small($@)')
+define(`DIVIDE8XK', `divide8xk($@)')
+define(`REG16', `reg16($@)')
+define(`REGUPPER', `regupper($@)')
+define(`REGLOWER', `reglower($@)')
+define(`CONSTUPPER', `constupper($@)')
+define(`CONSTLOWER', `constlower($@)')
+define(`LOAD16', `load16($@)')
+define(`ADD16', `add16($@)')
+define(`SUB16', `sub16($@)')
+define(`NEGATE16', `negate16($@)')
+define(`NOT16', `not16($@)')
+define(`AND16', `and16($@)')
+define(`OR16', `or16($@)')
+define(`XOR16', `xor16($@)')
+define(`SL0_16', `sl0_16($@)')
+define(`SL1_16', `sl1_16($@)')
+define(`SLA_16', `sla_16($@)')
+define(`SLX_16', `slx_16($@)')
+define(`SR0_16', `sr0_16($@)')
+define(`SR1_16', `sr1_16($@)')
+define(`SRA_16', `sra_16($@)')
+define(`SRX_16', `srx_16($@)')
+define(`RL16', `rl16($@)')
+define(`RR16', `rr16($@)')
+define(`FETCH16', `fetch16($@)')
+define(`STORE16', `store16($@)')
+define(`INPUT16', `input16($@)')
+define(`OUTPUT16', `output16($@)')
 
 divert(0)dnl
