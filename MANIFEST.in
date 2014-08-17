@@ -1,4 +1,5 @@
 recursive-include templates *
+recursive-include example *
 include opbasm_lib/*.m4
 include README.txt
 include ChangeLog.txt

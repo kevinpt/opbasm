@@ -9,7 +9,7 @@ dist
 test
 ve
 
-ripyl.egg-info
+opbasm.egg-info
 no-dist
 
 MANIFEST
