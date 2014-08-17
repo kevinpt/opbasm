@@ -511,6 +511,7 @@ class Assembler(object):
     self.scratch_size = options.scratch_size
     self.use_pb6 = options.use_pb6
     self.use_m4 = options.use_m4
+    self.m4_file_num = 1
     self.output_dir = options.output_dir
     self.use_pyparsing = options.use_pyparsing
     self.timestamp = timestamp
@@ -584,11 +585,15 @@ class Assembler(object):
     macro_defs = find_standard_m4_macros()
     proc_mode = 'PB6' if self.use_pb6 else 'PB3' # Definition for active processor type
 
-    cmd = 'm4 -D{} {} {} > {}'.format(proc_mode, macro_defs, source_file, pp_source_file)
+    self.m4_file_num += 1
+
+    cmd = 'm4 -D{} -DM4_FILE_NUM={} {} {} > {}'.format(proc_mode, self.m4_file_num,
+             macro_defs, source_file, pp_source_file)
     p = subprocess.Popen(cmd, shell=True)
     p.wait()
     if p.returncode:
       asm_error('m4 failure on file', source_file, exit=1)
+
     return pp_source_file
 
 
