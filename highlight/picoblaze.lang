@@ -3,6 +3,7 @@
   <metadata>
     <property name="mimetypes">text/x-asm</property>
     <property name="globs">*.psm;*.psm4</property>
+    <property name="line-comment-start">;</property>
   </metadata>
 
   <styles>
@@ -184,6 +185,8 @@
           <keyword>store16</keyword>
           <keyword>input16</keyword>
           <keyword>output16</keyword>
+          <keyword>words_le</keyword>
+          <keyword>words_be</keyword>
         </context>
 
 
