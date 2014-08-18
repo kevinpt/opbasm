@@ -18,8 +18,8 @@ add wave -noupdate -radix hexadecimal /example/out_port
 add wave -noupdate /example/interrupt_ack
 add wave -noupdate /example/sleep
 add wave -noupdate -divider {Second ROM port}
-add wave -noupdate -radix hexadecimal /example/instruction2
 add wave -noupdate -radix hexadecimal /example/address2
+add wave -noupdate -radix hexadecimal /example/instruction2
 add wave -noupdate -divider Registers
 add wave -noupdate -radix hexadecimal /example/pb6/sim_sF
 add wave -noupdate -radix hexadecimal /example/pb6/sim_sE
@@ -71,4 +71,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ps} {7476 ns}
+WaveRestoreZoom {0 ps} {9529984 ps}
