@@ -431,10 +431,10 @@ class Statement(object):
         if self.arg2 is not None:
           if self.indirect_reg:
             inst += ', (' + self.arg2 + ')'
-          elif self.table_def:
+          elif self.table_def or not isinstance(self.arg2, basestring):
             inst += ', [' + ', '.join(self.arg2[:-1]) + self.arg2[-1]
           else:
-            inst += ', ' + self.arg2
+            inst += ', ' + str(self.arg2)
 
     if show_addr:
       if self.is_instruction():
@@ -494,7 +494,7 @@ def parse_lines(lines, op_info, use_pyparsing):
       try:
         ptree = parser.parseString(l)
       except ParseException, e:
-        print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i, l+1))
+        print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i+1, l))
         sys.exit(1)
 
     statements.append(Statement(ptree['statement'], i+1))
