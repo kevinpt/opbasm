@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.01'
+__version__ = '1.1'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
