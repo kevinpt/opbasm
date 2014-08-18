@@ -70,7 +70,20 @@ define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x
 ; Convert a string to a list of decimal ASCII codes
 ; Arg1: String to convert
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
-define(`asciiord', `esyscmd(`python -c "import sys; sys.stdout.write(\", \".join(str(ord(c)) for c in \"$1\"))"')') 
+define(`asciiord', `esyscmd(`python -c "import sys; sys.stdout.write(\", \".join(str(ord(c)) for c in \"$1\"))"')')
+
+;---------------------------------
+; Convert 16-bit words into bytes
+; Arg1-Argn: Numbers to split into bytes
+; words_le produces little-endian byte order, words_be is big-endian
+; Ex: words_le(0xff01, 0xff02) ; Expands to 255, 1, 255, 2
+define(`words_le', `ifelse(`$1',,,eval($#>1),1,`_split_le($1), $0(shift($@))',`_split_le($1)')')
+define(`words_be', `ifelse(`$1',,,eval($#>1),1,`_split_be($1), $0(shift($@))',`_split_be($1)')')
+
+define(`_split_le', `eval(($1) & 0xFF), eval((($1) & 0xFF00) >> 8)')
+define(`_split_be', `eval((($1) & 0xFF00) >> 8), eval(($1) & 0xFF)')
+
+
 
 ;=============== MISCELLANEOUS OPERATIONS ===============
 
@@ -489,7 +502,7 @@ define(`instdata', `inst eval((($1) << 8) + (($2) & 0xFF), 16, 5)')
 ;---------------------------------
 ; Convert a list of data into a series of INST directives in little-endian byte order
 ; Arg1-Argn: Data to convert in decimal format
-; Ex: insttable_le(pbhex(0b, 0b, 0c))
+; Ex: insttable_le(pbhex(0a, 0b, 0c))
 ;     Expands to:  inst 00b0a
 ;                  inst 0000c
 ;
@@ -508,7 +521,7 @@ $0(shift(shift($@)))',$1,,,`instdata(00, $1)')')
 ;---------------------------------
 ; Convert a list of data into a series of INST directives in big-endian byte order
 ; Arg1-Argn: Data to convert in decimal format
-; Ex: insttable_be(pbhex(0b, 0b, 0c))
+; Ex: insttable_be(pbhex(0a, 0b, 0c))
 ;     Expands to:  inst 00a0b
 ;                  inst 00c00
 define(`insttable_be', `ifelse(eval($#>1),1,`instdata($1, $2)
@@ -985,13 +998,19 @@ add $3, 01')
 
 define(`EVALD', `evald($@)')
 define(`EVALH', `evalh($@)')
+define(`EVALA', `evala($@)')
 define(`EVALB', `evalb($@)')
 define(`EVALX', `evalx($@)')
 define(`PBHEX', `pbhex($@)')
 define(`ASCIIORD', `asciiord($@)')
+define(`WORDS_LE', `words_le($@)')
+define(`WORDS_BE', `words_be($@)')
 define(`NOP', `nop($@)')
 define(`SWAP', `swap($@)')
 define(`RANDLABEL', `randlabel($@)')
+define(`UNIQLABEL', `uniqlabel($@)')
+define(`LEN', `len($@)')
+define(`REVERSE', `reverse($@)')
 define(`CLEARCY', `clearcy($@)')
 define(`SETCY', `setcy($@)')
 define(`SETBIT', `setbit($@)')
@@ -1014,16 +1033,6 @@ define(`IFNE', `ifne($@)')
 define(`IFGE', `ifge($@)')
 define(`IFLT', `iflt($@)')
 define(`REPEAT', `repeat($@)')
-define(`SL0', `sl0($@)')
-define(`SL1', `sl1($@)')
-define(`SLA', `sla($@)')
-define(`SLX', `slx($@)')
-define(`SR0', `sr0($@)')
-define(`SR1', `sr1($@)')
-define(`SRA', `sra($@)')
-define(`SRX', `srx($@)')
-define(`RL', `rl($@)')
-define(`RR', `rr($@)')
 define(`STACKINIT', `stackinit($@)')
 define(`PUSH', `push($@)')
 define(`POP', `pop($@)')
@@ -1050,6 +1059,7 @@ define(`MULTIPLY8XK', `multiply8xk($@)')
 define(`MULTIPLY8XK_SMALL', `multiply8xk_small($@)')
 define(`DIVIDE8XK', `divide8xk($@)')
 define(`REG16', `reg16($@)')
+define(`MEM16', `mem16($@)')
 define(`REGUPPER', `regupper($@)')
 define(`REGLOWER', `reglower($@)')
 define(`CONSTUPPER', `constupper($@)')
