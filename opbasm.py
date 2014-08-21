@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1'
+__version__ = '1.1.1'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -1559,7 +1559,6 @@ def find_standard_m4_macros():
     lib_dir = os.path.realpath(__file__)
 
   macro_file = os.path.join(lib_dir, 'picoblaze.m4')
-
   if not os.path.exists(macro_file):
     print('  No m4 macro directory found', macro_file)
     sys.exit(1)
@@ -1598,8 +1597,7 @@ def get_standard_templates():
 
 
 def add_output_dir(output_dir, fname):
-  base, f = os.path.split(fname)
-  return os.path.normpath(os.path.join(base, output_dir, f))
+  return os.path.normpath(os.path.join(output_dir, os.path.split(fname)[1]))
 
 
 def main():
