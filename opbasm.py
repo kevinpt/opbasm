@@ -286,6 +286,9 @@ regex_parser = re.compile(r'''
 
 regex_register = re.compile(r's[0-9A-F]', re.IGNORECASE)
 
+class ParseError(ValueError):
+  pass
+
 def regex_parse_statement(l):
   '''Regex based parser that performs significantly faster than the pyparsing
   based recursive descent parser
@@ -343,6 +346,20 @@ def regex_parse_statement(l):
       cmd = [m.group('cmd').lower()]
       cmd.extend(args)
       ptree['instruction'] = cmd
+
+  # Certain invalid statements will not match the regex or will partially match
+  # just the comment. Check that nothing else is present in the line
+  non_comment = ''
+  if len(ptree) == 0:
+    non_comment = l
+  elif len(ptree) == 1 and 'comment' in ptree:
+    non_comment = l.split(';')[0]
+
+  if not non_comment.isspace() and non_comment != '':
+    # There is unparsed text in this line
+    raise ParseError
+
+   
 
   return {'statement': ptree}
 
@@ -482,6 +499,7 @@ class Symbol(object):
       return self._val_text
 
 
+
 def parse_lines(lines, op_info, use_pyparsing):
   '''Parse a list of text lines into Statement objects'''
   parser = picoblaze_parser(op_info)
@@ -489,7 +507,12 @@ def parse_lines(lines, op_info, use_pyparsing):
   statements = []
   for i, l in enumerate(lines):
     if not use_pyparsing:
-      ptree = regex_parse_statement(l)
+      try:
+        ptree = regex_parse_statement(l)
+      except ParseError:
+        print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i+1, l))
+        sys.exit(1)
+        
     else:
       try:
         ptree = parser.parseString(l)
