@@ -48,7 +48,7 @@ define(`evalb', `eval(($1) & 0xFF, 2, 8)''b  `;' $1)
 
 ; Only evaluate valid expressions, otherwise reproduce the original text in the
 ; first argument
-define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($2,,`pushdef(`_evalx', `eval($1)')',`pushdef(`_evalx', `eval($1, $2)')'),`pushdef(`_evalx', `eval($1, $2, $3)')'),`pushdef(`_evalx', $1)')'_evalx`'popdef(`_evalx'))
+define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($2,,`pushdef(`_evalx', `eval(($1) & 0xFF)')',`pushdef(`_evalx', `eval(($1) & 0xFF, $2)')'),`pushdef(`_evalx', `eval(($1) & 0xFF, $2, $3)')'),`pushdef(`_evalx', $1)')'_evalx`'popdef(`_evalx'))
 
 ; Ex: constant cname,  evalh(20 + 6)      -->  constant cname,  1a
 ;     constant cname2, evald(20 * 4 - 1)  -->  constant cname2, 79'd
@@ -272,6 +272,69 @@ ifelse(`$2',,,`jump _endif')
 _xge:
 $2
 _endif:'`popdef(`_xge')'`popdef(`_endif')')
+
+
+;=============== CONDITIONAL LOOPS ===============
+
+;---------------------------------
+; While loop until register is 0
+; Arg1: Register containing count of loop iterations. decremented to 0
+; Arg2: Code block to execute in loop
+; Ex: load s0, 03
+;     whilenz(s0, `add s1, 02')  ; Loop 3 times
+define(`whilenz', `pushdef(`_wlbl', uniqlabel(WHILE_))'`pushdef(`_wend', uniqlabel(WEND_))'`_wlbl:
+compare $1, 00
+jump z, _wend
+$2
+sub $1, 01
+jump _wlbl
+_wend:' `popdef(`_wlbl')'`popdef(`_wend')')  
+
+
+;---------------------------------
+; Do-while loop until register is 0
+; Arg1: Register containing count of loop iterations. decremented to 0
+; Arg2: Code block to execute in loop
+; Ex: load s0, 03
+;     dowhilenz(s0, `add s1, 02')  ; Loop 3 times
+define(`dowhilenz', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`_wlbl:
+$2
+sub $1, 01
+compare $1, 00
+jump nz, _wlbl' `popdef(`_wlbl')')  
+
+
+;---------------------------------
+; While loop until register reaches value
+; Arg1: Register containing count of loop iterations.
+; Arg2: Value or register to increment count register by
+; Arg3: Register or constant expression to compare to
+; Arg4: Code block to execute in loop
+; Ex: load s0, 10'd
+;     load s2, 5'd
+;     whilene(s0, -1, s2, `add s1, 02')
+define(`whilene', `pushdef(`_wlbl', uniqlabel(WHILE_))'`pushdef(`_wend', uniqlabel(WEND_))'`_wlbl:
+compare $1, evalx($3, 16, 2)
+jump z, _wend
+$4
+add $1, evalx($2, 16, 2)
+jump _wlbl
+_wend:' `popdef(`_wlbl')'`popdef(`_wend')') 
+
+;---------------------------------
+; Do-while loop until register reaches value
+; Arg1: Register containing count of loop iterations.
+; Arg2: Value or register to increment count register by
+; Arg3: Register or constant expression to compare to
+; Arg4: Code block to execute in loop
+; Ex: load s0, 10'd
+;     load s2, 5'd
+;     dowhilene(s0, -1, s2, `add s1, 02')
+define(`dowhilene', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`_wlbl:
+$4
+add $1, evalx($2, 16, 2)
+compare $1, evalx($3, 16, 2)
+jump nz, _wlbl' `popdef(`_wlbl')')  
 
 
 ;=============== SHIFT AND ROTATE OPERATIONS ===============
