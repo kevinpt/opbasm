@@ -56,8 +56,13 @@
 --# to data packed with INST directives and the ability to use a portion of the
 --# memory as RAM.
 --#
+--# The ROM can be implemented as a block RAM (BRAM) or as LUT-based distributed
+--# RAM for use when BRAMs have been exhausted or only a small ROM is needed. The
+--# STYLE generic is used to control the inferred RAM style. It defaults to the
+--# string "BLOCK". Set it to "DISTRIBUTED" to infer distributed RAM. Any size
+--# distributed RAM can be created that is a power of 2.
 --#
---# Supported ROM configurations:
+--# Supported BRAM-based ROM configurations:
 --#
 --#                      ROM size
 --# Architecture     1K            2K             4K
@@ -91,7 +96,8 @@ package picoblaze_rom_pkg is
 
   component picoblaze_rom is
     generic (
-      ROM_FILE : string -- ROM memory contents in .mem or .hex format
+      ROM_FILE : string;           -- ROM memory contents in .mem or .hex format
+      STYLE    : string := "BLOCK" -- Set to "DISTRIBUTED" to use distributed RAM
     );
     port (
       Clock       : in  std_logic;
@@ -103,7 +109,8 @@ package picoblaze_rom_pkg is
 
   component picoblaze_dp_rom is
     generic (
-      ROM_FILE : string -- ROM memory contents in .mem or .hex format
+      ROM_FILE : string;           -- ROM memory contents in .mem or .hex format
+      STYLE    : string := "BLOCK" -- Set to "DISTRIBUTED" to use distributed RAM
     );
     port (
       Clock           : in  std_logic;
@@ -131,7 +138,8 @@ use std.textio.all;
 
 entity picoblaze_rom is
   generic (
-    ROM_FILE : string -- ROM memory contents in .mem or .hex format
+    ROM_FILE : string;           -- ROM memory contents in .mem or .hex format
+    STYLE    : string := "BLOCK" -- Set to "DISTRIBUTED" to use distributed RAM
   );
   port (
     Clock       : in  std_logic;
@@ -183,7 +191,8 @@ architecture rtl of picoblaze_rom is
     -- Can't call to_lower() for case-insensitive comparison because of XST limitation
     --if to_lower(File_name(File_name'length-3 to File_name'length)) = ".mem" then
     if File_name(File_name'length-3 to File_name'length) = ".mem" then
-      -- Read the first address line of a .mem file and discard it; Assume memory starts at 0
+      -- Read the first address line of a .mem file and discard it
+      -- Assume memory starts at 0
       readline(fh, ln);
     end if;
 
@@ -207,9 +216,12 @@ architecture rtl of picoblaze_rom is
 
   -- Initialize ROM with file contents
   signal pb_rom : rom_mem := read_mem_file(ROM_FILE);
+
+  attribute RAM_STYLE : string;
+  attribute RAM_STYLE of pb_rom : signal is STYLE;
 begin
 
-  -- Infer ROM with synchronous enable and read port
+  -- Infer BRAM-based ROM with synchronous enable and read port
   rd: process(Clock)
   begin
     if rising_edge(Clock) then
@@ -232,7 +244,8 @@ use std.textio.all;
 
 entity picoblaze_dp_rom is
   generic (
-    ROM_FILE : string -- ROM memory contents in .mem or .hex format
+    ROM_FILE : string;           -- ROM memory contents in .mem or .hex format
+    STYLE    : string := "BLOCK" -- Set to "DISTRIBUTED" to use distributed RAM
   );
   port (
     Clock           : in  std_logic;
@@ -290,7 +303,8 @@ architecture rtl of picoblaze_dp_rom is
     -- Can't call to_lower() for case-insensitive comparison because of XST limitation
     --if to_lower(File_name(File_name'length-3 to File_name'length)) = ".mem" then
     if File_name(File_name'length-3 to File_name'length) = ".mem" then
-      -- Read the first address line of a .mem file and discard it; Assume memory starts at 0
+      -- Read the first address line of a .mem file and discard it
+      -- Assume memory starts at 0
       readline(fh, ln);
     end if;
 
@@ -314,6 +328,9 @@ architecture rtl of picoblaze_dp_rom is
 
   -- Initialize ROM with file contents
   signal pb_rom : rom_mem := read_mem_file(ROM_FILE);
+
+  attribute RAM_STYLE : string;
+  attribute RAM_STYLE of pb_rom : signal is STYLE;
 begin
 
   -- Infer ROM with synchronous enable and dual read port
