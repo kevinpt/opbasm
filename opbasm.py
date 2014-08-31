@@ -534,7 +534,7 @@ class Assembler(object):
     self.scratch_size = options.scratch_size
     self.use_pb6 = options.use_pb6
     self.use_m4 = options.use_m4
-    self.m4_file_num = 1
+    self.m4_file_num = 0
     self.output_dir = options.output_dir
     self.use_pyparsing = options.use_pyparsing
     self.timestamp = timestamp
