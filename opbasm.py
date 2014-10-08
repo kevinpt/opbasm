@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.1'
+__version__ = '1.1.2'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -753,6 +753,11 @@ class Assembler(object):
     for s in slist:
       if s.command == 'include':
         include_file = s.arg1[1:-1].replace('\\', '/')
+
+        # If the included file has a relative path build it off of the current path
+        if not os.path.isabs(include_file):
+          include_file = os.path.join(os.path.dirname(include_stack[-1]), include_file)
+
         if include_file in include_stack:
           raise FatalError(s, 'Recursive include:', s.arg1)
         else:
@@ -1604,7 +1609,7 @@ def add_output_dir(output_dir, fname):
 
 def main():
   '''Main application code'''
-  print(note('OPBASM - Open Picoblaze Assembler'))
+  print(note('OPBASM - Open Picoblaze Assembler {}'.format(__version__)))
   options = parse_command_line()
 
   if options.get_templates:
