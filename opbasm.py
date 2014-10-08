@@ -275,7 +275,7 @@ regex_parser = re.compile(r'''
   (?:
     (?P<cmd>[\w&@]+)\s*
     (?:
-        (?P<arg1>(?:[-\w~'#$."]+))\s*
+        (?P<arg1>(?:[-\w~'#$."/\\]+))\s*
         (?:,\s*(?P<arg2>[-\w~'%#$]+)|,\s*\(\s*(?P<arg2b>[\w~'"%]+)\s*\)
         |,\s*\[(?P<arg2t>[^\]]+\]('[db])?)|,\s*(?P<arg2s>".+"))?
         |\(\s*(?P<addr1>[\w~']+)\s*,\s*(?P<addr2>[\w~']+)\s*\)
@@ -654,7 +654,9 @@ class Assembler(object):
       # Recursively include additional sources
       if s.command == 'include':
         if s.arg1 is not None and s.arg1[0] == '"' and s.arg1[-1] == '"':
-          include_file = s.arg1[1:-1]
+          # Convert Windows backslashes to forward to get a path that works on all platforms
+          include_file = s.arg1[1:-1].replace('\\', '/')
+
           # If the included file has a relative path build it off of the current path
           if not os.path.isabs(include_file):
             include_file = os.path.join(os.path.dirname(source_file), include_file)
@@ -750,7 +752,7 @@ class Assembler(object):
 
     for s in slist:
       if s.command == 'include':
-        include_file = s.arg1[1:-1]
+        include_file = s.arg1[1:-1].replace('\\', '/')
         if include_file in include_stack:
           raise FatalError(s, 'Recursive include:', s.arg1)
         else:
