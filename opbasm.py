@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.2'
+__version__ = '1.1.3'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -284,7 +284,7 @@ regex_parser = re.compile(r'''
   (?P<cmnt>;.*)?$
 ''', re.VERBOSE)
 
-regex_register = re.compile(r's[0-9A-F]', re.IGNORECASE)
+regex_register = re.compile(r'^s[0-9A-F]$', re.IGNORECASE)
 
 class ParseError(ValueError):
   pass
