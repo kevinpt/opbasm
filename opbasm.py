@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.3'
+__version__ = '1.1.4'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -392,6 +392,10 @@ class Statement(object):
     self.regy = 0
     self.immediate = 0
 
+    # Dead code analysis flags
+    self.reachable = False
+    self.preserve = False
+
     if 'instruction' in ptree:
       ifields = ptree['instruction']
       self.command = ifields[0]
@@ -428,7 +432,13 @@ class Statement(object):
         'string', 'table'): return False
     return True
 
-  def format(self, upper=True, show_addr=False, colorize=False):
+  def removable(self):
+    '''Identify if this statement is eligible for dead code removal'''
+    return self.is_instruction() and self.reachable == False and self.preserve == False
+
+  re_ansi_strip = re.compile(r'\x1b[^m]*m')
+
+  def format(self, upper=True, show_addr=False, show_dead=False, colorize=False):
     '''Generate a formatted string for the statement
     upper : Upper case instructions and directives
     show_addr : Include assembled memory address and machine word
@@ -462,6 +472,15 @@ class Statement(object):
         addr = '{:03X}       '.format(self.address)
       else:
         addr = '          '
+
+      if show_dead:
+        if self.is_instruction() and not self.reachable:
+          if self.preserve:
+            addr += success(' KEEP') if colorize else ' KEEP'
+          else:
+            addr += error(' DEAD') if colorize else ' DEAD'
+        else:
+          addr += '     '
     else:
       addr = ''
 
@@ -471,10 +490,14 @@ class Statement(object):
       if len(label) > 0:
         label = error(label) # red text
 
+    # The ANSI color codes interfere with field width format specifiers
+    # Detect them and add an adjustment
+    label_width = 20 + len(label) - len(self.re_ansi_strip.sub('', label))
+
     if len(inst) > 0:
-      return '{}{:>20} {:30} {}'.format(addr, label, inst, comment).rstrip()
+      return '{} {:>{}} {:30} {}'.format(addr, label, label_width, inst, comment).rstrip()
     else:
-      return '{}{:>20} {}'.format(addr, label, comment).rstrip()
+      return '{} {:>{}} {}'.format(addr, label, label_width, comment).rstrip()
 
 
 class Symbol(object):
@@ -861,13 +884,20 @@ class Assembler(object):
       return 0
 
 
-  def assemble(self):
+  def assemble(self, bounds_check=True):
     '''Generate assembled instructions
     Returns a list of Statement objects with filled in instruction fields
     '''
-    cur_addr = 0
     # Pass 1: Flatten includes
     slist = list(self.flatten_includes(self.sources[self.top_source_file]))
+
+    return self.raw_assemble(slist, 0, bounds_check)
+
+
+  def raw_assemble(self, slist, start_address=0, bounds_check=True):
+    '''Generate assembled instructions from a raw statement list'''
+    cur_addr = start_address
+    self.default_jump = None
 
     # Pass 2: Set instruction and label addresses
     for s in slist:
@@ -875,9 +905,10 @@ class Assembler(object):
         self.labels[s.label].value = cur_addr
 
       if s.is_instruction():
-        if cur_addr >= self.mem_size:
-          raise FatalError(s, 'Address exceeds memory bounds: {:03X} (limit {:03X})'.format(\
-            cur_addr, self.mem_size-1))
+        if bounds_check and cur_addr >= self.mem_size:
+          raise FatalError(s, 'Address exceeds memory bounds: {:03X} (limit {:03X})'.format( \
+             cur_addr, self.mem_size-1))
+
         s.address = cur_addr
         cur_addr += self.statement_words(s) # Move to next address. Could be > 1 if a string or table operand
 
@@ -886,7 +917,7 @@ class Assembler(object):
         if cur_addr is None:
           raise FatalError(s, 'Invalid address:', s.arg1)
 
-        if cur_addr >= self.mem_size:
+        if bounds_check and cur_addr >= self.mem_size:
           raise FatalError(s, 'Address exceeds memory bounds: {:03X} (limit {:03X})'.format(\
             cur_addr, self.mem_size-1))
 
@@ -898,6 +929,17 @@ class Assembler(object):
       elif s.label or s.comment or s.command:
         s.address = cur_addr
 
+    # Scan for pragma meta-comments
+    preserve_state = False
+    for s in slist:
+      if s.comment is not None and s.comment.lower().lstrip().startswith('pragma '):
+        args = s.comment.lower().split()[1:]
+        pragma = args[0]
+        args = args[1:]
+        if pragma == 'keep' and len(args) >= 1:
+          preserve_state = True if args[0] == 'on' else False
+
+      s.preserve = preserve_state
 
     # Pass 3: Validate and assemble instructions
     instructions = []
@@ -931,7 +973,7 @@ class Assembler(object):
             s.immediate = self.get_address(addr_label)
             if s.immediate is None:
               raise FatalError(s, 'Invalid address:', addr_label)
-            if s.immediate >= self.mem_size:
+            if bounds_check and s.immediate >= self.mem_size:
               raise FatalError(s, 'Out of range address')
 
         elif s.command in self.op_info['one_reg_opcodes']:
@@ -1187,6 +1229,7 @@ def parse_command_line():
   '''Process command line arguments'''
   progname = os.path.basename(sys.argv[0])
   usage = '''{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
+              [-d] [-r] [-e <address>]
               [-o <output dir>] [--m4] [--pyparsing]
        {} -g'''.format(progname, progname)
   parser = OptionParser(usage=usage)
@@ -1205,6 +1248,15 @@ def parse_command_line():
   parser.add_option('-x', '--hex', dest='hex_output', action='store_true', default=False, \
         help='Write HEX in place of MEM file')
   parser.add_option('-o', '--outdir', dest='output_dir', default='.', help='Output directory')
+
+
+  parser.add_option('-d', '--report-dead-code', dest='report_dead_code', action='store_true', \
+        default=False, help='Perform dead code analysis shown in log file')
+  parser.add_option('-r', '--remove-dead-code', dest='remove_dead_code', action='store_true', \
+        default=False, help='Remove dead code from assembled source')
+  parser.add_option('-e', '--isr-entry-point', dest='isr_entry_point', default=0x3FF, \
+        metavar='ADDRESS', help='Set address of ISR entry point')
+
   parser.add_option('-c', '--color-log', dest='color_log', action='store_true', default=False, \
         help='Colorize log file')
   parser.add_option('-g', '--get-templates', dest='get_templates', action='store_true', default=False, \
@@ -1252,6 +1304,12 @@ def parse_command_line():
     elif options.mem_size > max_mem_size:
       parser.error('Memory size is too large')
 
+    if isinstance(options.isr_entry_point, basestring):
+      try:
+        options.isr_entry_point = int(options.isr_entry_point, 0)
+      except ValueError:
+        parser.error('Invalid ISR entry point address')
+
   return options
 
 
@@ -1266,6 +1324,48 @@ def build_memmap(slist, mem_size, default_jump):
     if s.is_instruction():
       mmap[s.address] = s.machine_word()
   return mmap
+
+
+def analyze_code_reachability(slist, entry_points):
+  '''Scan assembled statements for reachability'''
+
+  # Build index of all instruction statements by address
+  itable = {}
+  for s in slist:
+    if s.is_instruction():
+      itable[s.address] = s
+
+  addresses = set(entry_points)
+  addresses.add(0)
+
+  find_reachability(addresses, itable)
+
+
+def find_reachability(addresses, itable):
+  '''Recursive function that follows graph of executable statements to determine
+     reachability'''
+  for a in addresses:
+    while a in itable:
+      s = itable[a]
+      if s.reachable: break # Skip statements already visited
+
+      if s.is_instruction():
+        s.reachable = True
+        # Stop on unconditional return, returni, load&return, and jump@ instructions
+        if s.command in ('returni', 'load&return', 'jump@') or \
+           (s.command == 'return' and s.arg1 is None):
+          break
+
+        # Follow branch address for jump and call
+        if s.command in ('jump', 'call'):
+          find_reachability((s.immediate,), itable)
+
+          # Stop on unconditional jump
+          if s.command == 'jump' and s.arg2 is None: # Only 1 argument -> unconditional
+            break
+
+      # Continue with next instruction if it exists
+      a += 1
 
 
 def write_hex_file(fname, mmap):
@@ -1343,7 +1443,7 @@ def format_table(rows, col_names, indent=0):
   return tbl
 
 
-def write_log_file(log_file, assembled_code, stats, asm, colorize):
+def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
   '''Write a log file with details of assembled code'''
   with open(log_file, 'w') as fh:
     def printf(*args):
@@ -1364,7 +1464,7 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize):
 
     printf('\n\n' + underline('Assembly listing'))
     for s in assembled_code:
-      printf(s.format(show_addr=True, colorize=colorize))
+      printf(s.format(show_addr=True, show_dead=show_dead, colorize=colorize))
 
     printf('\n\n' + underline('PSM files that have been assembled'))
     for f in asm.sources.iterkeys():
@@ -1665,12 +1765,42 @@ def main():
     print('\n  Assembling code... ', end='')
     sys.stdout.flush()
 
-    assembled_code = asm.assemble()
+    assembled_code = asm.assemble(bounds_check=not options.remove_dead_code)
 
   except FatalError, e:
     asm_error(*e.args, exit=1, statement=e.statement)
 
   print(success('SUCCESS'))
+
+
+  if options.remove_dead_code or options.report_dead_code:
+    print('  Static code analysis: searching for dead code... ', end='')
+    entry_points = set((asm.default_jump & 0xFFF, 0, options.isr_entry_point))
+    analyze_code_reachability(assembled_code, entry_points)
+    print(success('COMPLETE'))
+
+    # Summarize analysis
+    print('    Entry points:', ', '.join(['0x{:03X}'.format(e) for e in \
+      sorted(entry_points)]))
+    dead_instructions = len([s for s in assembled_code if s.removable()])
+    print('    {} dead instructions found'.format(dead_instructions))
+
+  if options.remove_dead_code:
+    for s in assembled_code:
+      if s.removable():
+        s.comment = 'REMOVED: ' + s.format().lstrip()
+        s.command = None
+        if s.label is not None:
+          del asm.labels[s.label]
+          s.label = None
+
+    print('  Removing dead code... ', end='')
+    try:
+      assembled_code = asm.raw_assemble(assembled_code)
+    except FatalError, e:
+      asm_error(*e.args, exit=1, statement=e.statement)
+
+    print(success('COMPLETE'))
 
   # Print summary
   stats = code_stats(assembled_code)
@@ -1692,7 +1822,8 @@ def main():
   write_hex_file(hex_mem_file, mmap)
   print('        mem map:', hex_mem_file)
   
-  write_log_file(log_file, assembled_code, stats, asm, options.color_log)
+  show_dead = True if options.report_dead_code or options.remove_dead_code else False
+  write_log_file(log_file, assembled_code, stats, asm, options.color_log, show_dead)
   print('       log file:', log_file)
 
 

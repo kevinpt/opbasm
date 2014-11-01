@@ -2,6 +2,21 @@
 Opbasm change log
 =================
 
+v1.? / ?????
+================
+
+ Changes
+ -------
+
+ * Add static code analysis to identify dead code and optionally remove it
+   Suggested by Patrick Lehmann
+
+  Bug fixes
+  -------
+  * Fix error parsing include statements with relative paths and Windows-style paths
+  * Fix bug with formatting label fields in colorized log
+
+
 v1.1 / 2014-08-18
 ================
 
@@ -15,6 +30,5 @@ v1.1 / 2014-08-18
 
   Bug fixes
   ---------
-
   * Fixed bug in writing latin1 HDL files
 
