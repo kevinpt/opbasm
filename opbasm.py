@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.4'
+__version__ = '1.1.5'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -394,7 +394,8 @@ class Statement(object):
 
     # Dead code analysis flags
     self.reachable = False
-    self.preserve = False
+
+    self.tags = {}
 
     if 'instruction' in ptree:
       ifields = ptree['instruction']
@@ -434,7 +435,7 @@ class Statement(object):
 
   def removable(self):
     '''Identify if this statement is eligible for dead code removal'''
-    return self.is_instruction() and self.reachable == False and self.preserve == False
+    return self.is_instruction() and self.reachable == False and 'keep' not in self.tags
 
   re_ansi_strip = re.compile(r'\x1b[^m]*m')
 
@@ -475,7 +476,7 @@ class Statement(object):
 
       if show_dead:
         if self.is_instruction() and not self.reachable:
-          if self.preserve:
+          if 'keep' in self.tags:
             addr += success(' KEEP') if colorize else ' KEEP'
           else:
             addr += error(' DEAD') if colorize else ' DEAD'
@@ -557,6 +558,7 @@ class Assembler(object):
     self.scratch_size = options.scratch_size
     self.use_pb6 = options.use_pb6
     self.use_m4 = options.use_m4
+    self.use_static_analysis = options.report_dead_code or options.remove_dead_code
     self.m4_file_num = 0
     self.output_dir = options.output_dir
     self.use_pyparsing = options.use_pyparsing
@@ -565,8 +567,8 @@ class Assembler(object):
     self.constants = self._init_constants()
     self.labels = {}
 
-    hex_digits = [hex(d)[-1] for d in xrange(16)]
-    self.registers = dict(('s' + h, i) for i, h in enumerate(hex_digits))
+    self.registers = None
+    self.init_registers()
     self.strings = self._init_strings()
     self.tables = {}
 
@@ -576,6 +578,10 @@ class Assembler(object):
     self.op_info = get_op_info(options.use_pb6)
     self.upper_env_names = upper_env_names
 
+  def init_registers(self):
+    '''Initialize table of register names'''
+    hex_digits = [hex(d)[-1] for d in xrange(16)]
+    self.registers = dict(('s' + h, i) for i, h in enumerate(hex_digits))
 
   def _init_constants(self):
     '''Initialize the constant symbol table with the
@@ -891,6 +897,19 @@ class Assembler(object):
     # Pass 1: Flatten includes
     slist = list(self.flatten_includes(self.sources[self.top_source_file]))
 
+    # Scan for pragma meta-comments
+    keep_state = False
+    for s in slist:
+      if s.comment is not None and s.comment.lower().lstrip().startswith('pragma '):
+        args = s.comment.lower().split()[1:]
+        pragma = args[0]
+        args = args[1:]
+        if pragma == 'keep' and len(args) >= 1:
+          keep_state = True if args[0] == 'on' else False
+
+      if keep_state: s.tags['keep'] = True
+
+
     return self.raw_assemble(slist, 0, bounds_check)
 
 
@@ -929,17 +948,7 @@ class Assembler(object):
       elif s.label or s.comment or s.command:
         s.address = cur_addr
 
-    # Scan for pragma meta-comments
-    preserve_state = False
-    for s in slist:
-      if s.comment is not None and s.comment.lower().lstrip().startswith('pragma '):
-        args = s.comment.lower().split()[1:]
-        pragma = args[0]
-        args = args[1:]
-        if pragma == 'keep' and len(args) >= 1:
-          preserve_state = True if args[0] == 'on' else False
-
-      s.preserve = preserve_state
+    
 
     # Pass 3: Validate and assemble instructions
     instructions = []
@@ -1058,7 +1067,9 @@ class Assembler(object):
               new_s.immediate = e
               new_s.arg2 = e_text
               new_s.address += i
-              if i > 0: new_s.comment = None
+              if i > 0:
+                new_s.comment = None
+                new_s.label = None
               instructions.append(new_s)
             continue
 
@@ -1090,7 +1101,9 @@ class Assembler(object):
               new_s.immediate = (e << 4) + port
               new_s.arg1 = e_text
               new_s.address += i
-              if i > 0: new_s.comment = None
+              if i > 0:
+                new_s.comment = None
+                new_s.label = None
               instructions.append(new_s)
             continue
 
@@ -1178,6 +1191,22 @@ class Assembler(object):
             raise FatalError(s, 'Invalid address:', s.arg1)
 
       instructions.append(s)
+
+
+    # Pass 4: Find continuous blocks of labeled load&return instructions
+    if self.use_pb6 and self.use_static_analysis:
+      cur_label = None
+      for s in slist:
+        if s.label is not None: cur_label = s.label
+
+        if s.command == 'load&return':
+          # Mark l&r for preservation if its associated label is referenced by
+          # other code
+          if cur_label is not None and self.labels[cur_label].in_use:
+            s.tags['keep'] = True
+
+        elif s.is_instruction(): cur_label = None
+
 
     # Create default jump instruction
     if self.default_jump is None:
@@ -1774,6 +1803,7 @@ def main():
 
 
   if options.remove_dead_code or options.report_dead_code:
+    # Run static analysis
     print('  Static code analysis: searching for dead code... ', end='')
     entry_points = set((asm.default_jump & 0xFFF, 0, options.isr_entry_point))
     analyze_code_reachability(assembled_code, entry_points)
@@ -1786,6 +1816,7 @@ def main():
     print('    {} dead instructions found'.format(dead_instructions))
 
   if options.remove_dead_code:
+    # Remove dead code
     for s in assembled_code:
       if s.removable():
         s.comment = 'REMOVED: ' + s.format().lstrip()
@@ -1793,6 +1824,9 @@ def main():
         if s.label is not None:
           del asm.labels[s.label]
           s.label = None
+
+    # Reinitialize registers to default names
+    asm.init_registers()
 
     print('  Removing dead code... ', end='')
     try:
