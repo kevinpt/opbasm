@@ -1412,7 +1412,7 @@ def annotate_pragmas(slist):
         if pragma in active_tags:
           del active_tags[pragma]
       else:
-        print('WARNING: unrecognized pragma in line', s.line)
+        print('\n' + note('WARNING') + ': unrecognized pragma at line', s.line)
 
     if s.is_instruction():
       for p, a in active_tags.iteritems():
@@ -1439,7 +1439,8 @@ def extract_pragma_blocks(slist):
     if s.tags:
       for p, a in s.tags.iteritems():
         if p in open_blocks:
-          open_blocks[p].end = s.address
+          if s.tags[p] == open_blocks[p].args:
+            open_blocks[p].end = s.address
         else: # New block
           open_blocks[p] = Block(p, a, s.address)
 
@@ -1622,7 +1623,7 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
 
     printf('\n\n' + underline('List of pragma blocks'))
     all_blocks = extract_pragma_blocks(assembled_code)
-    headings = ['pragma', 'Addr range', 'Value']
+    headings = ['Name', 'Addr range', 'Value']
     rows = [(b.name, '({:03X} - {:03X})'.format(b.start, b.end), \
       ' '.join([str(a) for a in b.args])) for b in all_blocks]
     for r in format_table(rows, headings, indent=3):
