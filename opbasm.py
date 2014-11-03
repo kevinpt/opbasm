@@ -1446,12 +1446,21 @@ def extract_pragma_blocks(slist):
         if s.is_instruction():
           open_blocks[p].has_inst = True
 
-    # Check if blocks have closed (no tag present on this instruction)
+    # Check if blocks have closed (no tag present on this instruction or different value)
     if s.is_instruction():
       for p in open_blocks.keys():
-        if p not in s.tags:
+        if p not in s.tags: # Block has ended
+          #print('### finish:', p, open_blocks[p].args)
           all_blocks.append(open_blocks[p])
           del open_blocks[p]
+        elif s.tags[p] != open_blocks[p].args: # Block restarted with new args
+          #print('### restart:', p, s.tags[p], open_blocks[p].args)
+          all_blocks.append(open_blocks[p])
+          del open_blocks[p]
+          open_blocks[p] = Block(p, s.tags[p], s.address)
+          if s.is_instruction():
+            open_blocks[p].has_inst = True
+
 
   # Move any remaining unclosed blocks to the list
   all_blocks.extend(open_blocks.itervalues())
