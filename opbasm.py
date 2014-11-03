@@ -898,17 +898,7 @@ class Assembler(object):
     slist = list(self.flatten_includes(self.sources[self.top_source_file]))
 
     # Scan for pragma meta-comments
-    keep_state = False
-    for s in slist:
-      if s.comment is not None and s.comment.lower().lstrip().startswith('pragma '):
-        args = s.comment.lower().split()[1:]
-        pragma = args[0]
-        args = args[1:]
-        if pragma == 'keep' and len(args) >= 1:
-          keep_state = True if args[0] == 'on' else False
-
-      if keep_state: s.tags['keep'] = True
-
+    annotate_pragmas(slist)
 
     return self.raw_assemble(slist, 0, bounds_check)
 
@@ -1203,7 +1193,7 @@ class Assembler(object):
           # Mark l&r for preservation if its associated label is referenced by
           # other code
           if cur_label is not None and self.labels[cur_label].in_use:
-            s.tags['keep'] = True
+            s.tags['keep'] = (True,)
 
         elif s.is_instruction(): cur_label = None
 
@@ -1397,6 +1387,86 @@ def find_reachability(addresses, itable):
       a += 1
 
 
+def parse_pragma(comment):
+  '''Extract fields from pragma meta-comments'''
+  if comment is not None and comment.lower().lstrip().startswith('pragma '):
+    args = comment.split()[1:]
+    pragma = args[0]
+    args = args[1:]
+    return (pragma.lower(), args)
+  else:
+    return (None, None)
+
+
+def annotate_pragmas(slist):
+  '''Look for pragmas marking blocks of code and add annotations to the
+     affected instructions'''
+  active_tags = {}
+  for s in slist:
+    pragma, args = parse_pragma(s.comment)    
+    if pragma is not None:
+      op = args[-1]
+      if op.lower() in ('on', 'start', 'begin'):
+        active_tags[pragma] = args[:-1] if len(args) > 1 else (True,)
+      elif op.lower() in ('off', 'stop', 'end'):
+        if pragma in active_tags:
+          del active_tags[pragma]
+      else:
+        print('WARNING: unrecognized pragma in line', s.line)
+
+    if s.is_instruction():
+      for p, a in active_tags.iteritems():
+        s.tags[p] = a
+
+class Block(object):
+  '''Track info for extracted pragma blocks'''
+  def __init__(self, name, args, start, end=-1):
+    self.name = name
+    self.args = args
+    self.start = start
+    self.end = end if end >= 0 else start
+    self.has_inst = False
+
+  def __str__(self):
+    return '{} {} ({:03X} - {:03X})'.format(self.name, self.args, self.start, self.end)
+
+def extract_pragma_blocks(slist):
+  '''Build set of pragma blocks from assembled code'''
+  all_blocks = []
+  open_blocks = {}
+
+  for s in slist:
+    if s.tags:
+      for p, a in s.tags.iteritems():
+        if p in open_blocks:
+          open_blocks[p].end = s.address
+        else: # New block
+          open_blocks[p] = Block(p, a, s.address)
+
+        if s.is_instruction():
+          open_blocks[p].has_inst = True
+
+    # Check if blocks have closed (no tag present on this instruction)
+    if s.is_instruction():
+      for p in open_blocks.keys():
+        if p not in s.tags:
+          all_blocks.append(open_blocks[p])
+          del open_blocks[p]
+
+  # Move any remaining unclosed blocks to the list
+  all_blocks.extend(open_blocks.itervalues())
+
+  # Remove empty blocks containing no instructions
+  all_blocks = [b for b in all_blocks if b.has_inst]
+
+  #print('### BLOCKS:')
+  #for b in all_blocks:
+  #  print(b)
+
+  return all_blocks      
+
+
+
 def write_hex_file(fname, mmap):
   '''Write a memory map as a hex or mem format file'''
   with open(fname, 'w') as fh:
@@ -1540,6 +1610,14 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
     if show_caption:
       printf('\n       * Unreferenced label(s)')
 
+
+    printf('\n\n' + underline('List of pragma blocks'))
+    all_blocks = extract_pragma_blocks(assembled_code)
+    headings = ['pragma', 'Addr range', 'Value']
+    rows = [(b.name, '({:03X} - {:03X})'.format(b.start, b.end), \
+      ' '.join([str(a) for a in b.args])) for b in all_blocks]
+    for r in format_table(rows, headings, indent=3):
+      printf(r)
 
     printf('\n\n' + underline('Instruction usage statistics'))
     inst_usage = instruction_usage(assembled_code, asm)
@@ -1835,6 +1913,7 @@ def main():
       asm_error(*e.args, exit=1, statement=e.statement)
 
     print(success('COMPLETE'))
+
 
   # Print summary
   stats = code_stats(assembled_code)
