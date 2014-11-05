@@ -1540,14 +1540,14 @@ def format_table(rows, col_names, indent=0):
   Returns a list of strings
   '''
   cols = zip(col_names, *rows)
-  col_size = [max(len(str(i)) for i in col) for col in cols]
+  col_size = [max(len(unicode(i)) for i in col) for col in cols]
 
   fmt = ' ' * indent + '  '.join('{{:{}}}'.format(w) for w in col_size)
   tbl = [fmt.format(*col_names),
     fmt.format(*['-'*len(c) for c in col_names])
   ]
   for r in rows:
-    tbl.append(fmt.format(*['' if i is None else str(i) for i in r]).rstrip())
+    tbl.append(fmt.format(*['' if i is None else unicode(i) for i in r]).rstrip())
 
   return tbl
 
@@ -1627,7 +1627,7 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
     all_blocks = extract_pragma_blocks(assembled_code)
     headings = ['Name', 'Addr range', 'Value']
     rows = [(b.name, '({:03X} - {:03X})'.format(b.start, b.end), \
-      ' '.join([str(a) for a in b.args])) for b in all_blocks]
+      ' '.join([unicode(a) for a in b.args])) for b in all_blocks]
     for r in format_table(rows, headings, indent=3):
       printf(r)
 
