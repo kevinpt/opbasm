@@ -1912,7 +1912,9 @@ def main():
         s.comment = 'REMOVED: ' + s.format().lstrip()
         s.command = None
         if s.label is not None:
-          del asm.labels[s.label]
+          if s.label in asm.labels:
+            #print('### Deleting label:', s.label)
+            del asm.labels[s.label]
           s.label = None
 
     # Reinitialize registers to default names
