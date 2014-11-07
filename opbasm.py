@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.7'
+__version__ = '1.1.8'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -435,7 +435,8 @@ class Statement(object):
 
   def removable(self):
     '''Identify if this statement is eligible for dead code removal'''
-    return self.is_instruction() and self.reachable == False and 'keep' not in self.tags
+    return self.is_instruction() and self.reachable == False and 'keep' not in self.tags \
+      and 'keep_auto' not in self.tags
 
   re_ansi_strip = re.compile(r'\x1b[^m]*m')
 
@@ -476,7 +477,9 @@ class Statement(object):
 
       if show_dead:
         if self.is_instruction() and not self.reachable:
-          if 'keep' in self.tags:
+          if 'keep_auto' in self.tags:
+            addr += success(' KEEP') if colorize else ' KEEP'
+          elif 'keep' in self.tags:
             addr += success(' KEEP') if colorize else ' KEEP'
           else:
             addr += error(' DEAD') if colorize else ' DEAD'
@@ -1192,8 +1195,8 @@ class Assembler(object):
         if s.command == 'load&return':
           # Mark l&r for preservation if its associated label is referenced by
           # other code
-          if cur_label is not None and self.labels[cur_label].in_use:
-            s.tags['keep'] = (True,)
+          if cur_label is not None and self.labels[cur_label].in_use and 'keep' not in s.tags:
+            s.tags['keep_auto'] = (True,)
 
         elif s.is_instruction(): cur_label = None
 
@@ -1345,14 +1348,18 @@ def build_memmap(slist, mem_size, default_jump):
   return mmap
 
 
-def analyze_code_reachability(slist, entry_points):
-  '''Scan assembled statements for reachability'''
-
-  # Build index of all instruction statements by address
+def build_instruction_table(slist):
+  '''Build index of all instruction statements by address'''
   itable = {}
   for s in slist:
     if s.is_instruction():
       itable[s.address] = s
+
+  return itable
+
+
+def analyze_code_reachability(slist, itable, entry_points):
+  '''Scan assembled statements for reachability'''
 
   addresses = set(entry_points)
   addresses.add(0)
@@ -1360,16 +1367,29 @@ def analyze_code_reachability(slist, entry_points):
   find_reachability(addresses, itable)
 
 
-def find_reachability(addresses, itable):
+def analyze_recursive_keeps(slist, itable):
+  '''Scan assembled statements for reachability'''
+
+  for s in slist:
+    if s.is_instruction() and 'keep' in s.tags:
+      find_reachability((s.address,), itable, follow_keeps=True)
+
+
+def find_reachability(addresses, itable, follow_keeps=False):
   '''Recursive function that follows graph of executable statements to determine
      reachability'''
   for a in addresses:
     while a in itable:
       s = itable[a]
       if s.reachable: break # Skip statements already visited
+      if follow_keeps and 'keep_auto' in s.tags: break
 
       if s.is_instruction():
-        s.reachable = True
+        if not follow_keeps:
+          s.reachable = True
+        elif 'keep' not in s.tags:
+          s.tags['keep_auto'] = (True,)
+          
         # Stop on unconditional return, returni, load&return, and jump@ instructions
         if s.command in ('returni', 'load&return', 'jump@') or \
            (s.command == 'return' and s.arg1 is None):
@@ -1377,7 +1397,7 @@ def find_reachability(addresses, itable):
 
         # Follow branch address for jump and call
         if s.command in ('jump', 'call'):
-          find_reachability((s.immediate,), itable)
+          find_reachability((s.immediate,), itable, follow_keeps)
 
           # Stop on unconditional jump
           if s.command == 'jump' and s.arg2 is None: # Only 1 argument -> unconditional
@@ -1385,6 +1405,7 @@ def find_reachability(addresses, itable):
 
       # Continue with next instruction if it exists
       a += 1
+
 
 
 def parse_pragma(comment):
@@ -1896,7 +1917,9 @@ def main():
     # Run static analysis
     print('  Static code analysis: searching for dead code... ', end='')
     entry_points = set((asm.default_jump & 0xFFF, 0, options.isr_entry_point))
-    analyze_code_reachability(assembled_code, entry_points)
+    itable = build_instruction_table(assembled_code)
+    analyze_code_reachability(assembled_code, itable, entry_points)
+    analyze_recursive_keeps(assembled_code, itable)
     print(success('COMPLETE'))
 
     # Summarize analysis
