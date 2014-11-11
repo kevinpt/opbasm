@@ -126,6 +126,54 @@ define(`len', `ifelse(`$1',,0,$#)')
 ; Ex: reverse(1,2,3)  --> 3,2,1
 define(`reverse', `ifelse(eval($# > 1), 1, `reverse(shift($@)), `$1'', ``$1'')')
 
+;---------------------------------
+; Define a series of contiguous port or scratchpad memory constants
+; Arg1: Starting address for port or memory
+; Arg2-Argn: Constant names
+; Ex: iodefs(0, P_uart_out, P_uart_in, P_control)
+;     Expands to:
+;       constant P_uart_out, 00
+;       constant P_uart_in, 01
+;       constant P_control, 02
+define(`iodefs', `constant $2, eval($1, 16, 2)'
+`ifelse(eval($# > 2), 1, `$0(eval($1 + 1), shift(shift($@)))')')
+
+
+;---------------------------------
+; Load a register with a value and output to a port
+; Arg1: Register to load with value
+; Arg2: Value to load (constant or other register)
+; Arg3: Port to output to
+define(`load_out', `load $1, eval($2, 16, 2)
+output $1, $3')
+
+;---------------------------------
+; Load a register with a value and store to scratchpad
+; Arg1: Register to load with value
+; Arg2: Value to load (constant or other register)
+; Arg3: Scratchpad address to output to
+
+define(`load_st', `load $1, eval($2, 16, 2)
+store $1, $3')
+
+
+;---------------------------------
+; Define variables
+; Arg1-ArgN: Series of variable alias expressions where an alias expression is:
+;               <reg> is <alias> [:= value]
+; The alias becomes an alternate name for the register. It is loaded with a value if the
+; optional initializer is included. The value can be any constant expression or register.
+; Ex: vars(s0 is counter := 0, s1 is sum, s2 is max := 20*3)
+define(`vars', `ifelse(`$1',,,`_vardef(_vartokens($1))'
+`vars(shift($@))')')
+
+define(`_vartokens', `regexp(`$1',`\([^ ]+\) +is +\([^ ]+\)\( *:= *\([^ ]+\)\)?',`\1, \2, \4')')
+
+define(`_vardef', `ifelse(`$1',,`errmsg(Invalid variable definition)')'`pushdef($2, $1)'dnl
+`ifelse(`$3',,,`load $1, evalx($3, 16, 2) `;' Var `$2' := $3')')
+
+
+
 ;=============== CARRY FLAG OPERATIONS ===============
 
 ;---------------------------------
@@ -181,7 +229,53 @@ define(`clearmask', `and $1, eval((~($2)) & 0xFF, 16, 2)  ; Clear mask')
 define(`testbit', `test $1, eval(2**($2), 16, 2)  ; Test bit $2')
 
 
-;=============== CONDITIONAL JUMP AND CALL OPERATIONS ===============
+
+;=============== EXPRESSIONS ===============
+
+;---------------------------------
+; Expression evaluator
+; Arg1: Register assignment expression of the form:
+;       sN := <val> op <val> [op <val>]*
+;       val is one of:
+;         register
+;         literal expression (with no internal spaces)
+;         sp(addr) scratchpad adddress
+;         spi(reg) indirect scratchpad address in register
+;       op is one of:
+;         + -          add, subtract
+;         & | ^        and, or, xor
+;         sll srl sra  shift left, shift right logical, shift right arithmetic
+;         =:           reverse assignment to register or scratchpad
+;   ** Operations are evaluated left to right with *no precedence*
+; Ex: expr(s0 := s1 + s2 - s3 srl 4 =: sp(M_value))
+;       Arithmetic is performed on s0 and the result is stored in scratchpad at M_value
+;       s0 <= s1, s0 <= s0 + s2, s0 <= s0 - s3, s0 <= s0 srl 4, sp(M_value) <= s0
+;
+;     expr(s1 := s4 + (28*4-1))
+;       s1 <= s4, s1 <= s1 + 111   Constant expressions must have no spaces
+define(`expr', `pushdef(`_exstr', $1)'`_expr_start(patsubst($1, ` +', `,'))'`popdef(`_exstr')')
+
+define(`_expr_start', `pushdef(`_exreg', $1)'
+`ifelse($2,:=,,`errmsg(Missing assignment operator in expression)')'dnl
+``;' Expression' _exstr
+`ifelse($1,$3,,`load $1, $3')'
+`_expr_ops(shift(shift(shift($@))))'
+`popdef(`_exreg')')
+
+define(`_expr_ops', `ifelse(`$1',,,`_expr_binary($1, `evalx($2, 16, 2)')
+_expr_ops(shift(shift($@)))')')
+
+define(`_expr_binary', `ifelse($1,+,`add _exreg, $2', $1,-,`sub _exreg, $2',
+$1,&,`and _exreg, $2', $1,|,`or _exreg, $2', $1,^,`xor _exreg, $2',
+$1,sll,`sl0(_exreg, $2)', $1,srl,`sr0(_exreg, $2)', $1,sra,`sra(_exreg, $2)',
+$1,=:,`ifelse(index($2, `sp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
+index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
+`load $2, _exreg')',dnl
+`errmsg(`Invalid operation: $1')'   )')
+
+
+
+;=============== CONDITIONAL JUMP, CALL, and RETURN OPERATIONS ===============
 
 ; Jump if not equal
 ; Arg1: Label to jump to
@@ -225,15 +319,51 @@ define(`calllt', `call c, $1  ; if less than')
 ;     callge(greater)    ; call if s3 >= 24
 
 
+; Return if not equal
+define(`retne', `return nz  ; if not equal')
+
+; Return if equal
+define(`reteq', `return z  ; if equal')
+
+; Return if greater or equal
+define(`retge', `return nc  ; if greater or equal')
+
+; Return if less than
+define(`retlt', `return c  ; if less than')
+
+;Ex: compare s0, s1
+;    reteq   ; return if s0 == s1
+
+
+
 ;=============== CONDITIONAL IF-THEN-ELSE ===============
+
+;---------------------------------
+; Composite if macro
+; Arg1: Boolean comparison expression
+;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, or !=
+; Arg2: True clause
+; Arg3: Optional else clause
+;   This macro performs a comparison of the left and right operands and then inserts
+;   the if* macro selected by the operation
+; Ex: if(s0 < s1, `load s0, 01', `load s0, 02')
+;     if(s0 != 0xa5, `load s0, 01')
+define(`if', `_if(_iftokens($1), `$2', `$3')')
+
+define(`_iftokens', `regexp(`$1', `\(\w+\) *\([<>=!]+\) *\(.+\)', `\1, \2, \3')')
+
+define(`_if', `compare $1, evalx($3, 16, 2) ; If $1 $2 $3'
+`ifelse($2,<,`iflt(`$4',`$5')', $2,>=,`ifge(`$4',`$5')', $2,==,`ifeq(`$4',`$5')',
+$2,!=,`ifne(`$4',`$5')', `errmsg(`Invalid operation: $2')' )')'
+
 
 ;---------------------------------
 ; Conditional if macros: ifeq, ifne, ifge, iflt
 ; Arg1: True clause
 ; Arg2: Optional else clause
-; These macros insert labels and jump instructions to implement the behavior of
-; an if-then or if-then-else statement testing for equality, inequality,
-; greater-or-equal, or less-than
+;   These macros insert labels and jump instructions to implement the behavior of
+;   an if-then or if-then-else statement testing for equality, inequality,
+;   greater-or-equal, or less-than
 ; Ex: compare s0, s1
 ;     ifeq(`load s3, 20
 ;           output s3, MY_PORT',
@@ -247,7 +377,7 @@ $1
 ifelse(`$2',,,`jump _endif')
 _neq:
 $2
-_endif:'`popdef(`_neq')'`popdef(`_endif')')
+ifelse(`$2',,,`_endif:')'`popdef(`_neq')'`popdef(`_endif')')
 
 ; If not equal
 define(`ifne', `pushdef(`_eq', uniqlabel(EQ_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump z, _eq
@@ -255,7 +385,7 @@ $1
 ifelse(`$2',,,`jump _endif')
 _eq:
 $2
-_endif:'`popdef(`_eq')'`popdef(`_endif')')
+ifelse(`$2',,,`_endif:')'`popdef(`_eq')'`popdef(`_endif')')
 
 ; If greater or equal
 define(`ifge', `pushdef(`_lt', uniqlabel(LT_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump c, _lt
@@ -263,7 +393,7 @@ $1
 ifelse(`$2',,,`jump _endif')
 _lt:
 $2
-_endif:'`popdef(`_lt')'`popdef(`_endif')')
+ifelse(`$2',,,`_endif:')'`popdef(`_lt')'`popdef(`_endif')')
 
 ; If less than
 define(`iflt', `pushdef(`_xge', uniqlabel(GE_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump nc, _xge
@@ -271,70 +401,46 @@ $1
 ifelse(`$2',,,`jump _endif')
 _xge:
 $2
-_endif:'`popdef(`_xge')'`popdef(`_endif')')
+ifelse(`$2',,,`_endif:')'`popdef(`_xge')'`popdef(`_endif')')
+
+
+define(`errmsg', `errprint($1  __file__ line __line__)m4exit(1)')
+
+
 
 
 ;=============== CONDITIONAL LOOPS ===============
 
 ;---------------------------------
-; While loop until register is 0
-; Arg1: Register containing count of loop iterations. decremented to 0
-; Arg2: Code block to execute in loop
-; Ex: load s0, 03
-;     whilenz(s0, `add s1, 02')  ; Loop 3 times
-define(`whilenz', `pushdef(`_wlbl', uniqlabel(WHILE_))'`pushdef(`_wend', uniqlabel(WEND_))'`_wlbl:
-compare $1, 00
-jump z, _wend
+; While loop
+; Arg1: Boolean comparison expression
+;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, or !=
+; Arg2: Code block for loop body
+; Ex: load s0, 00
+;     while(s0 < 10, `output s3, P_foo
+;                     add s0, 01')
+define(`while', `pushdef(`_wlbl', uniqlabel(WHILE_))'`_wlbl:
+if($1,`$2
+jump _wlbl')' `popdef(`_wlbl')') 
+
+
+;---------------------------------
+; Do-while loop
+; Arg1: Boolean comparison expression
+;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, or !=
+; Arg2: Code block for loop body
+; Ex: load s0, 15'd
+;     dowhile(s0 != 10, `output s3, P_foo
+;                        sub s0, 01')
+define(`dowhile', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`_wlbl:
 $2
-sub $1, 01
-jump _wlbl
-_wend:' `popdef(`_wlbl')'`popdef(`_wend')')  
+_dw(_iftokens($1))' `popdef(`_wlbl')')
 
+define(`_dw', `compare $1, evalx($3, 16, 2) ; while $1 $2 $3'
+`ifelse($2,<,`jump c, _wlbl', $2,>=,`jump nc, _wlbl', $2,==,`jump z, _wlbl',dnl
+$2,!=,`jump nz, _wlbl', `errmsg(`Invalid operation: $2')')'
+)
 
-;---------------------------------
-; Do-while loop until register is 0
-; Arg1: Register containing count of loop iterations. decremented to 0
-; Arg2: Code block to execute in loop
-; Ex: load s0, 03
-;     dowhilenz(s0, `add s1, 02')  ; Loop 3 times
-define(`dowhilenz', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`_wlbl:
-$2
-sub $1, 01
-compare $1, 00
-jump nz, _wlbl' `popdef(`_wlbl')')  
-
-
-;---------------------------------
-; While loop until register reaches value
-; Arg1: Register containing count of loop iterations.
-; Arg2: Value or register to increment count register by
-; Arg3: Register or constant expression to compare to
-; Arg4: Code block to execute in loop
-; Ex: load s0, 10'd
-;     load s2, 5'd
-;     whilene(s0, -1, s2, `add s1, 02')
-define(`whilene', `pushdef(`_wlbl', uniqlabel(WHILE_))'`pushdef(`_wend', uniqlabel(WEND_))'`_wlbl:
-compare $1, evalx($3, 16, 2)
-jump z, _wend
-$4
-add $1, evalx($2, 16, 2)
-jump _wlbl
-_wend:' `popdef(`_wlbl')'`popdef(`_wend')') 
-
-;---------------------------------
-; Do-while loop until register reaches value
-; Arg1: Register containing count of loop iterations.
-; Arg2: Value or register to increment count register by
-; Arg3: Register or constant expression to compare to
-; Arg4: Code block to execute in loop
-; Ex: load s0, 10'd
-;     load s2, 5'd
-;     dowhilene(s0, -1, s2, `add s1, 02')
-define(`dowhilene', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`_wlbl:
-$4
-add $1, evalx($2, 16, 2)
-compare $1, evalx($3, 16, 2)
-jump nz, _wlbl' `popdef(`_wlbl')')  
 
 
 ;=============== SHIFT AND ROTATE OPERATIONS ===============
@@ -419,6 +525,30 @@ define(`getstackat', `add _stackptr, evalx($2, 16, 2)  ; Fetch stack offset $2
 fetch $1, (_stackptr)
 sub _stackptr, evalx($2, 16, 2)')
 
+
+;---------------------------------
+; Store multiple contiguous values on the stack without modification
+; Arg1-Argn: Registers to store values from
+;            The first register corresponds to the highest address
+; Ex: putstack(s3, s4, s5) ; Put s3, s4, s5 into stack offset SP+3, SP+2, and SP+1
+define(`putstack', `add _stackptr, $#  ; Put stack registers
+_ps($@)')
+
+define(`_ps', `ifelse(`$1',,,`store $1, (_stackptr)
+sub _stackptr, 01
+$0(shift($@))')')
+
+;---------------------------------
+; Store values to the stack without modification
+; Arg1: Register with value to store
+; Arg2: Offset from stack pointer (offset 1 is the first value) or a register
+; Ex: putstackat(s3, 2)  ; Put the second value relative to the stack pointer
+;     putstackat(s3, s0) ; Put stack value pointed at by s0
+define(`putstackat', `add _stackptr, evalx($2, 16, 2)  ; Store stack offset $2
+store $1, (_stackptr)
+sub _stackptr, evalx($2, 16, 2)')
+
+
 ;---------------------------------
 ; Drop values stored on the stack
 ; Arg1: Number of values to drop from the stack
@@ -430,6 +560,18 @@ define(`dropstack', `add _stackptr, eval($1, 16, 2)  ; Remove stack values')
 ; Arg1: Number of values to drop from the stack
 ; Ex: dropstackreg(s1)  ; Remove number of values specified in s1 register
 define(`dropstackreg', `add _stackptr, $1  ; Remove stack values')
+
+;---------------------------------
+; Allocate local space on the stack
+; Arg1: Number of values to add to the stack
+; Ex: addstack(2)  ; Add 2 values
+define(`addstack', `sub _stackptr, eval($1, 16, 2)  ; Add local stack values')
+
+;---------------------------------
+; Allocate local space on the stack using a register
+; Arg1: Number of values to add to the stack
+; Ex: addstackreg(s1)  ; Add number of values from s1
+define(`addstackreg', `sub _stackptr, $1  ; Add local stack values')
 
 
 ;=============== STRING AND TABLE OPERATIONS ===============
@@ -605,6 +747,12 @@ add $1, 01')
 ; Arg1: Register to invert
 ; Result is in the same register
 define(`not', `xor $1, FF  ; Not')
+
+;---------------------------------
+; Absolute value
+; Arg1: Register to make positive
+; Result is in the same register
+define(`abs', `if($1 < 0, `negate($1)')')
 
 
 ;---------------------------------
@@ -812,9 +960,17 @@ addcy $1, 00')
 ; 16-bit logical not
 ; Arg1, Arg2: MSB, LSB to invert
 ; Result in Arg1, Arg2
-; Ex: not(s1, s0)
+; Ex: not16(s1, s0)
 define(`not16', `xor $1, FF  ; Not 16-bit
 xor $2, FF')
+
+;---------------------------------
+; 16-bit absolute value
+; Arg1, Arg2: MSB, LSB to make positive
+; Result is in Arg1, Arg2
+; Ex: abs16(s1, s0)
+define(`abs16', `if($1 < 0, `negate16($1, $2)')')
+
 
 ;---------------------------------
 ; 16-bit and
@@ -892,6 +1048,17 @@ define(`_test16kpb3', `pushdef(`_tnz', uniqlabel(NZ_))'`test $2, eval(constlower
 jump nz, _tnz
 test $1, eval(constupper($3), 16, 2)
 _tnz:'`popdef(`_tnz')')
+
+
+;---------------------------------
+; 16-bit comparison
+; Arg1, Arg2: MSB1, LSB1
+; Arg3, Arg4: MSB2, LSB2
+ifdef(`PB3', `define(`compare16', `if($1 == $3, `compare $2, $4')')',
+`define(`compare16', `compare $2, $4
+comparecy $1, $3')')
+
+
 
 
 ;---------------------------------
@@ -1074,6 +1241,10 @@ define(`RANDLABEL', `randlabel($@)')
 define(`UNIQLABEL', `uniqlabel($@)')
 define(`LEN', `len($@)')
 define(`REVERSE', `reverse($@)')
+define(`IODEFS', `iodefs($@)')
+define(`LOAD_OUT', `load_out($@)')
+define(`LOAD_ST', `load_st($@)')
+define(`VARS', `vars($@)')
 define(`CLEARCY', `clearcy($@)')
 define(`SETCY', `setcy($@)')
 define(`SETBIT', `setbit($@)')
@@ -1083,6 +1254,7 @@ define(`MASKH', `maskh($@)')
 define(`SETMASK', `setmask($@)')
 define(`CLEARMASK', `clearmask($@)')
 define(`TESTBIT', `testbit($@)')
+define(`EXPR', `expr($@)')
 define(`JNE', `jne($@)')
 define(`JEQ', `jeq($@)')
 define(`JGE', `jge($@)')
@@ -1091,10 +1263,18 @@ define(`CALLNE', `callne($@)')
 define(`CALLEQ', `calleq($@)')
 define(`CALLGE', `callge($@)')
 define(`CALLLT', `calllt($@)')
+define(`RETNE', `retne($@)')
+define(`RETEQ', `reteq($@)')
+define(`RETGE', `retge($@)')
+define(`RETLT', `retlt($@)')
+define(`IF', `if($@)')
 define(`IFEQ', `ifeq($@)')
 define(`IFNE', `ifne($@)')
 define(`IFGE', `ifge($@)')
 define(`IFLT', `iflt($@)')
+define(`ERRMSG', `errmsg($@)')
+define(`WHILE', `while($@)')
+define(`DOWHILE', `dowhile($@)')
 define(`REPEAT', `repeat($@)')
 define(`SL0', `sl0($@)')
 define(`SL1', `sl1($@)')
@@ -1111,8 +1291,12 @@ define(`PUSH', `push($@)')
 define(`POP', `pop($@)')
 define(`GETSTACK', `getstack($@)')
 define(`GETSTACKAT', `getstackat($@)')
+define(`PUTSTACK', `putstack($@)')
+define(`PUTSTACKAT', `putstackat($@)')
 define(`DROPSTACK', `dropstack($@)')
 define(`DROPSTACKREG', `dropstackreg($@)')
+define(`ADDSTACK', `addstack($@)')
+define(`ADDSTACKREG', `addstackreg($@)')
 define(`CALLSTRING', `callstring($@)')
 define(`OUTPUTSTRING', `outputstring($@)')
 define(`STORESTRING', `storestring($@)')
@@ -1126,6 +1310,7 @@ define(`INSTTABLE_LE', `insttable_le($@)')
 define(`INSTTABLE_BE', `insttable_be($@)')
 define(`NEGATE', `negate($@)')
 define(`NOT', `not($@)')
+define(`ABS', `abs($@)')
 define(`MULTIPLY8X8', `multiply8x8($@)')
 define(`DIVIDE8X8', `divide8x8($@)')
 define(`MULTIPLY8XK', `multiply8xk($@)')
@@ -1142,6 +1327,7 @@ define(`ADD16', `add16($@)')
 define(`SUB16', `sub16($@)')
 define(`NEGATE16', `negate16($@)')
 define(`NOT16', `not16($@)')
+define(`ABS16', `abs16($@)')
 define(`AND16', `and16($@)')
 define(`OR16', `or16($@)')
 define(`XOR16', `xor16($@)')
@@ -1159,5 +1345,4 @@ define(`FETCH16', `fetch16($@)')
 define(`STORE16', `store16($@)')
 define(`INPUT16', `input16($@)')
 define(`OUTPUT16', `output16($@)')
-
 divert(0)dnl
