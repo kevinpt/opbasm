@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.8'
+__version__ = '1.1.9'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -275,8 +275,8 @@ regex_parser = re.compile(r'''
   (?:
     (?P<cmd>[\w&@]+)\s*
     (?:
-        (?P<arg1>(?:[-\w~'#$."/\\:]+))\s*
-        (?:,\s*(?P<arg2>[-\w~'%#$]+)|,\s*\(\s*(?P<arg2b>[\w~'"%]+)\s*\)
+        (?:(?P<arg1>[\w~'#$]+)\s*|(?P<arg1s>".+")\s*)
+        (?:,\s*(?P<arg2>[\w~'%#$]+)|,\s*\(\s*(?P<arg2b>\w+)\s*\)
         |,\s*\[(?P<arg2t>[^\]]+\]('[db])?)|,\s*(?P<arg2s>".+"))?
         |\(\s*(?P<addr1>[\w~']+)\s*,\s*(?P<addr2>[\w~']+)\s*\)
     )?\s*
@@ -303,6 +303,8 @@ def regex_parse_statement(l):
 
     args = []
     if m.group('arg1'): args.append(m.group('arg1'))
+    if m.group('arg1s'): args.append(m.group('arg1s'))
+
     if m.group('arg2'): args.append(m.group('arg2'))
     if m.group('arg2b'):
       args.append([m.group('arg2b')])
@@ -479,6 +481,7 @@ class Statement(object):
         if self.is_instruction() and not self.reachable:
           if 'keep_auto' in self.tags:
             addr += success(' KEEP') if colorize else ' KEEP'
+            #addr += success(' AUTO') if colorize else ' AUTO'
           elif 'keep' in self.tags:
             addr += success(' KEEP') if colorize else ' KEEP'
           else:
@@ -668,8 +671,14 @@ class Assembler(object):
       yield source_file
 
 
-    with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
-      source = [s.rstrip() for s in fh.readlines()]
+    try:
+      with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
+        source = [s.rstrip() for s in fh.readlines()]
+    except UnicodeDecodeError:
+      # Fall back to Latin-1 if UTF-8 fails
+      with io.open(pp_source_file, 'r', encoding='latin-1') as fh:
+        source = [s.rstrip() for s in fh.readlines()]
+
 
     slist = parse_lines(source, self.op_info, self.use_pyparsing)
     self.sources[source_file] = slist
@@ -1056,7 +1065,7 @@ class Assembler(object):
 
           if len(elems) > 0:
             for i, (e, e_text) in enumerate(elems):
-              new_s = copy.copy(s)
+              new_s = copy.deepcopy(s)
               new_s.immediate = e
               new_s.arg2 = e_text
               new_s.address += i
@@ -1090,7 +1099,7 @@ class Assembler(object):
 
           if len(elems) > 0: # Table or string argument
             for i, (e, e_text) in enumerate(elems):
-              new_s = copy.copy(s)
+              new_s = copy.deepcopy(s)
               new_s.immediate = (e << 4) + port
               new_s.arg1 = e_text
               new_s.address += i
