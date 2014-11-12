@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.9'
+__version__ = '1.1.10'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -1198,7 +1198,7 @@ class Assembler(object):
     # Pass 4: Find continuous blocks of labeled load&return instructions
     if self.use_pb6 and self.use_static_analysis:
       cur_label = None
-      for s in slist:
+      for s in instructions:
         if s.label is not None: cur_label = s.label
 
         if s.command == 'load&return':
@@ -1294,6 +1294,8 @@ def parse_command_line():
         help='Get default template files')
   parser.add_option('-v', '--version', dest='version', action='store_true', default=False, \
         help='Show OPBASM version')
+  parser.add_option('-q', '--quiet', dest='quiet', action='store_true', default=False, \
+        help='Quiet output')
   parser.add_option('--m4', dest='use_m4', action='store_true', default=False, \
         help='Use m4 preprocessor on all source files')
   parser.add_option('--pyparsing', dest='use_pyparsing', action='store_true', default=False, \
@@ -1858,8 +1860,12 @@ def add_output_dir(output_dir, fname):
 
 def main():
   '''Main application code'''
-  print(note('OPBASM - Open Picoblaze Assembler {}'.format(__version__)))
   options = parse_command_line()
+
+  def printq(*args, **keys):
+    if not options.quiet: print(*args, **keys)
+
+  printq(note('OPBASM - Open Picoblaze Assembler {}'.format(__version__)))
 
   if options.get_templates:
     get_standard_templates()
@@ -1888,9 +1894,9 @@ def main():
     asm_error('Input file not found', exit=1)
 
 
-  print(note('Running in ') + success('Picoblaze-{}'.format(6 if options.use_pb6 else 3)) + note(' mode'))
+  printq(note('Running in ') + success('Picoblaze-{}'.format(6 if options.use_pb6 else 3)) + note(' mode'))
 
-  print('  Device configuration:\n    Memory size: {}, Scratchpad size: {}\n'.format(\
+  printq('  Device configuration:\n    Memory size: {}, Scratchpad size: {}\n'.format(\
     options.mem_size, options.scratch_size))
 
   timestamp = get_timestamp()
@@ -1908,10 +1914,10 @@ def main():
   try:
     # Read input source
     for fname in asm.process_includes():
-      print('  Reading source:', fname)
+      printq('  Reading source:', fname)
 
     # Assemble program
-    print('\n  Assembling code... ', end='')
+    printq('\n  Assembling code... ', end='')
     sys.stdout.flush()
 
     assembled_code = asm.assemble(bounds_check=not options.remove_dead_code)
@@ -1919,23 +1925,22 @@ def main():
   except FatalError, e:
     asm_error(*e.args, exit=1, statement=e.statement)
 
-  print(success('SUCCESS'))
-
+  printq(success('SUCCESS'))
 
   if options.remove_dead_code or options.report_dead_code:
     # Run static analysis
-    print('  Static code analysis: searching for dead code... ', end='')
+    printq('  Static code analysis: searching for dead code... ', end='')
     entry_points = set((asm.default_jump & 0xFFF, 0, options.isr_entry_point))
     itable = build_instruction_table(assembled_code)
     analyze_code_reachability(assembled_code, itable, entry_points)
     analyze_recursive_keeps(assembled_code, itable)
-    print(success('COMPLETE'))
+    printq(success('COMPLETE'))
 
     # Summarize analysis
-    print('    Entry points:', ', '.join(['0x{:03X}'.format(e) for e in \
+    printq('    Entry points:', ', '.join(['0x{:03X}'.format(e) for e in \
       sorted(entry_points)]))
     dead_instructions = len([s for s in assembled_code if s.removable()])
-    print('    {} dead instructions found'.format(dead_instructions))
+    printq('    {} dead instructions found'.format(dead_instructions))
 
   if options.remove_dead_code:
     # Remove dead code
@@ -1952,39 +1957,37 @@ def main():
     # Reinitialize registers to default names
     asm.init_registers()
 
-    print('  Removing dead code... ', end='')
+    printq('  Removing dead code... ', end='')
     try:
       assembled_code = asm.raw_assemble(assembled_code)
     except FatalError, e:
       asm_error(*e.args, exit=1, statement=e.statement)
 
-    print(success('COMPLETE'))
-
+    printq(success('COMPLETE'))
 
   # Print summary
   stats = code_stats(assembled_code)
+  if not options.quiet:
+    print('    {} instructions out of {} ({}%)'.format(stats['inst_count'], \
+          options.mem_size, int(stats['inst_count'] / options.mem_size * 100)))
+    print('    Highest occupied address: {:03X} hex'.format(stats['last_addr']))
 
-  print('    {} instructions out of {} ({}%)'.format(stats['inst_count'], \
-        options.mem_size, int(stats['inst_count'] / options.mem_size * 100)))
-  print('    Highest occupied address: {:03X} hex'.format(stats['last_addr']))
-
-  if len(templates) > 0:
-    print('\n  Found template{}:'.format('s' if len(templates) > 1 else ''))
-    for f in templates.itervalues():
-      print('   ', f)
+    if len(templates) > 0:
+      print('\n  Found template{}:'.format('s' if len(templates) > 1 else ''))
+      for f in templates.itervalues():
+        print('   ', f)
 
 
   # Write results
-  print('\n  Writing output')
+  printq('\n  Writing output')
 
   mmap = build_memmap(assembled_code, options.mem_size, asm.default_jump)
   write_hex_file(hex_mem_file, mmap)
-  print('        mem map:', hex_mem_file)
+  printq('        mem map:', hex_mem_file)
   
   show_dead = True if options.report_dead_code or options.remove_dead_code else False
   write_log_file(log_file, assembled_code, stats, asm, options.color_log, show_dead)
-  print('       log file:', log_file)
-
+  printq('       log file:', log_file)
 
   minit_18 = build_xilinx_mem_init(mmap)
   minit_9 = build_xilinx_mem_init(mmap, split_data=True)
@@ -1994,26 +1997,26 @@ def main():
     minit = minit_18 if data_size == 18 else minit_9
 
     write_hdl_file(options.input_file, vhdl_file, templates['vhdl'], minit, timestamp.isoformat())
-    print('      VHDL file:', vhdl_file)
+    printq('      VHDL file:', vhdl_file)
 
   if 'verilog' in templates:
     data_size = template_data_size(templates['verilog'])
     minit = minit_18 if data_size == 18 else minit_9
 
     write_hdl_file(options.input_file, verilog_file, templates['verilog'], minit, timestamp.isoformat())
-    print('   Verilog file:', verilog_file)
+    printq('   Verilog file:', verilog_file)
 
 
-  print('\n  Formatted source:')
+  printq('\n  Formatted source:')
   for fname, source in asm.sources.iteritems():
     fname = os.path.splitext(os.path.basename(fname))[0] + '.fmt'
     fname = add_output_dir(options.output_dir, fname)
-    print('   ', fname)
+    printq('   ', fname)
     with io.open(fname, 'w', encoding='utf-8') as fh:
       for s in source:
         print(s.format(), file=fh)
 
-  print('')
+  printq('')
 
   sys.exit(0)
 
