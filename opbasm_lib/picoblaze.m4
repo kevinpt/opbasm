@@ -83,6 +83,11 @@ define(`words_be', `ifelse(`$1',,,eval($#>1),1,`_split_be($1), $0(shift($@))',`_
 define(`_split_le', `eval(($1) & 0xFF), eval((($1) & 0xFF00) >> 8)')
 define(`_split_be', `eval((($1) & 0xFF00) >> 8), eval(($1) & 0xFF)')
 
+;=============== INTERNAL CONFIGURATION ===============
+
+define(`_tempreg', `sE')
+
+define(`use_tempreg', `pushdef(`_tempreg', $1)')
 
 
 ;=============== MISCELLANEOUS OPERATIONS ===============
@@ -182,10 +187,11 @@ define(`clearcy', `and sF, sF  ; Clear carry')
 
 ;---------------------------------
 ; Set the carry flag
-; Arg1: Temporary register to modify
+; Arg1: Optional temporary register to modify. Uses temp reg by default.
 ; Ex: setcy(sf)
-define(`setcy', `load $1, 00  ; Set carry
-compare $1, 01')
+define(`setcy', `ifelse(`$1',,`pushdef(`_cyreg', `_tempreg')', `pushdef(`_cyreg', `$1')')'dnl
+`load _cyreg, 00  ; Set carry
+compare _cyreg, 01'`popdef(`_cyreg')')
 
 ;=============== BITFIELD OPERATIONS ===============
 
@@ -227,51 +233,6 @@ define(`clearmask', `and $1, eval((~($2)) & 0xFF, 16, 2)  ; Clear mask')
 ; Ex:  testbit(s1, 3)
 ;      jump z, bit_cleared
 define(`testbit', `test $1, eval(2**($2), 16, 2)  ; Test bit $2')
-
-
-
-;=============== EXPRESSIONS ===============
-
-;---------------------------------
-; Expression evaluator
-; Arg1: Register assignment expression of the form:
-;       sN := <val> op <val> [op <val>]*
-;       val is one of:
-;         register
-;         literal expression (with no internal spaces)
-;         sp(addr) scratchpad adddress
-;         spi(reg) indirect scratchpad address in register
-;       op is one of:
-;         + -          add, subtract
-;         & | ^        and, or, xor
-;         sll srl sra  shift left, shift right logical, shift right arithmetic
-;         =:           reverse assignment to register or scratchpad
-;   ** Operations are evaluated left to right with *no precedence*
-; Ex: expr(s0 := s1 + s2 - s3 srl 4 =: sp(M_value))
-;       Arithmetic is performed on s0 and the result is stored in scratchpad at M_value
-;       s0 <= s1, s0 <= s0 + s2, s0 <= s0 - s3, s0 <= s0 srl 4, sp(M_value) <= s0
-;
-;     expr(s1 := s4 + (28*4-1))
-;       s1 <= s4, s1 <= s1 + 111   Constant expressions must have no spaces
-define(`expr', `pushdef(`_exstr', $1)'`_expr_start(patsubst($1, ` +', `,'))'`popdef(`_exstr')')
-
-define(`_expr_start', `pushdef(`_exreg', $1)'
-`ifelse($2,:=,,`errmsg(Missing assignment operator in expression)')'dnl
-``;' Expression' _exstr
-`ifelse($1,$3,,`load $1, $3')'
-`_expr_ops(shift(shift(shift($@))))'
-`popdef(`_exreg')')
-
-define(`_expr_ops', `ifelse(`$1',,,`_expr_binary($1, `evalx($2, 16, 2)')
-_expr_ops(shift(shift($@)))')')
-
-define(`_expr_binary', `ifelse($1,+,`add _exreg, $2', $1,-,`sub _exreg, $2',
-$1,&,`and _exreg, $2', $1,|,`or _exreg, $2', $1,^,`xor _exreg, $2',
-$1,sll,`sl0(_exreg, $2)', $1,srl,`sr0(_exreg, $2)', $1,sra,`sra(_exreg, $2)',
-$1,=:,`ifelse(index($2, `sp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
-index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
-`load $2, _exreg')',dnl
-`errmsg(`Invalid operation: $1')'   )')
 
 
 
@@ -348,13 +309,22 @@ define(`retlt', `return c  ; if less than')
 ;   the if* macro selected by the operation
 ; Ex: if(s0 < s1, `load s0, 01', `load s0, 02')
 ;     if(s0 != 0xa5, `load s0, 01')
+;     if(signed(s0 < -10), `load s0, 01') ; Signed comparison with signed()
 define(`if', `_if(_iftokens($1), `$2', `$3')')
 
-define(`_iftokens', `regexp(`$1', `\(\w+\) *\([<>=!]+\) *\(.+\)', `\1, \2, \3')')
+define(`_iftokens', `regexp(`$1', `\(\w+\) *\(s?[<>=!]+\) *\(.+\)', `\1, \2, \3')')
 
-define(`_if', `compare $1, evalx($3, 16, 2) ; If $1 $2 $3'
-`ifelse($2,<,`iflt(`$4',`$5')', $2,>=,`ifge(`$4',`$5')', $2,==,`ifeq(`$4',`$5')',
-$2,!=,`ifne(`$4',`$5')', `errmsg(`Invalid operation: $2')' )')'
+define(`_if', `; If $1 $2 $3'
+`ifelse(regexp($2, `^s'),0,`compares($1, $3)',`compare $1, evalx($3, 16, 2)')'
+`ifelse($2,<,`iflt(`$4',`$5')', $2,>=,`ifge(`$4',`$5')',
+$2,s<,`iflt(`$4',`$5')', $2,s>=,`ifge(`$4',`$5')',
+$2,==,`ifeq(`$4',`$5')', $2,!=,`ifne(`$4',`$5')', `errmsg(`Invalid operation: $2')' )')'
+
+;---------------------------------
+; Convert boolean expression to use signed comparison
+; Arg1: Expression to convert
+; Ex: signed(s0 < 4)  ; Expands to "s0 s< 4"
+define(`signed', `patsubst(`$1', `\([<>]=?\)', ` s\1')')
 
 
 ;---------------------------------
@@ -436,9 +406,12 @@ define(`dowhile', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`_wlbl:
 $2
 _dw(_iftokens($1))' `popdef(`_wlbl')')
 
-define(`_dw', `compare $1, evalx($3, 16, 2) ; while $1 $2 $3'
-`ifelse($2,<,`jump c, _wlbl', $2,>=,`jump nc, _wlbl', $2,==,`jump z, _wlbl',dnl
-$2,!=,`jump nz, _wlbl', `errmsg(`Invalid operation: $2')')'
+;define(`_dw', `compare $1, evalx($3, 16, 2) ; while $1 $2 $3'
+define(`_dw', ; Do-while $1 $2 $3
+`ifelse(regexp($2, `^s'),0,`compares($1, $3)',`compare $1, evalx($3, 16, 2)')'
+`ifelse($2,<,`jump c, _wlbl', $2,>=,`jump nc, _wlbl',dnl
+$2,s<,`jump c, _wlbl', $2,s>=,`jump nc, _wlbl',dnl
+$2,==,`jump z, _wlbl', $2,!=,`jump nz, _wlbl', `errmsg(`Invalid operation: $2')')'
 )
 
 
@@ -479,26 +452,29 @@ define(`rr', `ifelse($#,0, ``$0'', `repeat(`rr $1', eval($2))')')
 ; Arg1: Stack pointer register
 ; Arg2: Scratchpad address for top of stack
 ; Ex: namereg sA, SP ; Reserve stack pointer register 
-;     stackinit(SP, 0x3F) ; Start stack at end of 64-byte scratchpad
-define(`stackinit', `load $1, eval($2, 16, 2)' `define(`_stackptr', $1)')
+;     use_stack(SP, 0x3F) ; Start stack at end of 64-byte scratchpad
+define(`use_stack', `load $1, eval($2, 16, 2)' `define(`_stackptr', $1)')
+
+
+define(`_stack_initcheck', `ifdef(`_stackptr',, `errmsg(`Stack is `not' initialized. Use `use_stack()' before any operation')')')
 
 ;---------------------------------
 ; Pseudo-stack operations using the scratchpad RAM
 ; The stack pointer grows from the end of the scratchpad to the start
 ; Arg1-Argn: Registers with values to push or pop
-; Ex: stackinit(sa, 0x3F)
+; Ex: use_stack(sa, 0x3F)
 ;     push(s0)
 ;     pop(s1)
 ;     push(s3, s4, s5)  ; Push and pop multiple registers at once
 ;     pop(s3, s4, s5)   ; Pop is performed in reverse order from push
-define(`push', `ifelse(`$1',,,`store $1, (_stackptr)  ; Push
+define(`push', `_stack_initcheck' `ifelse(`$1',,,`store $1, (_stackptr)  ; Push
 sub _stackptr, 01
 $0(shift($@))')')
 
 
 define(`pop', `_pop(reverse($@))')
 
-define(`_pop', `ifelse(`$1',,,`add _stackptr, 01  ; Pop
+define(`_pop', `_stack_initcheck' `ifelse(`$1',,,`add _stackptr, 01  ; Pop
 fetch $1, (_stackptr)
 $0(shift($@))')')
 
@@ -508,7 +484,7 @@ $0(shift($@))')')
 ; Arg1-Argn: Registers to save values in
 ;            The first register corresponds to the highest address
 ; Ex: getstack(s3, s4, s5) ; Get stack offset SP+3, SP+2, and SP+1 into s3, s4, s5
-define(`getstack', `add _stackptr, $#  ; Get stack registers
+define(`getstack', `_stack_initcheck' `add _stackptr, $#  ; Get stack registers
 _gs($@)')
 
 define(`_gs', `ifelse(`$1',,,`fetch $1, (_stackptr)
@@ -521,7 +497,7 @@ $0(shift($@))')')
 ; Arg2: Offset from stack pointer (offset 1 is the first value) or a register
 ; Ex: getstackat(s3, 2)  ; Get the second value relative to the stack pointer
 ;     getstackat(s3, s0) ; Get stack value pointed at by s0
-define(`getstackat', `add _stackptr, evalx($2, 16, 2)  ; Fetch stack offset $2
+define(`getstackat', `_stack_initcheck' `add _stackptr, evalx($2, 16, 2)  ; Fetch stack offset $2
 fetch $1, (_stackptr)
 sub _stackptr, evalx($2, 16, 2)')
 
@@ -531,7 +507,7 @@ sub _stackptr, evalx($2, 16, 2)')
 ; Arg1-Argn: Registers to store values from
 ;            The first register corresponds to the highest address
 ; Ex: putstack(s3, s4, s5) ; Put s3, s4, s5 into stack offset SP+3, SP+2, and SP+1
-define(`putstack', `add _stackptr, $#  ; Put stack registers
+define(`putstack', `_stack_initcheck' `add _stackptr, $#  ; Put stack registers
 _ps($@)')
 
 define(`_ps', `ifelse(`$1',,,`store $1, (_stackptr)
@@ -544,7 +520,7 @@ $0(shift($@))')')
 ; Arg2: Offset from stack pointer (offset 1 is the first value) or a register
 ; Ex: putstackat(s3, 2)  ; Put the second value relative to the stack pointer
 ;     putstackat(s3, s0) ; Put stack value pointed at by s0
-define(`putstackat', `add _stackptr, evalx($2, 16, 2)  ; Store stack offset $2
+define(`putstackat', `_stack_initcheck' `add _stackptr, evalx($2, 16, 2)  ; Store stack offset $2
 store $1, (_stackptr)
 sub _stackptr, evalx($2, 16, 2)')
 
@@ -553,25 +529,25 @@ sub _stackptr, evalx($2, 16, 2)')
 ; Drop values stored on the stack
 ; Arg1: Number of values to drop from the stack
 ; Ex: dropstack(2)  ; Remove 2 values
-define(`dropstack', `add _stackptr, eval($1, 16, 2)  ; Remove stack values')
+define(`dropstack', `_stack_initcheck' `add _stackptr, eval($1, 16, 2)  ; Remove stack values')
 
 ;---------------------------------
 ; Drop values stored on the stack using a register
 ; Arg1: Number of values to drop from the stack
 ; Ex: dropstackreg(s1)  ; Remove number of values specified in s1 register
-define(`dropstackreg', `add _stackptr, $1  ; Remove stack values')
+define(`dropstackreg', `_stack_initcheck' `add _stackptr, $1  ; Remove stack values')
 
 ;---------------------------------
 ; Allocate local space on the stack
 ; Arg1: Number of values to add to the stack
 ; Ex: addstack(2)  ; Add 2 values
-define(`addstack', `sub _stackptr, eval($1, 16, 2)  ; Add local stack values')
+define(`addstack', `_stack_initcheck' `sub _stackptr, eval($1, 16, 2)  ; Add local stack values')
 
 ;---------------------------------
 ; Allocate local space on the stack using a register
 ; Arg1: Number of values to add to the stack
 ; Ex: addstackreg(s1)  ; Add number of values from s1
-define(`addstackreg', `sub _stackptr, $1  ; Add local stack values')
+define(`addstackreg', `_stack_initcheck' `sub _stackptr, $1  ; Add local stack values')
 
 
 ;=============== STRING AND TABLE OPERATIONS ===============
@@ -756,28 +732,79 @@ define(`abs', `if($1 < 0, `negate($1)')')
 
 
 ;---------------------------------
+; Determine if argument is a number in m4 syntax
+; Arg1: String to check
+; Returns 1 for true 0 for false
+define(`isnum', `ifelse(regexp($1, `^-?\(0[xX]\)?[0-9]+$'),0,1,0)')
+
+;---------------------------------
+; Signed compare
+; Arg1: Register for left side of comparison
+; Arg2: Register or constant for right side of comparison
+;       Constant is a number in m4 syntax and cannot be a named constant
+; Carry flag is set in accordance with signed relation
+; Zero flag is indeterminate. Use normal compare instruction for == and !=
+; Note: This calls the setcy() macro and depends on the temp reg
+;define(`compares', `_compares_rr($1, $2)')
+define(`compares', `ifelse(isnum($2),1,`_compares_rk($1, $2)',`_compares_rr($1, $2)')')
+
+define(`_compares_rr', `xor $1, 80 ; Signed compare $1, $2
+xor $2, 80
+compare $1, $2
+iflt(`xor $1, 80
+xor $2, 80
+setcy',`xor $1, 80
+xor $2, 80')')
+
+define(`_compares_rk', `pushdef(`_kx',`eval(($2 & 0xFF) ^ 0x80)')'`xor $1, 80 ; Signed compare $1, $2
+compare $1, eval(_kx, 16, 2)
+iflt(`xor $1, 80
+setcy',`xor $1, 80')'`popdef(`_kx')')
+
+
+;---------------------------------
 ; Multiply 8 x 8 subroutine
 ; Arg1: Subroutine name
 ; Arg2: Multiplicand
 ; Arg3: Multiplier
 ; Arg4, Arg5: Result MSB, LSB
 ; Arg6: Bit mask temp register
+; Arg7: Optional preamble code block. Also supresses return statement if present
 ; Ex: multiply8x8(mul8, s0, s1, s3, s2, sf) ; (s3, s2) = s0 * s1
 ;     load s0, 04
 ;     load s1, 05
 ;     call mul8
 define(`multiply8x8', `$1:  ; ($4, $5) = $2 * $3
-            load $6, 01
-            load $4, 00
-            load $5, 00
-$1_loop:    test $3, $6
+            $7
+            vars($2 is _cand, $3 is _plier, $4 is _msb := 0, $5 is _lsb := 0, $6 is _mask := 1)
+$1_loop:    test _plier, _mask
             jump z, $1_no_add
-            add $4, $2
-$1_no_add:  sra $4
-            sra $5
-            sl0 $6
+            add _msb, _cand
+$1_no_add:  sra _msb
+            sra _lsb
+            sl0 _mask
+            jump nz, $1_loop ifelse(`$7',,`
+            return')')
+
+
+
+define(`multiply8x8s', `$1:  ; ($4, $5) = $2 * $3 (signed)
+            $7
+            vars($2 is _cand, $3 is _plier, $4 is _msb := 0, $5 is _lsb := 0, $6 is _mask := 1)
+$1_loop:    test _plier, _mask
+            jump z, $1_no_add
+            add _msb, _cand
+$1_no_add:  srx _msb
+            sra _lsb
+            sl0 _mask
             jump nz, $1_loop
-            return')
+            test _plier, 80 ; Add correction for negative multiplier
+            jump z, $1_no_correct
+            sub  _msb, _cand
+$1_no_correct: ifelse(`$7',,`
+            return')')
+
+
 
 ;---------------------------------
 ; Divide 8 / 8 subroutine
@@ -853,10 +880,73 @@ $0($1, substr(`$2', 1), $3)')')
 ; Ex: divide8xk(div8k5, s0, 5, s4, sf)  ; s4 = s0 / 5
 ;     load s0, 25'd
 ;     call div8k5
-define(`divide8xk', `$1:  ; ($4, $5) = $2 * ($3)
+define(`divide8xk', `$1:  ; $4 = $2 / ($3)
 load $4, 00
 load $5, 00
 _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return')
+
+
+
+;=============== EXPRESSIONS ===============
+
+;---------------------------------
+; Expression evaluator
+; Arg1: Register assignment expression of the form:
+;       sN := <val> op <val> [op <val>]*
+;       val is one of:
+;         register
+;         literal expression (with no internal spaces)
+;         sp(addr) scratchpad adddress
+;         spi(reg) indirect scratchpad address in register
+;       op is one of:
+;         + -          add, subtract
+;         & | ^        and, or, xor
+;         sll srl sra  shift left, shift right logical, shift right arithmetic
+;         =:           reverse assignment to register or scratchpad
+;   ** Operations are evaluated left to right with *no precedence*
+; Ex: expr(s0 := s1 + s2 - s3 srl 4 =: sp(M_value))
+;       Arithmetic is performed on s0 and the result is stored in scratchpad at M_value
+;       s0 <= s1, s0 <= s0 + s2, s0 <= s0 - s3, s0 <= s0 srl 4, sp(M_value) <= s0
+;
+;     expr(s1 := s4 + (28*4-1))
+;       s1 <= s4, s1 <= s1 + 111   Constant expressions must have no spaces
+define(`expr', `pushdef(`_exstr', $1)'`_expr_start(patsubst($1, ` +', `,'))'`popdef(`_exstr')')
+
+define(`_expr_start', `pushdef(`_exreg', $1)'
+`ifelse($2,:=,,`errmsg(Missing assignment operator in expression)')'dnl
+``;' Expression' _exstr
+`ifelse($1,$3,,`load $1, $3')'
+`_expr_ops(shift(shift(shift($@))))'
+`popdef(`_exreg')')
+
+define(`_expr_ops', `ifelse(`$1',,,`_expr_binary($1, `evalx($2, 16, 2)')
+_expr_ops(shift(shift($@)))')')
+
+define(`_expr_binary', `ifelse($1,+,`add _exreg, $2', $1,-,`sub _exreg, $2',
+$1,&,`and _exreg, $2', $1,|,`or _exreg, $2', $1,^,`xor _exreg, $2',
+$1,sll,`sl0(_exreg, $2)', $1,srl,`sr0(_exreg, $2)', $1,sra,`sra(_exreg, $2)',
+$1,*,`_expr_mul8s(_exreg, $2)',
+$1,=:,`ifelse(index($2, `sp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
+index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
+`load $2, _exreg')',dnl
+`errmsg(`Invalid operation: $1')'   )')
+
+
+define(`use_expr_mul', `ifelse($#,0,`multiply8x8s(`expr_mul8s', s8, s9, sa, sb, _tempreg, `push(sa,sb,_tempreg)')
+  load s8, sa
+  load s9, sb
+  pop(sa,sb,se)
+  return',`multiply8x8s(`expr_mul8s', $1, $2, $3, $4, _tempreg, `push($3,$4,_tempreg)')
+  load $1, $3
+  load $2, $4
+  pop($3,$4,_tempreg)
+  return')')
+
+define(`_expr_mul8s', `load s8, $1
+load s9, $2
+call expr_mul8s
+load $1, s9
+')
 
 
 
@@ -1286,7 +1376,7 @@ define(`SRA', `sra($@)')
 define(`SRX', `srx($@)')
 define(`RL', `rl($@)')
 define(`RR', `rr($@)')
-define(`STACKINIT', `stackinit($@)')
+define(`USE_STACK', `use_stack($@)')
 define(`PUSH', `push($@)')
 define(`POP', `pop($@)')
 define(`GETSTACK', `getstack($@)')
