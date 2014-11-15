@@ -303,6 +303,8 @@ define(`retlt', `return c  ; if less than')
 ; Composite if macro
 ; Arg1: Boolean comparison expression
 ;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, or !=
+;       Signed comparison is invoked with "signed(comparison expr.)"
+;       With signed comparison the right operand cannot be a named constant
 ; Arg2: True clause
 ; Arg3: Optional else clause
 ;   This macro performs a comparison of the left and right operands and then inserts
@@ -456,7 +458,11 @@ define(`rr', `ifelse($#,0, ``$0'', `repeat(`rr $1', eval($2))')')
 define(`use_stack', `load $1, eval($2, 16, 2)' `define(`_stackptr', $1)')
 
 
-define(`_stack_initcheck', `ifdef(`_stackptr',, `errmsg(`Stack is `not' initialized. Use `use_stack()' before any operation')')')
+define(`_initcheck', `ifdef(`$1',, `errmsg(`$2')')')
+
+define(`_stack_initcheck', `_initcheck(`_stackptr', `Stack is `not' initialized. Use `use_stack()' before any operation')')
+
+
 
 ;---------------------------------
 ; Pseudo-stack operations using the scratchpad RAM
@@ -899,53 +905,104 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return')
 ;         sp(addr) scratchpad adddress
 ;         spi(reg) indirect scratchpad address in register
 ;       op is one of:
-;         + -          add, subtract
+;         + - *        add, subtract, multiply
 ;         & | ^        and, or, xor
-;         sll srl sra  shift left, shift right logical, shift right arithmetic
+;         << >>        shift left, shift right (0-filled MSB)
 ;         =:           reverse assignment to register or scratchpad
 ;   ** Operations are evaluated left to right with *no precedence*
-; Ex: expr(s0 := s1 + s2 - s3 srl 4 =: sp(M_value))
+; Ex: expr(s0 := s1 + s2 - s3 >> 4 =: sp(M_value))
 ;       Arithmetic is performed on s0 and the result is stored in scratchpad at M_value
-;       s0 <= s1, s0 <= s0 + s2, s0 <= s0 - s3, s0 <= s0 srl 4, sp(M_value) <= s0
+;       s0 <= s1, s0 <= s0 + s2, s0 <= s0 - s3, s0 <= s0 >> 4, sp(M_value) <= s0
 ;
 ;     expr(s1 := s4 + (28*4-1))
 ;       s1 <= s4, s1 <= s1 + 111   Constant expressions must have no spaces
-define(`expr', `pushdef(`_exstr', $1)'`_expr_start(patsubst($1, ` +', `,'))'`popdef(`_exstr')')
+;
+; A signed variant "exprs()" implements signed >> and * operations
+; For multiplication you must initialize the multiplication function with "use_expr_mul()" or
+; "use_expr_muls()". The MSB of the result is ignored by subsequent operations. Multiplication
+; operwrites registers s8, s9 by default. These can be changed with arguments to the use_expr_mul*
+; macros.
+define(`expr', `pushdef(`_exstr', $1)'`_expr_start(u, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
+define(`exprs', `pushdef(`_exstr', $1)'`_expr_start(s, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
 
-define(`_expr_start', `pushdef(`_exreg', $1)'
-`ifelse($2,:=,,`errmsg(Missing assignment operator in expression)')'dnl
+define(`_expr_start', `pushdef(`_exreg', $2)'
+`ifelse($3,:=,,`errmsg(Missing assignment operator in expression)')'dnl
 ``;' Expression' _exstr
-`ifelse($1,$3,,`load $1, $3')'
-`_expr_ops(shift(shift(shift($@))))'
+`ifelse($2,$4,,`load $2, $4')'
+`ifelse($1,u,`_expr_ops(shift(shift(shift(shift($@)))))',`_exprs_ops(shift(shift(shift(shift($@)))))')'
 `popdef(`_exreg')')
 
+; Unsigned operations
 define(`_expr_ops', `ifelse(`$1',,,`_expr_binary($1, `evalx($2, 16, 2)')
 _expr_ops(shift(shift($@)))')')
 
-define(`_expr_binary', `ifelse($1,+,`add _exreg, $2', $1,-,`sub _exreg, $2',
+define(`_expr_binary', `ifelse($1,>>,`sr0(_exreg, $2)', $1,*,`_expr_mul8(_exreg, $2)', `_expr_binary_common($1,$2)')')
+
+define(`_expr_binary_common', `ifelse($1,+,`add _exreg, $2', $1,-,`sub _exreg, $2',
 $1,&,`and _exreg, $2', $1,|,`or _exreg, $2', $1,^,`xor _exreg, $2',
-$1,sll,`sl0(_exreg, $2)', $1,srl,`sr0(_exreg, $2)', $1,sra,`sra(_exreg, $2)',
-$1,*,`_expr_mul8s(_exreg, $2)',
+$1,<<,`sl0(_exreg, $2)', $1,
 $1,=:,`ifelse(index($2, `sp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
 index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
 `load $2, _exreg')',dnl
 `errmsg(`Invalid operation: $1')'   )')
 
+; Signed operations
+define(`_exprs_ops', `ifelse(`$1',,,`_exprs_binary($1, `evalx($2, 16, 2)')
+_exprs_ops(shift(shift($@)))')')
 
-define(`use_expr_mul', `ifelse($#,0,`multiply8x8s(`expr_mul8s', s8, s9, sa, sb, _tempreg, `push(sa,sb,_tempreg)')
+define(`_exprs_binary', `ifelse($1,>>,`srx(_exreg, $2)', $1,*,`_expr_mul8s(_exreg, $2)', `_expr_binary_common($1,$2)')')
+
+;---------------------------------
+; Configure unsigned multiplication for expressions
+; All arguments are optional
+; Arg1: Multiplicand (default is s8)
+; Arg2: Multiplier   (default is s9)
+; Arg3, Arg4: Internal result MSB, LSB (default is sa,sb) preserved on stack
+; The result is copied to Arg1, Arg2
+define(`use_expr_mul', `define(`_mul_init',1)'dnl
+ `ifelse($#,0,`multiply8x8(`expr_mul8', s8, s9, sa, sb, _tempreg, `push(sa,sb,_tempreg)')
+  define(`_mul8_msb',`s8') define(`_mul8_lsb',`s9')dnl
   load s8, sa
   load s9, sb
-  pop(sa,sb,se)
-  return',`multiply8x8s(`expr_mul8s', $1, $2, $3, $4, _tempreg, `push($3,$4,_tempreg)')
+  pop(sa,sb,_tempreg)
+  return',`multiply8x8(`expr_mul8', $1, $2, $3, $4, _tempreg, `push($3,$4,_tempreg)')
+  define(`_mul8_msb',`$1') define(`_mul8_lsb',`$2')dnl
   load $1, $3
   load $2, $4
   pop($3,$4,_tempreg)
   return')')
 
-define(`_expr_mul8s', `load s8, $1
-load s9, $2
+
+define(`_expr_mul8', `_initcheck(`_mul_init',`Unsigned multiply `not' initialized')' `load _mul8_msb, $1
+load _mul8_lsb, $2
+call expr_mul8
+load $1, _mul8_lsb
+')
+
+;---------------------------------
+; Configure signed multiplication for expressions
+; All arguments are optional
+; Arg1: Multiplicand (default is s8)
+; Arg2: Multiplier   (default is s9)
+; Arg3, Arg4: Internal result MSB, LSB (default is sa,sb) preserved on stack
+; The result is copied to Arg1, Arg2
+define(`use_expr_muls', `define(`_muls_init',1)'dnl
+ `ifelse($#,0,`multiply8x8s(`expr_mul8s', s8, s9, sa, sb, _tempreg, `push(sa,sb,_tempreg)')
+  define(`_mul8s_msb',`s8') define(`_mul8s_lsb',`s9')dnl
+  load s8, sa
+  load s9, sb
+  pop(sa,sb,_tempreg)
+  return',`multiply8x8s(`expr_mul8s', $1, $2, $3, $4, _tempreg, `push($3,$4,_tempreg)')
+  define(`_mul8s_msb',`$1') define(`_mul8s_lsb',`$2')dnl
+  load $1, $3
+  load $2, $4
+  pop($3,$4,_tempreg)
+  return')')
+
+define(`_expr_mul8s', `_initcheck(`_muls_init',`Signed multiply `not' initialized')' `load _mul8s_msb, $1
+load _mul8s_lsb, $2
 call expr_mul8s
-load $1, s9
+load $1, _mul8s_lsb
 ')
 
 
