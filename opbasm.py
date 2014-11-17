@@ -1408,7 +1408,8 @@ def find_reachability(addresses, itable, follow_keeps=False):
 
         # Follow branch address for jump and call
         if s.command in ('jump', 'call'):
-          find_reachability((s.immediate,), itable, follow_keeps)
+          if s.immediate in itable and 'keep' not in itable[s.immediate].tags:
+            find_reachability((s.immediate,), itable, follow_keeps)
 
           # Stop on unconditional jump
           if s.command == 'jump' and s.arg2 is None: # Only 1 argument -> unconditional
