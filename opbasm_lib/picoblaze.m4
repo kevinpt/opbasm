@@ -123,8 +123,8 @@ $1f`'eval(M4_FILE_NUM)_`'eval(_uniq_ix, 10, 4)')
 
 ;---------------------------------
 ; Return number of arguments
-; Ex: arglen(1,2,3)  --> 3
-define(`arglen', `ifelse(`$1',,0,$#)')
+; Ex: argc(1,2,3)  --> 3
+define(`argc', `ifelse(`$1',,0,$#)')
 
 ;---------------------------------
 ; Reverse arguments
@@ -990,14 +990,14 @@ define(`_expr_start', `pushdef(`_exreg', $2)'
 `popdef(`_exreg')')
 
 ; Unsigned operations
-define(`_expr_ops', `ifelse(`$1',,,`_expr_binary($1, `evalx($2, 16, 2)')
-_expr_ops(shift(shift($@)))')')
+define(`_expr_ops', `ifelse(`$1',,,`_expr_binary($1, $2)
+$0(shift(shift($@)))')')
 
 define(`_expr_binary', `ifelse($1,>>,`sr0(_exreg, $2)', $1,*,`_expr_mul8(_exreg, $2)',dnl
 $1,/,`_expr_div8(_exreg, $2)', `_expr_binary_common($1,$2)')')
 
-define(`_expr_binary_common', `ifelse($1,+,`add _exreg, $2', $1,-,`sub _exreg, $2',
-$1,&,`and _exreg, $2', $1,|,`or _exreg, $2', $1,^,`xor _exreg, $2',
+define(`_expr_binary_common', `ifelse($1,+,`add _exreg, evalx($2, 16, 2)', $1,-,`sub _exreg, evalx($2, 16, 2)',
+$1,&,`and _exreg, evalx($2, 16, 2)', $1,|,`or _exreg, evalx($2, 16, 2)', $1,^,`xor _exreg, evalx($2, 16, 2)',
 $1,<<,`sl0(_exreg, $2)',
 $1,=:,`ifelse(index($2, `sp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
 index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
@@ -1006,7 +1006,7 @@ index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2
 
 ; Signed operations
 define(`_exprs_ops', `ifelse(`$1',,,`_exprs_binary($1, `evalx($2, 16, 2)')
-_exprs_ops(shift(shift($@)))')')
+$0(shift(shift($@)))')')
 
 define(`_exprs_binary', `ifelse($1,>>,`srx(_exreg, $2)', $1,*,`_expr_mul8s(_exreg, $2)',dnl
 $1,/,`_expr_div8s(_exreg, $2)', `_expr_binary_common($1,$2)')')
@@ -1026,7 +1026,7 @@ load $3, evalx($5,16,2)')'
 
 ; Unsigned operations
 define(`_expr2_ops', `ifelse(`$1',,,`_expr2_binary($1, `evalx($2, 16, 2)')
-_expr2_ops(shift(shift($@)))')')
+$0(shift(shift($@)))')')
 
 define(`_expr2_binary', `ifelse($1,>>,`sr0_16(_exreg_msb, _exreg_lsb, $2)', $1,*,`_expr2_mul8(_exreg_msb, _exreg_lsb, $2)',dnl
 `_expr2_binary_common($1,$2)')')
@@ -1039,10 +1039,54 @@ $1,<<,`sl0_16(_exreg_msb, _exreg_lsb, $2)',
 
 ; Signed operations
 ;define(`_exprs_ops', `ifelse(`$1',,,`_exprs_binary($1, `evalx($2, 16, 2)')
-;_exprs_ops(shift(shift($@)))')')
+;$0(shift(shift($@)))')')
 
 ;define(`_exprs_binary', `ifelse($1,>>,`srx(_exreg, $2)', $1,*,`_expr_mul8s(_exreg, $2)', `_expr_binary_common($1,$2)')')
 
+;------------------------------------------------
+
+define(`expr16', `pushdef(`_exstr', `$@')'`_expr16_start(u, patsubst(_encode16($@), ` +', `,'))'`popdef(`_exstr')')
+define(`expr16s', `pushdef(`_exstr', `$@')'`_expr16_start(s, patsubst(_encode16($@), ` +', `,'))'`popdef(`_exstr')')
+
+; Utility macros to manipulate 16-bit register pairs
+define(`_encode16', `ifelse(eval($#>1),1,`$1!$0(shift($@))',`$1')')
+define(`_decode16', `translit($1, !, `,')')
+define(`_rmsb',`__rmsb(_decode16($1))')
+define(`__rmsb', `$1')
+define(`_rlsb',`__rlsb(_decode16($1))')
+define(`__rlsb', `$2')
+define(`_is16',`eval(index($1,!)>= 0)')
+define(`_expect16', `ifelse(_is16($1),0,`errmsg(Expecting 16-bit register pair: $1)')')
+
+
+define(`_expr16_start', `_expect16($2)'`pushdef(`_exreg',`_rmsb($2),_rlsb($2)')'
+`ifelse($3,:=,,`errmsg(Missing assignment operator in expression)')'dnl
+``;' Expression 16x16:' _exstr
+`ifelse($2,$4,,`load16(_exreg, _decode16($4))')'
+`ifelse($1,u,`_expr16_ops(shift(shift(shift(shift($@)))))',`_expr16s_ops(shift(shift(shift(shift($@)))))')'
+`popdef(`_exreg')')
+
+; Unsigned operations
+define(`_expr16_ops', `ifelse(`$1',,,`_expr16_binary($1, $2)
+$0(shift(shift($@)))')')
+
+define(`_expr16_binary', `ifelse($1,>>,`sr0_16(_exreg, $2)',dnl
+`_expr16_binary_common($1,$2)')')
+
+define(`_expr16_binary_common', `ifelse($1,+,`add16(_exreg, _decode16($2))', $1,-,`sub16(_exreg, _decode16($2))',
+$1,&,`and16(_exreg, _decode16($2))', $1,|,`or16(_exreg, _decode16($2))', $1,^,`xor16(_exreg, _decode16($2))',
+$1,<<,`sl0_16(_exreg, _decode16($2))',
+$1,=:,`ifelse(index($2, `sp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
+index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
+`load16(_decode16($2), _exreg)')',dnl
+`errmsg(`Invalid operation: $1')'   )')
+
+; Signed operations
+define(`_expr16s_ops', `ifelse(`$1',,,`_expr16s_binary($1, $2)
+$0(shift(shift($@)))')')
+
+define(`_expr16s_binary', `ifelse($1,>>,`srx_16(_exreg, $2)',dnl
+`_expr16_binary_common($1,$2)')')
 
 ;---------------------------------
 ; Configure unsigned multiplication for expressions
