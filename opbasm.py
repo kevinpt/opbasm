@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.10'
+__version__ = '1.1.11'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -1408,7 +1408,7 @@ def find_reachability(addresses, itable, follow_keeps=False):
 
         # Follow branch address for jump and call
         if s.command in ('jump', 'call'):
-          if s.immediate in itable and 'keep' not in itable[s.immediate].tags:
+          if not follow_keeps or (s.immediate in itable and 'keep' not in itable[s.immediate].tags):
             find_reachability((s.immediate,), itable, follow_keeps)
 
           # Stop on unconditional jump
@@ -1436,20 +1436,24 @@ def annotate_pragmas(slist):
      affected instructions'''
   active_tags = {}
   for s in slist:
-    pragma, args = parse_pragma(s.comment)    
+    pragma, args = parse_pragma(s.comment)
+    del_pragma = False
     if pragma is not None:
       op = args[-1]
       if op.lower() in ('on', 'start', 'begin'):
         active_tags[pragma] = args[:-1] if len(args) > 1 else (True,)
       elif op.lower() in ('off', 'stop', 'end'):
         if pragma in active_tags:
-          del active_tags[pragma]
+          del_pragma = True # Schedule this pragma for removal from active_tags
       else:
         print('\n' + note('WARNING') + ': unrecognized pragma at line', s.line)
 
     if s.is_instruction():
       for p, a in active_tags.iteritems():
         s.tags[p] = a
+
+    if del_pragma:
+      del active_tags[pragma]
 
 class Block(object):
   '''Track info for extracted pragma blocks'''
