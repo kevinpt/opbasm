@@ -169,12 +169,12 @@ store $1, $3')
 ; The alias becomes an alternate name for the register. It is loaded with a value if the
 ; optional initializer is included. The value can be any constant expression or register.
 ; Ex: vars(s0 is counter := 0, s1 is sum, s2 is max := 20*3)
-define(`vars', `ifelse(`$1',,,`_vardef(_vartokens($1))'
-`vars(shift($@))')')
+define(`vars', `ifelse(`$1',,,`_vardef(_vartokens(`$1'))
+$0(shift($@))')')
 
-define(`_vartokens', `regexp(`$1',`\([^ ]+\) +is +\([^ ]+\)\( *:= *\([^ ]+\)\)?',`\1, \2, \4')')
+define(`_vartokens', `regexp(`$1',`\([^ ]+\) +is +\([^ ]+\)\( *:= *\([^ ]+\)\)?',`\1, `\2', \4')')
 
-define(`_vardef', `ifelse(`$1',,`errmsg(Invalid variable definition)')'`pushdef($2, $1)'dnl
+define(`_vardef', `ifelse(`$1',,`errmsg(Invalid variable definition)')'`pushdef(`$2', $1)'dnl
 `ifelse(`$3',,,`load $1, evalx($3, 16, 2) `;' Var `$2' := $3')')
 
 
@@ -300,11 +300,13 @@ define(`retlt', `return c  ; if less than')
 ;=============== CONDITIONAL IF-THEN-ELSE ===============
 
 ;---------------------------------
-; Composite if macro
+; Generic if macro
 ; Arg1: Boolean comparison expression
-;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, or !=
+;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, !=, or &
 ;       Signed comparison is invoked with "signed(comparison expr.)"
-;       With signed comparison the right operand cannot be a named constant
+;       With signed comparison the right operand cannot be a named constant.
+;       With the & operator a test instruction is used in place of compare. The true
+;       clause is executed when the result is non-zero.
 ; Arg2: True clause
 ; Arg3: Optional else clause
 ;   This macro performs a comparison of the left and right operands and then inserts
@@ -314,13 +316,15 @@ define(`retlt', `return c  ; if less than')
 ;     if(signed(s0 < -10), `load s0, 01') ; Signed comparison with signed()
 define(`if', `_if(_iftokens($1), `$2', `$3')')
 
-define(`_iftokens', `regexp(`$1', `\(\w+\) *\(s?[<>=!]+\) *\(.+\)', `\1, \2, \3')')
+define(`_iftokens', `regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\(.+\)', `\1, \2, \3')')
 
 define(`_if', `; If $1 $2 $3'
-`ifelse(regexp($2, `^s'),0,`compares($1, $3)',`compare $1, evalx($3, 16, 2)')'
+`ifelse(regexp($2, `^s'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
+`compare $1, evalx($3, 16, 2)')'
 `ifelse($2,<,`iflt(`$4',`$5')', $2,>=,`ifge(`$4',`$5')',
 $2,s<,`iflt(`$4',`$5')', $2,s>=,`ifge(`$4',`$5')',
-$2,==,`ifeq(`$4',`$5')', $2,!=,`ifne(`$4',`$5')', `errmsg(`Invalid operation: $2')' )')'
+$2,==,`ifeq(`$4',`$5')', $2,!=,`ifne(`$4',`$5')',
+$2,&,`ifne(`$4',`$5')', `errmsg(`Invalid operation: $2')' )')'
 
 ;---------------------------------
 ; Convert boolean expression to use signed comparison
@@ -330,7 +334,7 @@ define(`signed', `patsubst(`$1', `\([<>]=?\)', ` s\1')')
 
 
 ;---------------------------------
-; Conditional if macros: ifeq, ifne, ifge, iflt
+; Low level if macros: ifeq, ifne, ifge, iflt
 ; Arg1: True clause
 ; Arg2: Optional else clause
 ;   These macros insert labels and jump instructions to implement the behavior of
@@ -377,6 +381,7 @@ ifelse(`$2',,,`_endif:')'`popdef(`_xge')'`popdef(`_endif')')
 
 
 define(`errmsg', `errprint($1  __file__ line __line__)m4exit(1)')
+define(`warnmsg', `errprint($1  __file__ line __line__)')
 
 
 
@@ -386,7 +391,7 @@ define(`errmsg', `errprint($1  __file__ line __line__)m4exit(1)')
 ;---------------------------------
 ; While loop
 ; Arg1: Boolean comparison expression
-;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, or !=
+;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, !=, or &
 ; Arg2: Code block for loop body
 ; Ex: load s0, 00
 ;     while(s0 < 10, `output s3, P_foo
@@ -399,21 +404,22 @@ jump _wlbl')' `popdef(`_wlbl')')
 ;---------------------------------
 ; Do-while loop
 ; Arg1: Boolean comparison expression
-;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, or !=
+;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, !=, or &
 ; Arg2: Code block for loop body
 ; Ex: load s0, 15'd
 ;     dowhile(s0 != 10, `output s3, P_foo
 ;                        sub s0, 01')
-define(`dowhile', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`_wlbl:
+define(`dowhile', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`_wlbl: ; Do-while $1
 $2
 _dw(_iftokens($1))' `popdef(`_wlbl')')
 
-;define(`_dw', `compare $1, evalx($3, 16, 2) ; while $1 $2 $3'
-define(`_dw', ; Do-while $1 $2 $3
-`ifelse(regexp($2, `^s'),0,`compares($1, $3)',`compare $1, evalx($3, 16, 2)')'
+define(`_dw',dnl
+`ifelse(regexp($2, `^s'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
+`compare $1, evalx($3, 16, 2)')'
 `ifelse($2,<,`jump c, _wlbl', $2,>=,`jump nc, _wlbl',dnl
 $2,s<,`jump c, _wlbl', $2,s>=,`jump nc, _wlbl',dnl
-$2,==,`jump z, _wlbl', $2,!=,`jump nz, _wlbl', `errmsg(`Invalid operation: $2')')'
+$2,==,`jump z, _wlbl', $2,!=,`jump nz, _wlbl',
+$2,&,`jump nz, _wlbl', `errmsg(`Invalid operation: $2')')'
 )
 
 
@@ -774,29 +780,34 @@ setcy',`xor $1, 80')'`popdef(`_kx')')
 ; Arg2: Multiplicand
 ; Arg3: Multiplier
 ; Arg4, Arg5: Result MSB, LSB
-; Arg6: Bit mask temp register
-; Arg7: Optional preamble code block. Also supresses return statement if present
-; Ex: multiply8x8(mul8, s0, s1, s3, s2, sf) ; (s3, s2) = s0 * s1
+; Arg6: Optional preamble code block. Also supresses return statement if present
+; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
+; before invoking this macro to change it.
+; Ex: multiply8x8(mul8, s0, s1, s3, s2) ; (s3, s2) = s0 * s1
 ;     load s0, 04
 ;     load s1, 05
 ;     call mul8
-define(`multiply8x8', `$1:  ; ($4, $5) = $2 * $3
-            $7
-            vars($2 is _cand, $3 is _plier, $4 is _msb := 0, $5 is _lsb := 0, $6 is _mask := 1)
+define(`multiply8x8', `; PRAGMA function $1 begin
+            $1:  ; ($4, $5) = $2 * $3
+            $6
+            vars(`$2 is _cand', `$3 is _plier', `$4 is _msb := 0', `$5 is _lsb := 0', `_tempreg is _mask := 1')
 $1_loop:    test _plier, _mask
             jump z, $1_no_add
             add _msb, _cand
 $1_no_add:  sra _msb
             sra _lsb
             sl0 _mask
-            jump nz, $1_loop ifelse(`$7',,`
-            return')')
+            jump nz, $1_loop ifelse(`$6',,`
+            return') `;' PRAGMA function end')
 
 
-
-define(`multiply8x8s', `$1:  ; ($4, $5) = $2 * $3 (signed)
-            $7
-            vars($2 is _cand, $3 is _plier, $4 is _msb := 0, $5 is _lsb := 0, $6 is _mask := 1)
+;---------------------------------
+; Signed Multiply 8 x 8 subroutine
+; Same arguments as multiply8x8
+define(`multiply8x8s', `; PRAGMA function $1 begin
+            $1:  ; ($4, $5) = $2 * $3 (signed)
+            $6
+            vars(`$2 is _cand', `$3 is _plier', `$4 is _msb := 0', `$5 is _lsb := 0', `_tempreg is _mask := 1')
 $1_loop:    test _plier, _mask
             jump z, $1_no_add
             add _msb, _cand
@@ -807,8 +818,8 @@ $1_no_add:  srx _msb
             test _plier, 80 ; Add correction for negative multiplier
             jump z, $1_no_correct
             sub  _msb, _cand
-$1_no_correct: ifelse(`$7',,`
-            return')')
+$1_no_correct: ifelse(`$6',,`
+            return') `;' PRAGMA function end')
 
 
 
@@ -819,24 +830,60 @@ $1_no_correct: ifelse(`$7',,`
 ; Arg3: Divisor
 ; Arg4: Quotient
 ; Arg5: Remainder
-; Arg6: Bit mask temp register
-; Ex: divide8x8(div8, s0, s1, s2, s3, sf)
+; Arg6: Optional preamble code block. Also supresses return statement if present
+; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
+; before invoking this macro to change it.
+; Ex: divide8x8(div8, s0, s1, s2, s3)
 ;     load s0, 20'd
 ;     load s1, 4'd
 ;     call div8
-define(`divide8x8', `$1: ; $4 = ($2 / $3)  remainder $5
-            load $5, 00
-            load $6, 80
-$1_loop:    test $2, $6
-            sla $5
-            sl0 $4
-            compare $5, $3
+define(`divide8x8', `; PRAGMA function $1 begin
+            $1: ; $4 = ($2 / $3)  remainder $5
+            $6
+            vars(`$2 is _dend', `$3 is _visor', `$4 is _quo', `$5 is _rem := 0', `_tempreg is _mask := 0x80')
+$1_loop:    test _dend, _tempreg
+            sla _rem
+            sl0 _quo
+            compare _rem, _visor
             jump c, $1_no_sub
-            sub $5, $3
-            add $4, 01
-$1_no_sub:  sr0 $6
+            sub _rem, _visor
+            add _quo, 01
+$1_no_sub:  sr0 _tempreg
+            jump nz, $1_loop ifelse(`$6',,`
+            return') `;' PRAGMA function end')
+
+;---------------------------------
+; Signed Divide 8 x 8 subroutine
+; Same arguments as divide8x8
+define(`divide8x8s', `; PRAGMA function $1 begin
+            $1: ; $4 = ($2 / $3)  remainder $5
+            $6
+            vars(`$2 is _dend', `$3 is _visor', `$4 is _quo', `$5 is _rem := 0', `_tempreg is _mask')
+            ; Make dividend and divisor positive
+            load _tempreg, _dend
+            xor _tempreg, _visor
+            and _tempreg, 80
+            if(_dend & 0x80,`negate(_dend)
+              or _tempreg, 01')
+            if(_visor & 0x80, `negate(_visor)')
+            ; Save the sign info
+            push(_tempreg)
+            load _tempreg, 80
+$1_loop:    test _dend, _tempreg
+            sla _rem
+            sl0 _quo
+            compare _rem, _visor
+            jump c, $1_no_sub
+            sub _rem, _visor
+            add _quo, 01
+$1_no_sub:  sr0 _tempreg
             jump nz, $1_loop
-            return')
+            pop(_tempreg)
+            ; Fix signs
+            if(_tempreg & 0x80, `negate(_quo)')
+            if(_tempreg & 0x01, `negate(_rem)') ifelse(`$6',,`
+            return') `;' PRAGMA function end')
+
 
 ;---------------------------------
 ; Multiply 8 x constant subroutine with 16-bit result
@@ -928,7 +975,7 @@ define(`exprs', `pushdef(`_exstr', $1)'`_expr_start(s, patsubst($1, ` +', `,'))'
 define(`_expr_start', `pushdef(`_exreg', $2)'
 `ifelse($3,:=,,`errmsg(Missing assignment operator in expression)')'dnl
 ``;' Expression' _exstr
-`ifelse($2,$4,,`load $2, $4')'
+`ifelse($2,$4,,`load $2, evalx($4,16,2)')'
 `ifelse($1,u,`_expr_ops(shift(shift(shift(shift($@)))))',`_exprs_ops(shift(shift(shift(shift($@)))))')'
 `popdef(`_exreg')')
 
@@ -936,11 +983,12 @@ define(`_expr_start', `pushdef(`_exreg', $2)'
 define(`_expr_ops', `ifelse(`$1',,,`_expr_binary($1, `evalx($2, 16, 2)')
 _expr_ops(shift(shift($@)))')')
 
-define(`_expr_binary', `ifelse($1,>>,`sr0(_exreg, $2)', $1,*,`_expr_mul8(_exreg, $2)', `_expr_binary_common($1,$2)')')
+define(`_expr_binary', `ifelse($1,>>,`sr0(_exreg, $2)', $1,*,`_expr_mul8(_exreg, $2)',dnl
+$1,/,`_expr_div8(_exreg, $2)', `_expr_binary_common($1,$2)')')
 
 define(`_expr_binary_common', `ifelse($1,+,`add _exreg, $2', $1,-,`sub _exreg, $2',
 $1,&,`and _exreg, $2', $1,|,`or _exreg, $2', $1,^,`xor _exreg, $2',
-$1,<<,`sl0(_exreg, $2)', $1,
+$1,<<,`sl0(_exreg, $2)',
 $1,=:,`ifelse(index($2, `sp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
 index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
 `load $2, _exreg')',dnl
@@ -950,7 +998,41 @@ index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2
 define(`_exprs_ops', `ifelse(`$1',,,`_exprs_binary($1, `evalx($2, 16, 2)')
 _exprs_ops(shift(shift($@)))')')
 
-define(`_exprs_binary', `ifelse($1,>>,`srx(_exreg, $2)', $1,*,`_expr_mul8s(_exreg, $2)', `_expr_binary_common($1,$2)')')
+define(`_exprs_binary', `ifelse($1,>>,`srx(_exreg, $2)', $1,*,`_expr_mul8s(_exreg, $2)',dnl
+$1,/,`_expr_div8s(_exreg, $2)', `_expr_binary_common($1,$2)')')
+
+;------------------------------------------------
+
+define(`expr2', `pushdef(`_exstr', $2)'`_expr2_start(u, $1, patsubst($2, ` +', `,'))'`popdef(`_exstr')')
+;define(`exprs', `pushdef(`_exstr', $1)'`_expr_start(s, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
+
+define(`_expr2_start', `pushdef(`_exreg_msb', $2)'`pushdef(`_exreg_lsb', $3)'
+`ifelse($4,:=,,`errmsg(Missing assignment operator in expression)')'dnl
+``;' Expression' _exstr
+`ifelse($3,$5,,`load $2, 00
+load $3, evalx($5,16,2)')'
+`ifelse($1,u,`_expr2_ops(shift(shift(shift(shift(shift($@))))))',`_expr2s_ops(shift(shift(shift(shift(shift($@))))))')'
+`popdef(`_exreg_msb')'`popdef(`_exreg_lsb')')
+
+; Unsigned operations
+define(`_expr2_ops', `ifelse(`$1',,,`_expr2_binary($1, `evalx($2, 16, 2)')
+_expr2_ops(shift(shift($@)))')')
+
+define(`_expr2_binary', `ifelse($1,>>,`sr0_16(_exreg_msb, _exreg_lsb, $2)', $1,*,`_expr2_mul8(_exreg_msb, _exreg_lsb, $2)',dnl
+`_expr2_binary_common($1,$2)')')
+
+define(`_expr2_binary_common', `ifelse($1,+,`add _exreg_lsb, $2
+addcy _exreg_msb, 00', $1,-,`sub _exreg_lsb, $2
+subcy _exreg_msb, 00',
+$1,<<,`sl0_16(_exreg_msb, _exreg_lsb, $2)',
+`errmsg(`Invalid operation: $1')'   )')
+
+; Signed operations
+;define(`_exprs_ops', `ifelse(`$1',,,`_exprs_binary($1, `evalx($2, 16, 2)')
+;_exprs_ops(shift(shift($@)))')')
+
+;define(`_exprs_binary', `ifelse($1,>>,`srx(_exreg, $2)', $1,*,`_expr_mul8s(_exreg, $2)', `_expr_binary_common($1,$2)')')
+
 
 ;---------------------------------
 ; Configure unsigned multiplication for expressions
@@ -960,24 +1042,39 @@ define(`_exprs_binary', `ifelse($1,>>,`srx(_exreg, $2)', $1,*,`_expr_mul8s(_exre
 ; Arg3, Arg4: Internal result MSB, LSB (default is sa,sb) preserved on stack
 ; The result is copied to Arg1, Arg2
 define(`use_expr_mul', `define(`_mul_init',1)'dnl
- `ifelse($#,0,`multiply8x8(`expr_mul8', s8, s9, sa, sb, _tempreg, `push(sa,sb,_tempreg)')
+ `ifelse($#,0,`multiply8x8(`expr_mul8', s8, s9, sa, sb,`push(sa,sb)')
   define(`_mul8_msb',`s8') define(`_mul8_lsb',`s9')dnl
   load s8, sa
   load s9, sb
-  pop(sa,sb,_tempreg)
-  return',`multiply8x8(`expr_mul8', $1, $2, $3, $4, _tempreg, `push($3,$4,_tempreg)')
+  pop(sa,sb)
+  return',`multiply8x8(`expr_mul8', $1, $2, $3, $4,`push($3,$4)')
   define(`_mul8_msb',`$1') define(`_mul8_lsb',`$2')dnl
   load $1, $3
   load $2, $4
-  pop($3,$4,_tempreg)
+  pop($3,$4)
   return')')
 
-
+; 8x8 multiply keeping only lower 8-bits of result
+; Arg1: Multiplicand, Arg2: Multiplier
 define(`_expr_mul8', `_initcheck(`_mul_init',`Unsigned multiply `not' initialized')' `load _mul8_msb, $1
 load _mul8_lsb, $2
 call expr_mul8
 load $1, _mul8_lsb
 ')
+
+; 16x8 multiply keeping only lower 16-bits of result
+; Arg1-Arg2: MSB, LSB Multiplicand, Arg3: Multiplier
+define(`_expr2_mul8', `_initcheck(`_mul_init',`Unsigned multiply `not' initialized')'dnl
+`load _mul8_msb, $2
+load _mul8_lsb, $3
+call expr_mul8
+load $2, _mul8_lsb
+swap($1, _mul8_msb)
+load _mul8_lsb, $3
+call expr_mul8
+add $1, _mul8_lsb
+')
+
 
 ;---------------------------------
 ; Configure signed multiplication for expressions
@@ -987,16 +1084,16 @@ load $1, _mul8_lsb
 ; Arg3, Arg4: Internal result MSB, LSB (default is sa,sb) preserved on stack
 ; The result is copied to Arg1, Arg2
 define(`use_expr_muls', `define(`_muls_init',1)'dnl
- `ifelse($#,0,`multiply8x8s(`expr_mul8s', s8, s9, sa, sb, _tempreg, `push(sa,sb,_tempreg)')
+ `ifelse($#,0,`multiply8x8s(`expr_mul8s', s8, s9, sa, sb,`push(sa,sb)')
   define(`_mul8s_msb',`s8') define(`_mul8s_lsb',`s9')dnl
   load s8, sa
   load s9, sb
-  pop(sa,sb,_tempreg)
-  return',`multiply8x8s(`expr_mul8s', $1, $2, $3, $4, _tempreg, `push($3,$4,_tempreg)')
+  pop(sa,sb)
+  return',`multiply8x8s(`expr_mul8s', $1, $2, $3, $4,`push($3,$4)')
   define(`_mul8s_msb',`$1') define(`_mul8s_lsb',`$2')dnl
   load $1, $3
   load $2, $4
-  pop($3,$4,_tempreg)
+  pop($3,$4)
   return')')
 
 define(`_expr_mul8s', `_initcheck(`_muls_init',`Signed multiply `not' initialized')' `load _mul8s_msb, $1
@@ -1006,6 +1103,61 @@ load $1, _mul8s_lsb
 ')
 
 
+;---------------------------------
+; Configure unsigned division for expressions
+; All arguments are optional
+; Arg1: Dividend (default is s8)
+; Arg2: Divisor  (default is s9)
+; Arg3, Arg4: Internal result Quotient, Remainder (default is sa,sb) preserved on stack
+; The result is copied to Arg1, Arg2
+define(`use_expr_div', `define(`_div_init',1)'dnl
+ `ifelse($#,0,`divide8x8(`expr_div8', s8, s9, sa, sb,`push(sa,sb)')
+  define(`_div8_quo',`s8') define(`_div8_rem',`s9')dnl
+  load s8, sa
+  load s9, sb
+  pop(sa,sb)
+  return',`divide8x8(`expr_div8', $1, $2, $3, $4,`push($3,$4)')
+  define(`_div8_quo',`$1') define(`_div8_rem',`$2')dnl
+  load $1, $3
+  load $2, $4
+  pop($3,$4)
+  return')')
+
+; 8x8 divide keeping only quotient
+; Arg1: Dividend, Arg2: Divisor
+define(`_expr_div8', `_initcheck(`_div_init',`Unsigned divide `not' initialized')' `load _div8_quo, $1
+load _div8_rem, $2
+call expr_div8
+load $1, _div8_quo
+')
+
+;---------------------------------
+; Configure signed division for expressions
+; All arguments are optional
+; Arg1: Dividend (default is s8)
+; Arg2: Divisor  (default is s9)
+; Arg3, Arg4: Internal result Quotient, Remainder (default is sa,sb) preserved on stack
+; The result is copied to Arg1, Arg2
+define(`use_expr_divs', `define(`_divs_init',1)'dnl
+ `ifelse($#,0,`divide8x8s(`expr_div8s', s8, s9, sa, sb,`push(sa,sb)')
+  define(`_div8s_quo',`s8') define(`_div8s_rem',`s9')dnl
+  load s8, sa
+  load s9, sb
+  pop(sa,sb)
+  return',`divide8x8s(`expr_div8s', $1, $2, $3, $4,`push($3,$4)')
+  define(`_div8s_quo',`$1') define(`_div8s_rem',`$2')dnl
+  load $1, $3
+  load $2, $4
+  pop($3,$4)
+  return')')
+
+; 8x8 divide keeping only quotient
+; Arg1: Dividend, Arg2: Divisor
+define(`_expr_div8s', `_initcheck(`_divs_init',`Signed divide `not' initialized')' `load _div8s_quo, $1
+load _div8s_rem, $2
+call expr_div8s
+load $1, _div8s_quo
+')
 
 ;=============== 16-bit ARITHMETIC AND LOGICAL OPERATIONS ===============
 
