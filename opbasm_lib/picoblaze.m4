@@ -39,7 +39,7 @@ define(`evald', `eval($1)''d  `;' $1)
 ; Evaluate expression as an 8-bit hex number
 define(`evalh', `eval(($1) & 0xFF, 16, 2)  ; $1')
 
-; Evaluate expression as an 12-bit hex number for addresses
+; Evaluate expression as a 12-bit hex number for addresses
 define(`evala', `eval(($1) & 0xFFF, 16, 3)  ; $1')
 
 
@@ -123,8 +123,8 @@ $1f`'eval(M4_FILE_NUM)_`'eval(_uniq_ix, 10, 4)')
 
 ;---------------------------------
 ; Return number of arguments
-; Ex: len(1,2,3)  --> 3
-define(`len', `ifelse(`$1',,0,$#)')
+; Ex: arglen(1,2,3)  --> 3
+define(`arglen', `ifelse(`$1',,0,$#)')
 
 ;---------------------------------
 ; Reverse arguments
@@ -787,7 +787,7 @@ setcy',`xor $1, 80')'`popdef(`_kx')')
 ;     load s0, 04
 ;     load s1, 05
 ;     call mul8
-define(`multiply8x8', `; PRAGMA function $1 begin
+define(`multiply8x8', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1:  ; ($4, $5) = $2 * $3
             $6
             vars(`$2 is _cand', `$3 is _plier', `$4 is _msb := 0', `$5 is _lsb := 0', `_tempreg is _mask := 1')
@@ -798,13 +798,14 @@ $1_no_add:  sra _msb
             sra _lsb
             sl0 _mask
             jump nz, $1_loop ifelse(`$6',,`
-            return') `;' PRAGMA function end')
+            return 
+            ; PRAGMA function end')')
 
 
 ;---------------------------------
 ; Signed Multiply 8 x 8 subroutine
 ; Same arguments as multiply8x8
-define(`multiply8x8s', `; PRAGMA function $1 begin
+define(`multiply8x8s', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1:  ; ($4, $5) = $2 * $3 (signed)
             $6
             vars(`$2 is _cand', `$3 is _plier', `$4 is _msb := 0', `$5 is _lsb := 0', `_tempreg is _mask := 1')
@@ -819,7 +820,8 @@ $1_no_add:  srx _msb
             jump z, $1_no_correct
             sub  _msb, _cand
 $1_no_correct: ifelse(`$6',,`
-            return') `;' PRAGMA function end')
+            return
+            ; PRAGMA function end')')
 
 
 
@@ -837,7 +839,7 @@ $1_no_correct: ifelse(`$6',,`
 ;     load s0, 20'd
 ;     load s1, 4'd
 ;     call div8
-define(`divide8x8', `; PRAGMA function $1 begin
+define(`divide8x8', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1: ; $4 = ($2 / $3)  remainder $5
             $6
             vars(`$2 is _dend', `$3 is _visor', `$4 is _quo', `$5 is _rem := 0', `_tempreg is _mask := 0x80')
@@ -850,12 +852,13 @@ $1_loop:    test _dend, _tempreg
             add _quo, 01
 $1_no_sub:  sr0 _tempreg
             jump nz, $1_loop ifelse(`$6',,`
-            return') `;' PRAGMA function end')
+            return
+            ; PRAGMA function end')')
 
 ;---------------------------------
 ; Signed Divide 8 x 8 subroutine
 ; Same arguments as divide8x8
-define(`divide8x8s', `; PRAGMA function $1 begin
+define(`divide8x8s', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1: ; $4 = ($2 / $3)  remainder $5
             $6
             vars(`$2 is _dend', `$3 is _visor', `$4 is _quo', `$5 is _rem := 0', `_tempreg is _mask')
@@ -882,7 +885,8 @@ $1_no_sub:  sr0 _tempreg
             ; Fix signs
             if(_tempreg & 0x80, `negate(_quo)')
             if(_tempreg & 0x01, `negate(_rem)') ifelse(`$6',,`
-            return') `;' PRAGMA function end')
+            return
+            ; PRAGMA function end')')
 
 
 ;---------------------------------
@@ -894,10 +898,12 @@ $1_no_sub:  sr0 _tempreg
 ; Ex: multiply8xk(mul8k5, s0, 5, s5, s4)  ; (s5, s4) = s0 * 5
 ;     load s0, 7'd
 ;     call mul8k5
-define(`multiply8xk', `$1:  ; ($4, $5) = $2 * ($3)
+define(`multiply8xk', `; PRAGMA function $1 [$2 return $4, $5] begin
+$1:  ; ($4, $5) = $2 * ($3)
 load $4, 00
 load $5, 00
-_genmul8xk($2, eval($3,2), $4, $5)return')
+_genmul8xk($2, eval($3,2), $4, $5)return
+; PRAGMA function end')
 
 define(`_genmul8xk', `ifelse($2,,,`ifelse(eval(substr($2,0,1) == 1),1,`add $4, $1
 addcy $3, 00',`dnl')
@@ -914,9 +920,11 @@ $0($1, substr(`$2', 1), $3, $4)')')
 ; Ex: multiply8xk_small(mul8k5, s0, 5, s4)  ; s4 = s0 * 5
 ;     load s0, 7'd
 ;     call mul8k5
-define(`multiply8xk_small', `$1: ; $4 = $2 * ($3)
+define(`multiply8xk_small', `; PRAGMA function $1 [$2 return $4] begin
+$1: ; $4 = $2 * ($3)
 load $4, 00
-_genmul8xk_small($2, eval($3,2), $4)return')
+_genmul8xk_small($2, eval($3,2), $4)return
+; PRAGMA function end')
 
 define(`_genmul8xk_small', `ifelse($2,,,`ifelse(eval(substr($2,0,1) == 1),1,`add $3, $1',`dnl')
 ifelse(eval(len(`$2')>1),1,`sl0 $3  ; $2')
@@ -933,10 +941,12 @@ $0($1, substr(`$2', 1), $3)')')
 ; Ex: divide8xk(div8k5, s0, 5, s4, sf)  ; s4 = s0 / 5
 ;     load s0, 25'd
 ;     call div8k5
-define(`divide8xk', `$1:  ; $4 = $2 / ($3)
+define(`divide8xk', `; PRAGMA function $1 [$2 return $4, $5] begin
+$1:  ; $4 = $2 / ($3)
 load $4, 00
 load $5, 00
-_genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return')
+_genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
+; PRAGMA function end')
 
 
 
@@ -1047,12 +1057,14 @@ define(`use_expr_mul', `define(`_mul_init',1)'dnl
   load s8, sa
   load s9, sb
   pop(sa,sb)
-  return',`multiply8x8(`expr_mul8', $1, $2, $3, $4,`push($3,$4)')
+  return
+  ; PRAGMA function end',`multiply8x8(`expr_mul8', $1, $2, $3, $4,`push($3,$4)')
   define(`_mul8_msb',`$1') define(`_mul8_lsb',`$2')dnl
   load $1, $3
   load $2, $4
   pop($3,$4)
-  return')')
+  return
+  ; PRAGMA function end')')
 
 ; 8x8 multiply keeping only lower 8-bits of result
 ; Arg1: Multiplicand, Arg2: Multiplier
@@ -1089,12 +1101,14 @@ define(`use_expr_muls', `define(`_muls_init',1)'dnl
   load s8, sa
   load s9, sb
   pop(sa,sb)
-  return',`multiply8x8s(`expr_mul8s', $1, $2, $3, $4,`push($3,$4)')
+  return
+  ; PRAGMA function end',`multiply8x8s(`expr_mul8s', $1, $2, $3, $4,`push($3,$4)')
   define(`_mul8s_msb',`$1') define(`_mul8s_lsb',`$2')dnl
   load $1, $3
   load $2, $4
   pop($3,$4)
-  return')')
+  return
+  ; PRAGMA function end')')
 
 define(`_expr_mul8s', `_initcheck(`_muls_init',`Signed multiply `not' initialized')' `load _mul8s_msb, $1
 load _mul8s_lsb, $2
@@ -1116,12 +1130,14 @@ define(`use_expr_div', `define(`_div_init',1)'dnl
   load s8, sa
   load s9, sb
   pop(sa,sb)
-  return',`divide8x8(`expr_div8', $1, $2, $3, $4,`push($3,$4)')
+  return
+  ; PRAGMA function end',`divide8x8(`expr_div8', $1, $2, $3, $4,`push($3,$4)')
   define(`_div8_quo',`$1') define(`_div8_rem',`$2')dnl
   load $1, $3
   load $2, $4
   pop($3,$4)
-  return')')
+  return
+  ; PRAGMA function end')')
 
 ; 8x8 divide keeping only quotient
 ; Arg1: Dividend, Arg2: Divisor
@@ -1144,12 +1160,14 @@ define(`use_expr_divs', `define(`_divs_init',1)'dnl
   load s8, sa
   load s9, sb
   pop(sa,sb)
-  return',`divide8x8s(`expr_div8s', $1, $2, $3, $4,`push($3,$4)')
+  return
+  ; PRAGMA function end',`divide8x8s(`expr_div8s', $1, $2, $3, $4,`push($3,$4)')
   define(`_div8s_quo',`$1') define(`_div8s_rem',`$2')dnl
   load $1, $3
   load $2, $4
   pop($3,$4)
-  return')')
+  return
+  ; PRAGMA function end')')
 
 ; 8x8 divide keeping only quotient
 ; Arg1: Dividend, Arg2: Divisor
@@ -1538,7 +1556,6 @@ define(`NOP', `nop($@)')
 define(`SWAP', `swap($@)')
 define(`RANDLABEL', `randlabel($@)')
 define(`UNIQLABEL', `uniqlabel($@)')
-define(`LEN', `len($@)')
 define(`REVERSE', `reverse($@)')
 define(`IODEFS', `iodefs($@)')
 define(`LOAD_OUT', `load_out($@)')
