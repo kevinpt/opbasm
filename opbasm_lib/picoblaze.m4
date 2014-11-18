@@ -48,7 +48,7 @@ define(`evalb', `eval(($1) & 0xFF, 2, 8)''b  `;' $1)
 
 ; Only evaluate valid expressions, otherwise reproduce the original text in the
 ; first argument
-define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($2,,`pushdef(`_evalx', `eval(($1) & 0xFF)')',`pushdef(`_evalx', `eval(($1) & 0xFF, $2)')'),`pushdef(`_evalx', `eval(($1) & 0xFF, $2, $3)')'),`pushdef(`_evalx', $1)')'_evalx`'popdef(`_evalx'))
+define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($2,,`pushdef(`_evalx', `eval($1)')', `pushdef(`_evalx', `eval($1, $2)')'),`pushdef(`_evalx', `eval($1, $2, $3)')'),`pushdef(`_evalx', $1)')'_evalx`'popdef(`_evalx'))
 
 ; Ex: constant cname,  evalh(20 + 6)      -->  constant cname,  1a
 ;     constant cname2, evald(20 * 4 - 1)  -->  constant cname2, 79'd
@@ -121,10 +121,6 @@ define(`_uniq_ix', 0)
 define(`uniqlabel', `define(`_uniq_ix', incr(_uniq_ix))dnl
 $1f`'eval(M4_FILE_NUM)_`'eval(_uniq_ix, 10, 4)')
 
-;---------------------------------
-; Return number of arguments
-; Ex: argc(1,2,3)  --> 3
-define(`argc', `ifelse(`$1',,0,$#)')
 
 ;---------------------------------
 ; Reverse arguments
@@ -740,8 +736,13 @@ define(`not', `xor $1, FF  ; Not')
 ; Absolute value
 ; Arg1: Register to make positive
 ; Result is in the same register
-define(`abs', `if($1 < 0, `negate($1)')')
+define(`abs', `if($1 & 0x80, `negate($1)')')
 
+;---------------------------------
+; Sign extension
+; Arg1: Register to extend sign into
+; Arg2: Register to test for sign bit
+define(`signex', `if($2 & 0x80, `load $1, FF `;' Sign extend', `load $1, 00')')
 
 ;---------------------------------
 ; Determine if argument is a number in m4 syntax
@@ -826,7 +827,7 @@ $1_no_correct: ifelse(`$6',,`
 
 
 ;---------------------------------
-; Divide 8 / 8 subroutine
+; Divide 8 / 8 subroutine. Implements truncating division
 ; Arg1: Subroutine name
 ; Arg2: Dividend
 ; Arg3: Divisor
@@ -842,15 +843,15 @@ $1_no_correct: ifelse(`$6',,`
 define(`divide8x8', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1: ; $4 = ($2 / $3)  remainder $5
             $6
-            vars(`$2 is _dend', `$3 is _visor', `$4 is _quo', `$5 is _rem := 0', `_tempreg is _mask := 0x80')
-$1_loop:    test _dend, _tempreg
+            vars(`$2 is _dend', `$3 is _visor', `$4 is _quo := 0', `$5 is _rem := 0', `_tempreg is _mask := 0x80')
+$1_loop:    test _dend, _mask
             sla _rem
             sl0 _quo
             compare _rem, _visor
             jump c, $1_no_sub
             sub _rem, _visor
             add _quo, 01
-$1_no_sub:  sr0 _tempreg
+$1_no_sub:  sr0 _mask
             jump nz, $1_loop ifelse(`$6',,`
             return
             ; PRAGMA function end')')
@@ -861,7 +862,7 @@ $1_no_sub:  sr0 _tempreg
 define(`divide8x8s', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1: ; $4 = ($2 / $3)  remainder $5
             $6
-            vars(`$2 is _dend', `$3 is _visor', `$4 is _quo', `$5 is _rem := 0', `_tempreg is _mask')
+            vars(`$2 is _dend', `$3 is _visor', `$4 is _quo := 0', `$5 is _rem := 0', `_tempreg is _mask')
             ; Make dividend and divisor positive
             load _tempreg, _dend
             xor _tempreg, _visor
@@ -885,6 +886,110 @@ $1_no_sub:  sr0 _tempreg
             ; Fix signs
             if(_tempreg & 0x80, `negate(_quo)')
             if(_tempreg & 0x01, `negate(_rem)') ifelse(`$6',,`
+            return
+            ; PRAGMA function end')')
+
+
+;---------------------------------
+; Divide 16 / 8 subroutine. Implements truncating division
+; Arg1:       Subroutine name
+; Arg2, Arg3: Dividend MSB,LSB
+; Arg4:       Divisor
+; Arg5, Arg6: Quotient MSB, LSB
+; Arg7:       Remainder
+; Arg8:       Optional preamble code block. Also supresses return statement if present
+; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
+; before invoking this macro to change it.
+; Ex: divide16x8(div16, s0,s1, s2, s3,s4, s5)
+;     load s0, 20'd
+;     load s1, 4'd
+;     call div16
+define(`divide16x8', `; PRAGMA function $1 [$2, $3, $4 return $5, $6, $7] begin
+            $1: ; $5,$6 = ($2,$3 / $4)  remainder $7
+            $8
+            vars(`$2 is _dend_m', `$3 is _dend_l', `$4 is _visor', `$5 is _quo_m := 0', `$6 is _quo_l := 0',
+                `$7 is _rem := 0', `_tempreg is _mask := 0x80')
+$1_loop:    test _dend_m, _mask
+            sla _rem
+            sl0 _quo_l
+            compare _rem, _visor
+            jump c, $1_no_sub
+            sub _rem, _visor
+            add _quo_l, 01
+$1_no_sub:  sr0 _mask
+            jump nz, $1_loop
+
+            load _mask, 80
+$1_loop2:   test _dend_l, _mask
+            sla _rem
+            sl0 _quo_l
+            sla _quo_m
+            compare _rem, _visor
+            jump c, $1_no_sub2
+            sub _rem, _visor
+            add _quo_l, 01
+            addcy _quo_m, 00
+$1_no_sub2: sr0 _mask
+            jump nz, $1_loop2 ifelse(`$8',,`
+            return
+            ; PRAGMA function end')')
+
+;---------------------------------
+; Signed divide 16 / 8 subroutine. Implements truncating division
+; Arg1:       Subroutine name
+; Arg2, Arg3: Dividend MSB,LSB
+; Arg4:       Divisor
+; Arg5, Arg6: Quotient MSB, LSB
+; Arg7:       Remainder
+; Arg8:       Optional preamble code block. Also supresses return statement if present
+; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
+; before invoking this macro to change it.
+; Ex: divide16x8(div16, s0,s1, s2, s3,s4, s5)
+;     load s0, 20'd
+;     load s1, 4'd
+;     call div16
+define(`divide16x8s', `; PRAGMA function $1 [$2, $3, $4 return $5, $6, $7] begin
+            $1: ; $5,$6 = ($2,$3 / $4)  remainder $7
+            $8
+            vars(`$2 is _dend_m', `$3 is _dend_l', `$4 is _visor', `$5 is _quo_m := 0', `$6 is _quo_l := 0',
+                `$7 is _rem := 0', `_tempreg is _mask')
+
+            ; Make dividend and divisor positive
+            load _tempreg, _dend_m
+            xor _tempreg, _visor
+            and _tempreg, 80
+            if(_dend_m & 0x80,`negate16(_dend_m, _dend_l)
+              or _tempreg, 01')
+            if(_visor & 0x80, `negate(_visor)')
+            ; Save the sign info
+            push(_tempreg)
+            load _mask, 80
+$1_loop:    test _dend_m, _mask
+            sla _rem
+            sl0 _quo_l
+            compare _rem, _visor
+            jump c, $1_no_sub
+            sub _rem, _visor
+            add _quo_l, 01
+$1_no_sub:  sr0 _mask
+            jump nz, $1_loop
+
+            load _mask, 80
+$1_loop2:   test _dend_l, _mask
+            sla _rem
+            sl0 _quo_l
+            sla _quo_m
+            compare _rem, _visor
+            jump c, $1_no_sub2
+            sub _rem, _visor
+            add _quo_l, 01
+            addcy _quo_m, 00
+$1_no_sub2: sr0 _mask
+            jump nz, $1_loop2
+            pop(_tempreg)
+            ; Fix signs
+            if(_tempreg & 0x80, `negate16(_quo_m, _quo_l)')
+            if(_tempreg & 0x01, `negate(_rem)') ifelse(`$8',,`
             return
             ; PRAGMA function end')')
 
@@ -982,9 +1087,16 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
 define(`expr', `pushdef(`_exstr', $1)'`_expr_start(u, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
 define(`exprs', `pushdef(`_exstr', $1)'`_expr_start(s, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
 
+;         target x operand   Supported operands
+; expr    8x8                +, -, *, /, &, |, ^, <<, >>, =:
+; exprs   8x8                +, -, *, /, &, |, ^, <<, >>, =:  (signed *, /, and >>)
+; expr2   16x8               +, -, *, /, <<, >>
+; expr16  16x16              +, -, &, |, ^, <<, >>, =:
+; expr16s 16x16              +, -, &, |, ^, <<, >>, =:        (signed >>)
+
 define(`_expr_start', `pushdef(`_exreg', $2)'
 `ifelse($3,:=,,`errmsg(Missing assignment operator in expression)')'dnl
-``;' Expression' _exstr
+``;' Expression:' _exstr
 `ifelse($2,$4,,`load $2, evalx($4,16,2)')'
 `ifelse($1,u,`_expr_ops(shift(shift(shift(shift($@)))))',`_exprs_ops(shift(shift(shift(shift($@)))))')'
 `popdef(`_exreg')')
@@ -1013,28 +1125,36 @@ $1,/,`_expr_div8s(_exreg, $2)', `_expr_binary_common($1,$2)')')
 
 ;------------------------------------------------
 
-define(`expr2', `pushdef(`_exstr', $2)'`_expr2_start(u, $1, patsubst($2, ` +', `,'))'`popdef(`_exstr')')
-;define(`exprs', `pushdef(`_exstr', $1)'`_expr_start(s, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
+define(`expr2', `pushdef(`_exstr', `$@')'`_expr2_start(u, patsubst(_encode16($@), ` +', `,'))'`popdef(`_exstr')')
+;define(`expr2s', `pushdef(`_exstr', `$@')'`_expr2_start(s, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
 
-define(`_expr2_start', `pushdef(`_exreg_msb', $2)'`pushdef(`_exreg_lsb', $3)'
-`ifelse($4,:=,,`errmsg(Missing assignment operator in expression)')'dnl
-``;' Expression' _exstr
-`ifelse($3,$5,,`load $2, 00
-load $3, evalx($5,16,2)')'
-`ifelse($1,u,`_expr2_ops(shift(shift(shift(shift(shift($@))))))',`_expr2s_ops(shift(shift(shift(shift(shift($@))))))')'
-`popdef(`_exreg_msb')'`popdef(`_exreg_lsb')')
+define(`_expr2_start', `_expect16($2)'`pushdef(`_exreg',`_rmsb($2),_rlsb($2)')'
+`ifelse($3,:=,,`errmsg(Missing assignment operator in expression)')'dnl
+``;' Expression 16x8:' _exstr
+`ifelse($2,$4,,`ifelse(_is16($4),1,`load16(_exreg, _decode16($4))', isnum($4),1,`load16(_exreg, $4)',dnl
+                      `ifelse($1,u,`load regupper(_exreg), 00
+load reglower(_exreg), $4',`signex(_tempreg, $4)
+                       load16(_exreg, _tempreg, $4)')'dnl
+)')'
+`ifelse($1,u,`_expr2_ops(shift(shift(shift(shift($@)))))',`_expr2s_ops(shift(shift(shift(shift($@)))))')'
+`popdef(`_exreg')')
 
 ; Unsigned operations
-define(`_expr2_ops', `ifelse(`$1',,,`_expr2_binary($1, `evalx($2, 16, 2)')
+define(`_expr2_ops', `ifelse(`$1',,,`_expr2_binary($1, evalx($2))
 $0(shift(shift($@)))')')
 
-define(`_expr2_binary', `ifelse($1,>>,`sr0_16(_exreg_msb, _exreg_lsb, $2)', $1,*,`_expr2_mul8(_exreg_msb, _exreg_lsb, $2)',dnl
-`_expr2_binary_common($1,$2)')')
+;define(`_expr2_binary_u', `ifelse($1,>>,`sr0_16(_exreg_msb, _exreg_lsb, $2)',
+;$1,/,`_expr2_div8(_exreg_msb, _exreg_lsb, $2)', $1,*,`_expr2_mul8(_exreg_msb, _exreg_lsb, $2)',dnl
+;`_expr2_binary_common($1,$2)')')
 
-define(`_expr2_binary_common', `ifelse($1,+,`add _exreg_lsb, $2
-addcy _exreg_msb, 00', $1,-,`sub _exreg_lsb, $2
-subcy _exreg_msb, 00',
-$1,<<,`sl0_16(_exreg_msb, _exreg_lsb, $2)',
+define(`_expr2_binary', `ifelse($1,+,`ifelse(isnum($2),1,`add16(_exreg, $2)',dnl
+`add reglower(_exreg), $2
+addcy regupper(_exreg), 00')',dnl
+$1,-,`ifelse(isnum($2),1,`sub16(_exreg, $2)',dnl
+`sub reglower(_exreg), $2
+subcy regupper(_exreg), 00')',dnl
+$1,/,`_expr2_div8(_exreg, evalx($2,16,2))', $1,*,`_expr2_mul8(_exreg, evalx($2,16,2))',dnl
+$1,>>,`sr0_16(_exreg, $2)', $1,<<,`sl0_16(_exreg, $2)',dnl
 `errmsg(`Invalid operation: $1')'   )')
 
 ; Signed operations
@@ -1051,10 +1171,10 @@ define(`expr16s', `pushdef(`_exstr', `$@')'`_expr16_start(s, patsubst(_encode16(
 ; Utility macros to manipulate 16-bit register pairs
 define(`_encode16', `ifelse(eval($#>1),1,`$1!$0(shift($@))',`$1')')
 define(`_decode16', `translit($1, !, `,')')
-define(`_rmsb',`__rmsb(_decode16($1))')
-define(`__rmsb', `$1')
-define(`_rlsb',`__rlsb(_decode16($1))')
-define(`__rlsb', `$2')
+define(`_rmsb',`regupper(_decode16($1))')
+;define(`__rmsb', `$1')
+define(`_rlsb',`reglower(_decode16($1))')
+;define(`__rlsb', `$2')
 define(`_is16',`eval(index($1,!)>= 0)')
 define(`_expect16', `ifelse(_is16($1),0,`errmsg(Expecting 16-bit register pair: $1)')')
 
@@ -1076,8 +1196,8 @@ define(`_expr16_binary', `ifelse($1,>>,`sr0_16(_exreg, $2)',dnl
 define(`_expr16_binary_common', `ifelse($1,+,`add16(_exreg, _decode16($2))', $1,-,`sub16(_exreg, _decode16($2))',
 $1,&,`and16(_exreg, _decode16($2))', $1,|,`or16(_exreg, _decode16($2))', $1,^,`xor16(_exreg, _decode16($2))',
 $1,<<,`sl0_16(_exreg, _decode16($2))',
-$1,=:,`ifelse(index($2, `sp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
-index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
+$1,=:,`ifelse(index($2, `xxxp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
+index($2, `xxxpi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
 `load16(_decode16($2), _exreg)')',dnl
 `errmsg(`Invalid operation: $1')'   )')
 
@@ -1221,6 +1341,41 @@ call expr_div8s
 load $1, _div8s_quo
 ')
 
+
+
+;---------------------------------
+; Configure unsigned 16x8 division for expressions
+; All arguments are optional
+; Arg1,Arg2: Dividend (default is s7,s8)
+; Arg3:      Divisor  (default is s9)
+; Arg4,Arg5, Arg6: Internal result Quotient, Remainder (default is sa,sb, sc) preserved on stack
+; The result is copied to Arg1,Arg2, Arg3
+define(`use_expr_div16', `define(`_div16_init',1)'dnl
+ `ifelse($#,0,`divide16x8(`expr_div16', s7,s8, s9, sa,sb, sc, `push(sa,sb, sc)')
+  define(`_div16_quo',`s7,s8') define(`_div16_rem',`s9')dnl
+  load s7, sa
+  load s8, sb
+  load s9, sc
+  pop(sa,sb, sc)
+  return
+  ; PRAGMA function end',`divide16x8(`expr_div16', $1,$2, $3, $4,$5, $6, `push($4,$5, $6)')
+  define(`_div8_quo',`$1,$2') define(`_div8_rem',`$3')dnl
+  load $1, $4
+  load $2, $5
+  load $3, $6
+  pop($4,$5, $6)
+  return
+  ; PRAGMA function end')')
+
+; 16x8 divide keeping only quotient
+; Arg1,Arg2: Dividend, Arg3: Divisor
+define(`_expr2_div8', `_initcheck(`_div16_init',`Unsigned 16x8 divide `not' initialized')' `load16(_div16_quo, $1,$2)
+load _div16_rem, $3
+call expr_div16
+load16($1,$2, _div16_quo)
+')
+
+
 ;=============== 16-bit ARITHMETIC AND LOGICAL OPERATIONS ===============
 
 ;---------------------------------
@@ -1330,7 +1485,7 @@ xor $2, FF')
 ; Arg1, Arg2: MSB, LSB to make positive
 ; Result is in Arg1, Arg2
 ; Ex: abs16(s1, s0)
-define(`abs16', `if($1 < 0, `negate16($1, $2)')')
+define(`abs16', `if($1 & 0x80, `negate16($1, $2)')')
 
 
 ;---------------------------------
@@ -1415,6 +1570,7 @@ _tnz:'`popdef(`_tnz')')
 ; 16-bit comparison
 ; Arg1, Arg2: MSB1, LSB1
 ; Arg3, Arg4: MSB2, LSB2
+; Note: On Picoblaze-3 only the Z flag is correct
 ifdef(`PB3', `define(`compare16', `if($1 == $3, `compare $2, $4')')',
 `define(`compare16', `compare $2, $4
 comparecy $1, $3')')
@@ -1512,7 +1668,7 @@ add $3, 01')
 ;---------------------------------
 ; 16-bit store
 ; Arg1, Arg2: MSB, LSB of source
-; 3 arguments: Fetch to indirect register
+; 3 arguments: Store to indirect register
 ;   Arg3: Register with pointer to low byte
 ;         Incremented twice to permit sequential use of store16()
 ; 4 arguments: MSB, LSB addresses to store to
