@@ -825,6 +825,23 @@ $1_no_correct: ifelse(`$6',,`
             return
             ; PRAGMA function end')')
 
+;---------------------------------
+; SignedxUnsigned Multiply 8 x 8 subroutine
+; Same arguments as multiply8x8
+define(`multiply8x8su', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
+            $1:  ; ($4, $5) = $2 * $3 (signed)
+            $6
+            vars(`$2 is _cand', `$3 is _plier', `$4 is _msb := 0', `$5 is _lsb := 0', `_tempreg is _mask := 1')
+$1_loop:    test _plier, _mask
+            jump z, $1_no_add
+            add _msb, _cand
+$1_no_add:  srx _msb
+            sra _lsb
+            sl0 _mask
+            jump nz, $1_loop
+$1_no_correct: ifelse(`$6',,`
+            return
+            ; PRAGMA function end')')
 
 
 ;---------------------------------
@@ -1094,11 +1111,11 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
 ; For multiplication and division support you must initialize the internal functions with
 ; one of the following:
 ;
-;          Multiply       Divide
-; expr     use_expr_mul   use_expr_div
-; exprs    use_expr_muls  use_expr_divs
-; expr2    use_expr_mul   use_expr_div16
-; expr2s   use_expr_muls  use_expr_div16s
+;          Multiply                           Divide
+; expr     use_expr_mul                       use_expr_div
+; exprs    use_expr_muls                      use_expr_divs
+; expr2    use_expr_mul                       use_expr_div16
+; expr2s   use_expr_muls and use_expr_mulsu   use_expr_div16s
 ;
 ; These macros need to be called before any call to expr*() that uses multiplication or division.
 ; It is best to place them at the start of the program and jump over them to reach the startup code.
@@ -1307,14 +1324,36 @@ call expr_mul8s
 load $1, _mul8s_lsb
 ')
 
+;---------------------------------
+; Configure signedxunsigned (16x8) multiplication for expressions
+; All arguments are optional
+; Arg1: Multiplicand (default is s8)
+; Arg2: Multiplier   (default is s9)
+; Arg3, Arg4: Internal result MSB, LSB (default is sa,sb) preserved on stack
+; The result is copied to Arg1, Arg2
+define(`use_expr_mulsu', `define(`_mulsu_init',1)'dnl
+ `ifelse($#,0,`multiply8x8su(`expr_mul8su', s8, s9, sa, sb,`push(sa,sb)')
+  define(`_mul8su_msb',`s8') define(`_mul8su_lsb',`s9')dnl
+  load s8, sa
+  load s9, sb
+  pop(sa,sb)
+  return
+  ; PRAGMA function end',`multiply8x8su(`expr_mul8su', $1, $2, $3, $4,`push($3,$4)')
+  define(`_mul8su_msb',`$1') define(`_mul8su_lsb',`$2')dnl
+  load $1, $3
+  load $2, $4
+  pop($3,$4)
+  return
+  ; PRAGMA function end')')
+
+
 ; 16x8 signed multiply keeping only lower 16-bits of result
 ; Arg1-Arg2: MSB, LSB Multiplicand, Arg3: Multiplier
-; FIXME: This is broken for signed multiplication
 define(`_expr2_mul8s', `_initcheck(`_muls_init',`Unsigned multiply `not' initialized')'dnl
-`load _mul8s_msb, $2
-load _mul8s_lsb, $3
-call expr_mul8s
-load $2, _mul8s_lsb
+`load _mul8su_msb, $3
+load _mul8su_lsb, $2
+call expr_mul8su
+load $2, _mul8su_lsb
 swap($1, _mul8s_msb)
 load _mul8s_lsb, $3
 call expr_mul8s
