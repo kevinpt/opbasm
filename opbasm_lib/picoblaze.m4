@@ -48,7 +48,8 @@ define(`evalb', `eval(($1) & 0xFF, 2, 8)''b  `;' $1)
 
 ; Only evaluate valid expressions, otherwise reproduce the original text in the
 ; first argument
-define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($2,,`pushdef(`_evalx', `eval($1)')', `pushdef(`_evalx', `eval($1, $2)')'),`pushdef(`_evalx', `eval($1, $2, $3)')'),`pushdef(`_evalx', $1)')'_evalx`'popdef(`_evalx'))
+;;; FIXME: eliminate fixed 0xFF mask for three argument version
+define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($2,,`pushdef(`_evalx', `eval($1)')', `pushdef(`_evalx', `eval($1, $2)')'),`pushdef(`_evalx', `eval(($1 & 0xFF), $2, $3)')'),`pushdef(`_evalx', $1)')'_evalx`'popdef(`_evalx'))
 
 ; Ex: constant cname,  evalh(20 + 6)      -->  constant cname,  1a
 ;     constant cname2, evald(20 * 4 - 1)  -->  constant cname2, 79'd
@@ -1058,7 +1059,9 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
 ;=============== EXPRESSIONS ===============
 
 ;---------------------------------
-; Expression evaluator
+; Expression evaluators
+; This is a family of macros that provide implementation of arithmetic expressions from
+; compact input notation
 ; Arg1: Register assignment expression of the form:
 ;       sN := <val> op <val> [op <val>]*
 ;       val is one of:
@@ -1079,20 +1082,35 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
 ;     expr(s1 := s4 + (28*4-1))
 ;       s1 <= s4, s1 <= s1 + 111   Constant expressions must have no spaces
 ;
-; A signed variant "exprs()" implements signed >> and * operations
-; For multiplication you must initialize the multiplication function with "use_expr_mul()" or
-; "use_expr_muls()". The MSB of the result is ignored by subsequent operations. Multiplication
-; operwrites registers s8, s9 by default. These can be changed with arguments to the use_expr_mul*
-; macros.
-define(`expr', `pushdef(`_exstr', $1)'`_expr_start(u, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
-define(`exprs', `pushdef(`_exstr', $1)'`_expr_start(s, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
-
-;         target x operand   Supported operands
+; ### Summary of expression macros ###
+;         target x operand   Supported operators
 ; expr    8x8                +, -, *, /, &, |, ^, <<, >>, =:
 ; exprs   8x8                +, -, *, /, &, |, ^, <<, >>, =:  (signed *, /, and >>)
 ; expr2   16x8               +, -, *, /, <<, >>
+; expr2s  16x8               +, -, *, /, <<, >>               (signed for all except <<)
 ; expr16  16x16              +, -, &, |, ^, <<, >>, =:
 ; expr16s 16x16              +, -, &, |, ^, <<, >>, =:        (signed >>)
+;
+; For multiplication and division support you must initialize the internal functions with
+; one of the following:
+;
+;          Multiply       Divide
+; expr     use_expr_mul   use_expr_div
+; exprs    use_expr_muls  use_expr_divs
+; expr2    use_expr_mul   use_expr_div16
+; expr2s   use_expr_muls  use_expr_div16s
+;
+; These macros need to be called before any call to expr*() that uses multiplication or division.
+; It is best to place them at the start of the program and jump over them to reach the startup code.
+; The stack must be configured (use_stack(...)) before calling these macros because additional
+; modified registers must be saved and restored.
+;
+; By default these macros configure the mul and div functions to use the s8,s9 or s7,s8, and s9
+; registers for input and output. You can modify the register allocation by passing arguments
+; to the use_* macros. The MSB of multiplication is ignored by subsequent operations. Division
+; by 0 is not detected.
+define(`expr', `pushdef(`_exstr', $1)'`_expr_start(u, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
+define(`exprs', `pushdef(`_exstr', $1)'`_expr_start(s, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
 
 define(`_expr_start', `pushdef(`_exreg', $2)'
 `ifelse($3,:=,,`errmsg(Missing assignment operator in expression)')'dnl
@@ -1102,11 +1120,11 @@ define(`_expr_start', `pushdef(`_exreg', $2)'
 `popdef(`_exreg')')
 
 ; Unsigned operations
-define(`_expr_ops', `ifelse(`$1',,,`_expr_binary($1, $2)
+define(`_expr_ops', `ifelse(`$1',,,`_expr_binary($1, evalx($2,16,2))
 $0(shift(shift($@)))')')
 
 define(`_expr_binary', `ifelse($1,>>,`sr0(_exreg, $2)', $1,*,`_expr_mul8(_exreg, $2)',dnl
-$1,/,`_expr_div8(_exreg, $2)', `_expr_binary_common($1,$2)')')
+$1,/,`_expr_div8(_exreg, evalx($2 & 0xFF,16,2))', `_expr_binary_common($1,$2)')')
 
 define(`_expr_binary_common', `ifelse($1,+,`add _exreg, evalx($2, 16, 2)', $1,-,`sub _exreg, evalx($2, 16, 2)',
 $1,&,`and _exreg, evalx($2, 16, 2)', $1,|,`or _exreg, evalx($2, 16, 2)', $1,^,`xor _exreg, evalx($2, 16, 2)',
@@ -1117,16 +1135,16 @@ index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2
 `errmsg(`Invalid operation: $1')'   )')
 
 ; Signed operations
-define(`_exprs_ops', `ifelse(`$1',,,`_exprs_binary($1, `evalx($2, 16, 2)')
+define(`_exprs_ops', `ifelse(`$1',,,`_exprs_binary($1, evalx($2,16,2))
 $0(shift(shift($@)))')')
 
 define(`_exprs_binary', `ifelse($1,>>,`srx(_exreg, $2)', $1,*,`_expr_mul8s(_exreg, $2)',dnl
-$1,/,`_expr_div8s(_exreg, $2)', `_expr_binary_common($1,$2)')')
+$1,/,`_expr_div8s(_exreg, evalx($2 & 0xFF,16,2))', `_expr_binary_common($1,$2)')')
 
 ;------------------------------------------------
 
 define(`expr2', `pushdef(`_exstr', `$@')'`_expr2_start(u, patsubst(_encode16($@), ` +', `,'))'`popdef(`_exstr')')
-;define(`expr2s', `pushdef(`_exstr', `$@')'`_expr2_start(s, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
+define(`expr2s', `pushdef(`_exstr', `$@')'`_expr2_start(s, patsubst(_encode16($@), ` +', `,'))'`popdef(`_exstr')')
 
 define(`_expr2_start', `_expect16($2)'`pushdef(`_exreg',`_rmsb($2),_rlsb($2)')'
 `ifelse($3,:=,,`errmsg(Missing assignment operator in expression)')'dnl
@@ -1143,25 +1161,32 @@ load reglower(_exreg), $4',`signex(_tempreg, $4)
 define(`_expr2_ops', `ifelse(`$1',,,`_expr2_binary($1, evalx($2))
 $0(shift(shift($@)))')')
 
-;define(`_expr2_binary_u', `ifelse($1,>>,`sr0_16(_exreg_msb, _exreg_lsb, $2)',
-;$1,/,`_expr2_div8(_exreg_msb, _exreg_lsb, $2)', $1,*,`_expr2_mul8(_exreg_msb, _exreg_lsb, $2)',dnl
-;`_expr2_binary_common($1,$2)')')
-
 define(`_expr2_binary', `ifelse($1,+,`ifelse(isnum($2),1,`add16(_exreg, $2)',dnl
 `add reglower(_exreg), $2
 addcy regupper(_exreg), 00')',dnl
 $1,-,`ifelse(isnum($2),1,`sub16(_exreg, $2)',dnl
 `sub reglower(_exreg), $2
 subcy regupper(_exreg), 00')',dnl
-$1,/,`_expr2_div8(_exreg, evalx($2,16,2))', $1,*,`_expr2_mul8(_exreg, evalx($2,16,2))',dnl
+$1,/,`_expr2_div8(_exreg, evalx($2 & 0xFF,16,2))', $1,*,`_expr2_mul8(_exreg, evalx($2 & 0xFF,16,2))',dnl
 $1,>>,`sr0_16(_exreg, $2)', $1,<<,`sl0_16(_exreg, $2)',dnl
 `errmsg(`Invalid operation: $1')'   )')
 
 ; Signed operations
-;define(`_exprs_ops', `ifelse(`$1',,,`_exprs_binary($1, `evalx($2, 16, 2)')
-;$0(shift(shift($@)))')')
+define(`_expr2s_ops', `ifelse(`$1',,,`_expr2s_binary($1, evalx($2))
+$0(shift(shift($@)))')')
 
-;define(`_exprs_binary', `ifelse($1,>>,`srx(_exreg, $2)', $1,*,`_expr_mul8s(_exreg, $2)', `_expr_binary_common($1,$2)')')
+define(`_expr2s_binary', `ifelse($1,+,`ifelse(isnum($2),1,`add16(_exreg, $2)',dnl
+`signex(_tempreg, $2)
+add reglower(_exreg), $2
+addcy regupper(_exreg), _tempreg')',dnl
+$1,-,`ifelse(isnum($2),1,`sub16(_exreg, $2)',dnl
+`signex(_tempreg, $2)
+sub reglower(_exreg), $2
+subcy regupper(_exreg), 00')',dnl
+$1,/,`_expr2_div8s(_exreg, evalx($2,16,2))', $1,*,`_expr2_mul8s(_exreg, evalx($2,16,2))',dnl
+$1,>>,`srx_16(_exreg, $2)', $1,<<,`sl0_16(_exreg, $2)',dnl
+`errmsg(`Invalid operation: $1')'   )')
+
 
 ;------------------------------------------------
 
@@ -1274,10 +1299,26 @@ define(`use_expr_muls', `define(`_muls_init',1)'dnl
   return
   ; PRAGMA function end')')
 
+; 8x8 signed multiply keeping only lower 8-bits of result
+; Arg1: Multiplicand, Arg2: Multiplier
 define(`_expr_mul8s', `_initcheck(`_muls_init',`Signed multiply `not' initialized')' `load _mul8s_msb, $1
 load _mul8s_lsb, $2
 call expr_mul8s
 load $1, _mul8s_lsb
+')
+
+; 16x8 signed multiply keeping only lower 16-bits of result
+; Arg1-Arg2: MSB, LSB Multiplicand, Arg3: Multiplier
+; FIXME: This is broken for signed multiplication
+define(`_expr2_mul8s', `_initcheck(`_muls_init',`Unsigned multiply `not' initialized')'dnl
+`load _mul8s_msb, $2
+load _mul8s_lsb, $3
+call expr_mul8s
+load $2, _mul8s_lsb
+swap($1, _mul8s_msb)
+load _mul8s_lsb, $3
+call expr_mul8s
+add $1, _mul8s_lsb
 ')
 
 
@@ -1359,7 +1400,7 @@ define(`use_expr_div16', `define(`_div16_init',1)'dnl
   pop(sa,sb, sc)
   return
   ; PRAGMA function end',`divide16x8(`expr_div16', $1,$2, $3, $4,$5, $6, `push($4,$5, $6)')
-  define(`_div8_quo',`$1,$2') define(`_div8_rem',`$3')dnl
+  define(`_div16_quo',`$1,$2') define(`_div16_rem',`$3')dnl
   load $1, $4
   load $2, $5
   load $3, $6
@@ -1373,6 +1414,39 @@ define(`_expr2_div8', `_initcheck(`_div16_init',`Unsigned 16x8 divide `not' init
 load _div16_rem, $3
 call expr_div16
 load16($1,$2, _div16_quo)
+')
+
+
+;---------------------------------
+; Configure signed 16x8 division for expressions
+; All arguments are optional
+; Arg1,Arg2: Dividend (default is s7,s8)
+; Arg3:      Divisor  (default is s9)
+; Arg4,Arg5, Arg6: Internal result Quotient, Remainder (default is sa,sb, sc) preserved on stack
+; The result is copied to Arg1,Arg2, Arg3
+define(`use_expr_div16s', `define(`_div16s_init',1)'dnl
+ `ifelse($#,0,`divide16x8s(`expr_div16s', s7,s8, s9, sa,sb, sc, `push(sa,sb, sc)')
+  define(`_div16s_quo',`s7,s8') define(`_div16s_rem',`s9')dnl
+  load s7, sa
+  load s8, sb
+  load s9, sc
+  pop(sa,sb, sc)
+  return
+  ; PRAGMA function end',`divide16x8s(`expr_div16s', $1,$2, $3, $4,$5, $6, `push($4,$5, $6)')
+  define(`_div16s_quo',`$1,$2') define(`_div16s_rem',`$3')dnl
+  load $1, $4
+  load $2, $5
+  load $3, $6
+  pop($4,$5, $6)
+  return
+  ; PRAGMA function end')')
+
+; 16x8 signed divide keeping only quotient
+; Arg1,Arg2: Dividend, Arg3: Divisor
+define(`_expr2_div8s', `_initcheck(`_div16s_init',`Signed 16x8 divide `not' initialized')' `load16(_div16s_quo, $1,$2)
+load _div16s_rem, $3
+call expr_div16s
+load16($1,$2, _div16s_quo)
 ')
 
 
