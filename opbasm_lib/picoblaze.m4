@@ -1089,17 +1089,17 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
 ;       val is one of:
 ;         register
 ;         literal expression (with no internal spaces)
-;         sp(addr) scratchpad adddress
-;         spi(reg) indirect scratchpad address in register
+;         sp[addr] scratchpad adddress
+;         spi[reg] indirect scratchpad address in register
 ;       op is one of:
 ;         + - *        add, subtract, multiply
 ;         & | ^        and, or, xor
 ;         << >>        shift left, shift right (0-filled MSB)
 ;         =:           reverse assignment to register or scratchpad
 ;   ** Operations are evaluated left to right with *no precedence*
-; Ex: expr(s0 := s1 + s2 - s3 >> 4 =: sp(M_value))
+; Ex: expr(s0 := s1 + s2 - s3 >> 4 =: sp[M_value])
 ;       Arithmetic is performed on s0 and the result is stored in scratchpad at M_value
-;       s0 <= s1, s0 <= s0 + s2, s0 <= s0 - s3, s0 <= s0 >> 4, sp(M_value) <= s0
+;       s0 <= s1, s0 <= s0 + s2, s0 <= s0 - s3, s0 <= s0 >> 4, sp[M_value] <= s0
 ;
 ;     expr(s1 := s4 + (28*4-1))
 ;       s1 <= s4, s1 <= s1 + 111   Constant expressions must have no spaces
@@ -1108,10 +1108,12 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
 ;         target x operand   Supported operators
 ; expr    8x8                +, -, *, /, &, |, ^, <<, >>, =:
 ; exprs   8x8                +, -, *, /, &, |, ^, <<, >>, =:  (signed *, /, and >>)
-; expr2   16x8               +, -, *, /, <<, >>
-; expr2s  16x8               +, -, *, /, <<, >>               (signed for all except <<)
+; expr2   16x8 *             +, -, *, /, <<, >>, =:
+; expr2s  16x8 *             +, -, *, /, <<, >>, =:           (signed for all except <<)
 ; expr16  16x16              +, -, &, |, ^, <<, >>, =:
 ; expr16s 16x16              +, -, &, |, ^, <<, >>, =:        (signed >>)
+;
+;   * The expr2 macros support 16-bit literals as operands of + and -
 ;
 ; For multiplication and division support you must initialize the internal functions with
 ; one of the following:
@@ -1121,6 +1123,9 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
 ; exprs    use_expr_muls                      use_expr_divs
 ; expr2    use_expr_mul                       use_expr_div16
 ; expr2s   use_expr_muls and use_expr_mulsu   use_expr_div16s
+;
+; As an expedient you can invoke "use_expr_all" to include all of them and then eliminate any
+; unused mul or div routines with the --remove-dead-code option to opbasm.
 ;
 ; These macros need to be called before any call to expr*() that uses multiplication or division.
 ; It is best to place them at the start of the program and jump over them to reach the startup code.
@@ -1151,8 +1156,8 @@ $1,/,`_expr_div8(_exreg, evalx($2,16,2))', `_expr_binary_common($1,$2)')')
 define(`_expr_binary_common', `ifelse($1,+,`add _exreg, evalx($2,16,2)', $1,-,`sub _exreg, evalx($2,16,2)',
 $1,&,`and _exreg, evalx($2,16,2)', $1,|,`or _exreg, evalx($2,16,2)', $1,^,`xor _exreg, evalx($2,16,2)',
 $1,<<,`sl0(_exreg, $2)',
-$1,=:,`ifelse(index($2, `sp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
-index($2, `spi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
+$1,=:,`ifelse(index($2, `sp['),0,`store _exreg, evalx(regexp($2, `sp\[\(.*\)\]',`\1'),16,2)',dnl
+index($2, `spi['),0,`store _exreg, (evalx(regexp($2, `spi\[\(.*\)\]',`\1'),16,2))',dnl
 `load $2, _exreg')',dnl
 `errmsg(`Invalid operation: $1')'   )')
 
@@ -1191,6 +1196,9 @@ $1,-,`ifelse(isnum($2),1,`sub16(_exreg, $2)',dnl
 subcy regupper(_exreg), 00')',dnl
 $1,/,`_expr2_div8(_exreg, evalx($2,16,2))', $1,*,`_expr2_mul8(_exreg, evalx($2,16,2))',dnl
 $1,>>,`sr0_16(_exreg, $2)', $1,<<,`sl0_16(_exreg, $2)',dnl
+$1,=:,`ifelse(index($2, `sp['),0,`store16(_exreg, _decode16(regexp($2, `sp\[\(.*\)\]',`\1')))',dnl
+index($2, `spi['),0,`store16(_exreg, _decode16(regexp($2, `spi\[\(.*\)\]',`\1')))',dnl
+`load16(_decode16($2), _exreg)')',dnl
 `errmsg(`Invalid operation: $1')'   )')
 
 ; Signed operations
@@ -1207,6 +1215,9 @@ sub reglower(_exreg), evalx($2,16,2)
 subcy regupper(_exreg), 00')',dnl
 $1,/,`_expr2_div8s(_exreg, evalx($2,16,2))', $1,*,`_expr2_mul8s(_exreg, evalx($2,16,2))',dnl
 $1,>>,`srx_16(_exreg, $2)', $1,<<,`sl0_16(_exreg, $2)',dnl
+$1,=:,`ifelse(index($2, `sp['),0,`store16(_exreg, _decode16(regexp($2, `sp\[\(.*\)\]',`\1')))',dnl
+index($2, `spi['),0,`store16(_exreg, _decode16(regexp($2, `spi\[\(.*\)\]',`\1')))',dnl
+`load16(_decode16($2), _exreg)')',dnl
 `errmsg(`Invalid operation: $1')'   )')
 
 
@@ -1244,8 +1255,8 @@ define(`_expr16_binary', `ifelse($1,>>,`sr0_16(_exreg, $2)',dnl
 define(`_expr16_binary_common', `ifelse($1,+,`add16(_exreg, _decode16($2))', $1,-,`sub16(_exreg, _decode16($2))',
 $1,&,`and16(_exreg, _decode16($2))', $1,|,`or16(_exreg, _decode16($2))', $1,^,`xor16(_exreg, _decode16($2))',
 $1,<<,`sl0_16(_exreg, _decode16($2))',
-$1,=:,`ifelse(index($2, `xxxp('),0,`store _exreg, evalx(regexp($2, `sp(\([^)]+\))',`\1'),16,2)',dnl
-index($2, `xxxpi('),0,`store _exreg, (evalx(regexp($2, `spi(\([^)]+\))',`\1'),16,2))',dnl
+$1,=:,`ifelse(index($2, `sp['),0,`store16(_exreg, _decode16(regexp($2, `sp\[\(.*\)\]',`\1')))',dnl
+index($2, `spi['),0,`store16(_exreg, _decode16(regexp($2, `spi\[\(.*\)\]',`\1')))',dnl
 `load16(_decode16($2), _exreg)')',dnl
 `errmsg(`Invalid operation: $1')'   )')
 
@@ -1891,6 +1902,7 @@ define(`PBHEX', `pbhex($@)')
 define(`ASCIIORD', `asciiord($@)')
 define(`WORDS_LE', `words_le($@)')
 define(`WORDS_BE', `words_be($@)')
+define(`USE_TEMPREG', `use_tempreg($@)')
 define(`NOP', `nop($@)')
 define(`SWAP', `swap($@)')
 define(`RANDLABEL', `randlabel($@)')
@@ -1909,7 +1921,6 @@ define(`MASKH', `maskh($@)')
 define(`SETMASK', `setmask($@)')
 define(`CLEARMASK', `clearmask($@)')
 define(`TESTBIT', `testbit($@)')
-define(`EXPR', `expr($@)')
 define(`JNE', `jne($@)')
 define(`JEQ', `jeq($@)')
 define(`JGE', `jge($@)')
@@ -1923,13 +1934,16 @@ define(`RETEQ', `reteq($@)')
 define(`RETGE', `retge($@)')
 define(`RETLT', `retlt($@)')
 define(`IF', `if($@)')
+define(`SIGNED', `signed($@)')
 define(`IFEQ', `ifeq($@)')
 define(`IFNE', `ifne($@)')
 define(`IFGE', `ifge($@)')
 define(`IFLT', `iflt($@)')
 define(`ERRMSG', `errmsg($@)')
+define(`WARNMSG', `warnmsg($@)')
 define(`WHILE', `while($@)')
 define(`DOWHILE', `dowhile($@)')
+define(`REPEATSTR', `repeatstr($@)')
 define(`REPEAT', `repeat($@)')
 define(`SL0', `sl0($@)')
 define(`SL1', `sl1($@)')
@@ -1966,11 +1980,33 @@ define(`INSTTABLE_BE', `insttable_be($@)')
 define(`NEGATE', `negate($@)')
 define(`NOT', `not($@)')
 define(`ABS', `abs($@)')
+define(`SIGNEX', `signex($@)')
+define(`ISNUM', `isnum($@)')
+define(`COMPARES', `compares($@)')
 define(`MULTIPLY8X8', `multiply8x8($@)')
+define(`MULTIPLY8X8S', `multiply8x8s($@)')
+define(`MULTIPLY8X8SU', `multiply8x8su($@)')
 define(`DIVIDE8X8', `divide8x8($@)')
+define(`DIVIDE8X8S', `divide8x8s($@)')
+define(`DIVIDE16X8', `divide16x8($@)')
+define(`DIVIDE16X8S', `divide16x8s($@)')
 define(`MULTIPLY8XK', `multiply8xk($@)')
 define(`MULTIPLY8XK_SMALL', `multiply8xk_small($@)')
 define(`DIVIDE8XK', `divide8xk($@)')
+define(`EXPR', `expr($@)')
+define(`EXPRS', `exprs($@)')
+define(`EXPR2', `expr2($@)')
+define(`EXPR2S', `expr2s($@)')
+define(`EXPR16', `expr16($@)')
+define(`EXPR16S', `expr16s($@)')
+define(`USE_EXPR_ALL', `use_expr_all($@)')
+define(`USE_EXPR_MUL', `use_expr_mul($@)')
+define(`USE_EXPR_MULS', `use_expr_muls($@)')
+define(`USE_EXPR_MULSU', `use_expr_mulsu($@)')
+define(`USE_EXPR_DIV', `use_expr_div($@)')
+define(`USE_EXPR_DIVS', `use_expr_divs($@)')
+define(`USE_EXPR_DIV16', `use_expr_div16($@)')
+define(`USE_EXPR_DIV16S', `use_expr_div16s($@)')
 define(`REG16', `reg16($@)')
 define(`MEM16', `mem16($@)')
 define(`REGUPPER', `regupper($@)')
