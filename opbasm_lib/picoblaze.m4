@@ -1092,7 +1092,7 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
 ;         sp[addr] scratchpad adddress
 ;         spi[reg] indirect scratchpad address in register
 ;       op is one of:
-;         + - *        add, subtract, multiply
+;         + - * /      add, subtract, multiply, divide
 ;         & | ^        and, or, xor
 ;         << >>        shift left, shift right (0-filled MSB)
 ;         =:           reverse assignment to register or scratchpad
@@ -1538,7 +1538,7 @@ load16($1,$2, _div16s_quo)
 ;     reg16(ry, s5, s4) ; ry = (s5, s4)
 ;     add16(rx, ry)     ; rx = rx + ry
 ;     add16(rx, s3, s2) ; rx = rx + (s3, s2)
-define(`reg16', `define(`$1', `$2, $3')')
+define(`reg16', `ifelse($#,3,`define(`$1', `$2, $3')',`errmsg(`Wrong number of arguments to `reg16'. Is name quoted?')')')
 
 ;---------------------------------
 ; Create a constant for 16-bit memory and port addresses
