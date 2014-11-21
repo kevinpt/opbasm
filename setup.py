@@ -3,8 +3,8 @@ use_setuptools()
 
 from setuptools import setup
 
-# use README.txt for the long description
-with open('README.txt') as fh:
+# use README.rst for the long description
+with open('README.rst') as fh:
     long_description = fh.read()
     
 # scan the script for the version string
