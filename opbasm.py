@@ -1285,8 +1285,8 @@ def parse_command_line():
         default=False, help='Perform dead code analysis shown in log file')
   parser.add_option('-r', '--remove-dead-code', dest='remove_dead_code', action='store_true', \
         default=False, help='Remove dead code from assembled source')
-  parser.add_option('-e', '--isr-entry-point', dest='isr_entry_point', default=0x3FF, \
-        metavar='ADDRESS', help='Set address of ISR entry point')
+  parser.add_option('-e', '--entry-point', dest='entry_point', default=[], action='append', \
+        metavar='ADDRESS', help='Set address of ISR (or other) entry point')
 
   parser.add_option('-c', '--color-log', dest='color_log', action='store_true', default=False, \
         help='Colorize log file')
@@ -1337,11 +1337,14 @@ def parse_command_line():
     elif options.mem_size > max_mem_size:
       parser.error('Memory size is too large')
 
-    if isinstance(options.isr_entry_point, basestring):
-      try:
-        options.isr_entry_point = int(options.isr_entry_point, 0)
-      except ValueError:
-        parser.error('Invalid ISR entry point address')
+
+    if len(options.entry_point) == 0:
+      options.entry_point.append('0x3FF')
+
+    try:
+      options.entry_point = [int(ep,0) for ep in options.entry_point]    
+    except ValueError:
+        parser.error('Invalid entry point address')
 
   return options
 
@@ -1609,6 +1612,13 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
     printf('  Occupied memory locations:', stats['inst_count'])
     printf('  Memory locations available:', asm.mem_size - stats['inst_count'])
     printf('  Scratchpad size:', asm.scratch_size)
+
+    if stats['dead_inst'] is not None:
+      printf('  Dead instructions {}: {}'.format( \
+        'removed' if stats['dead_removed'] else 'found', stats['dead_inst']))
+      printf('  Analyzed entry points:', ', '.join(['0x{:03X}'.format(e) for e in \
+        sorted(stats['entry_points'])]))
+
 
     printf('\n\n' + underline('Assembly listing'))
     for s in assembled_code:
@@ -1932,10 +1942,13 @@ def main():
 
   printq(success('SUCCESS'))
 
+  dead_instructions = None
+  entry_points = None
   if options.remove_dead_code or options.report_dead_code:
     # Run static analysis
-    printq('  Static code analysis: searching for dead code... ', end='')
-    entry_points = set((asm.default_jump & 0xFFF, 0, options.isr_entry_point))
+    printq('  Static analysis: searching for dead code... ', end='')
+    entry_points = set((asm.default_jump & 0xFFF, 0))
+    entry_points |= set(options.entry_point)
     itable = build_instruction_table(assembled_code)
     analyze_code_reachability(assembled_code, itable, entry_points)
     analyze_recursive_keeps(assembled_code, itable)
@@ -1972,6 +1985,9 @@ def main():
 
   # Print summary
   stats = code_stats(assembled_code)
+  stats['dead_inst'] = dead_instructions
+  stats['dead_removed'] = options.remove_dead_code
+  stats['entry_points'] = entry_points
   if not options.quiet:
     print('    {} instructions out of {} ({}%)'.format(stats['inst_count'], \
           options.mem_size, int(stats['inst_count'] / options.mem_size * 100)))
