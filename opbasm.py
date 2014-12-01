@@ -564,6 +564,7 @@ class Assembler(object):
     self.scratch_size = options.scratch_size
     self.use_pb6 = options.use_pb6
     self.use_m4 = options.use_m4
+    self.debug_preproc = options.debug_preproc
     self.use_static_analysis = options.report_dead_code or options.remove_dead_code
     self.m4_file_num = 0
     self.output_dir = options.output_dir
@@ -643,16 +644,54 @@ class Assembler(object):
     macro_defs = find_standard_m4_macros()
     proc_mode = 'PB6' if self.use_pb6 else 'PB3' # Definition for active processor type
 
+    # Preprocess C-style syntax
+    pure_m4 = self.preprocess_c_style(source_file)
+    if self.debug_preproc:
+      with io.open(self.debug_preproc, 'w', encoding='utf-8') as fh:
+        print(pure_m4, file=fh)
+
     self.m4_file_num += 1
 
-    cmd = 'm4 -D{} -DM4_FILE_NUM={} {} {} > {}'.format(proc_mode, self.m4_file_num,
-             macro_defs, source_file, pp_source_file)
-    p = subprocess.Popen(cmd, shell=True)
-    p.wait()
+    cmd = 'm4 -D{} -DM4_FILE_NUM={} {} - > {}'.format(proc_mode, self.m4_file_num,
+             macro_defs, pp_source_file)
+    p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
+    p.communicate(input=pure_m4.encode('utf-8'))
     if p.returncode:
       asm_error('m4 failure on file', source_file, exit=1)
 
     return pp_source_file
+
+
+  def preprocess_c_style(self, source_file):
+    '''Perform an intial transformation to convert C-style syntax into valid m4 macros'''
+    lines = []
+    with io.open(source_file, 'r', encoding='utf-8') as fh:
+      lines = fh.readlines()
+
+    # We need to first protect '}' chars inside strings to prevent them from being
+    # turned into m4 syntax
+    elines = []
+    curly_string = re.compile(r'^.*"(.*}.*)".*$')
+    for l in lines:
+      m = curly_string.match(l)
+      if m:
+        escaped = m.group(1).replace('}', "`'_rcurly`'")
+        #print('### escaped:', escaped)
+        l = re.sub(r'^(.*").*(".*)$',r'\1{}\2'.format(escaped),l)
+      elines.append(l)
+
+    # Now we can run pattern substitutions to convert the C-style syntax into m4
+    ecode = ''.join(elines)
+    ecode = re.sub(r'if\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'if(\1, `', ecode) # if statement
+    ecode = re.sub(r'}(?:\s*;.*\n)*\s*else(?:\s*;.*\n)*\s*{', r"', `", ecode) # else clause
+    ecode = re.sub(r'do(?:\s*;.*\n)*\s*{', r'_dowhile2(`', ecode) # start of do-while
+    # while following a block
+    ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"')\nwhile(\1, `", ecode)
+    ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)', r"',\1)", ecode) # end of do-while
+    ecode = re.sub(r'while\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'while(\1, `', ecode) # plain while
+    ecode = re.sub(r'}', r"')", ecode) # end of a block
+    #print('XXX\n', ecode, '\nYYY')
+    return ecode
 
 
   def process_includes(self, source_file=None):
@@ -1262,6 +1301,7 @@ def parse_command_line():
   usage = '''{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
               [-d] [-r] [-e <address>]
               [-o <output dir>] [--m4] [--pyparsing]
+              [--debug-preproc <file>]
        {} -g'''.format(progname, progname)
   parser = OptionParser(usage=usage)
 
@@ -1298,6 +1338,8 @@ def parse_command_line():
         help='Quiet output')
   parser.add_option('--m4', dest='use_m4', action='store_true', default=False, \
         help='Use m4 preprocessor on all source files')
+  parser.add_option('--debug-preproc', dest='debug_preproc', metavar='FILE', \
+        help='Transformed source file after initial preprocessing')
   parser.add_option('--pyparsing', dest='use_pyparsing', action='store_true', default=False, \
         help='Use alternate pyparsing parser')
 
@@ -2001,6 +2043,9 @@ def main():
 
   # Write results
   printq('\n  Writing output')
+
+  if options.debug_preproc:
+    printq('   preprocessor:', options.debug_preproc)
 
   mmap = build_memmap(assembled_code, options.mem_size, asm.default_jump)
   write_hex_file(hex_mem_file, mmap)

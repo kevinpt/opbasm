@@ -328,6 +328,9 @@ $2,&,`ifne(`$4',`$5')', `errmsg(`Invalid operation: $2')' )')'
 ; Ex: signed(s0 < 4)  ; Expands to "s0 s< 4"
 define(`signed', `patsubst(`$1', `\([<>]=?\)', ` s\1')')
 
+; Restore right curly brackets inside quoted strings that were protected before
+; performing C-style syntax transformations
+define(`_rcurly', `}')
 
 ;---------------------------------
 ; Low level if macros: ifeq, ifne, ifge, iflt
@@ -418,6 +421,8 @@ $2,==,`jump z, _wlbl', $2,!=,`jump nz, _wlbl',
 $2,&,`jump nz, _wlbl', `errmsg(`Invalid operation: $2')')'
 )
 
+; Wrapper used to swap arguments when using C-style "do { } while()" syntax
+define(`_dowhile2', `dowhile($2, `$1')')
 
 
 ;=============== SHIFT AND ROTATE OPERATIONS ===============
@@ -1065,15 +1070,14 @@ $0($1, substr(`$2', 1), $3)')')
 ; Arg2: Dividend
 ; Arg3: Constant divisor (can be wider than 8-bits)
 ; Arg4: Result quotient
-; Arg5: Temporary register
-; Ex: divide8xk(div8k5, s0, 5, s4, sf)  ; s4 = s0 / 5
+; Ex: divide8xk(div8k5, s0, 5, s4)  ; s4 = s0 / 5
 ;     load s0, 25'd
 ;     call div8k5
 define(`divide8xk', `; PRAGMA function $1 [$2 return $4, $5] begin
 $1:  ; $4 = $2 / ($3)
 load $4, 00
-load $5, 00
-_genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, $5)return
+load _tempreg, 00
+_genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, _tempreg) return
 ; PRAGMA function end')
 
 
