@@ -682,6 +682,8 @@ class Assembler(object):
 
     # Now we can run pattern substitutions to convert the C-style syntax into m4
     ecode = ''.join(elines)
+    # else-if clause
+    ecode = re.sub(r'}(?:\s*;.*\n)*\s*else(?:\s*;.*\n)*\s*if\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"', \1,`", ecode)
     ecode = re.sub(r'if\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'if(\1, `', ecode) # if statement
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*else(?:\s*;.*\n)*\s*{', r"', `", ecode) # else clause
     ecode = re.sub(r'do(?:\s*;.*\n)*\s*{', r'_dowhile2(`', ecode) # start of do-while

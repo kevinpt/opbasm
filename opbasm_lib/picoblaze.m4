@@ -304,13 +304,15 @@ define(`retlt', `return c  ; if less than')
 ;       With the & operator a test instruction is used in place of compare. The true
 ;       clause is executed when the result is non-zero.
 ; Arg2: True clause
-; Arg3: Optional else clause
+; Arg3: Optional else clause or next else-if comparison expression
+; Arg4-Argn: Additional else-if clauses
 ;   This macro performs a comparison of the left and right operands and then inserts
 ;   the if* macro selected by the operation
 ; Ex: if(s0 < s1, `load s0, 01', `load s0, 02')
 ;     if(s0 != 0xa5, `load s0, 01')
 ;     if(signed(s0 < -10), `load s0, 01') ; Signed comparison with signed()
-define(`if', `_if(_iftokens($1), `$2', `$3')')
+define(`if', `ifelse(eval($# > 3),1,`_if(_iftokens($1), `$2', `if(shift(shift($@)))')',dnl
+`_if(_iftokens($1), `$2', `$3')')')
 
 define(`_iftokens', `regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\(.+\)', `\1, \2, \3')')
 
