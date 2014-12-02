@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.12'
+__version__ = '1.1.13'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -668,16 +668,25 @@ class Assembler(object):
     with io.open(source_file, 'r', encoding='utf-8') as fh:
       lines = fh.readlines()
 
-    # We need to first protect '}' chars inside strings to prevent them from being
-    # turned into m4 syntax
     elines = []
+    # We need to first protect '}' chars inside strings to prevent them from being
+    # turned into m4 syntax.
     curly_string = re.compile(r'^.*"(.*}.*)".*$')
+    # The signed() macro needs its right paren escaped to prevent pattern matching failures
+    signed_macro = re.compile(r'(signed\([^)]+\))')
     for l in lines:
       m = curly_string.match(l)
       if m:
         escaped = m.group(1).replace('}', "`'_rcurly`'")
         #print('### escaped:', escaped)
         l = re.sub(r'^(.*").*(".*)$',r'\1{}\2'.format(escaped),l)
+
+      m = signed_macro.search(l)
+      if m:
+        escaped = m.group(1).replace(')', "`'_rparen`'")
+        l = re.sub(r'signed\([^)]+\)', escaped, l)
+        #print('### escaped:', escaped, '-->', l)
+
       elines.append(l)
 
     # Now we can run pattern substitutions to convert the C-style syntax into m4

@@ -334,6 +334,9 @@ define(`signed', `patsubst(`$1', `\([<>]=?\)', ` s\1')')
 ; performing C-style syntax transformations
 define(`_rcurly', `}')
 
+; Restore right parens from signed() macros that were protected
+define(`_rparen', `)')
+
 ;---------------------------------
 ; Low level if macros: ifeq, ifne, ifge, iflt
 ; Arg1: True clause
@@ -397,9 +400,10 @@ define(`warnmsg', `errprint($1  __file__ line __line__)')
 ; Ex: load s0, 00
 ;     while(s0 < 10, `output s3, P_foo
 ;                     add s0, 01')
-define(`while', `pushdef(`_wlbl', uniqlabel(WHILE_))'`_wlbl:
+define(`while', `pushdef(`_wlbl', uniqlabel(WHILE_))'`pushdef(`_elbl', uniqlabel(ENDLOOP_))'`_wlbl:
 if($1,`$2
-jump _wlbl')' `popdef(`_wlbl')') 
+jump _wlbl')
+_elbl:' `popdef(`_wlbl')'`popdef(`_elbl')') 
 
 
 ;---------------------------------
@@ -410,9 +414,10 @@ jump _wlbl')' `popdef(`_wlbl')')
 ; Ex: load s0, 15'd
 ;     dowhile(s0 != 10, `output s3, P_foo
 ;                        sub s0, 01')
-define(`dowhile', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`_wlbl: ; Do-while $1
+define(`dowhile', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`pushdef(`_elbl', uniqlabel(ENDLOOP_))'`_wlbl: ; Do-while $1
 $2
-_dw(_iftokens($1))' `popdef(`_wlbl')')
+_dw(_iftokens($1))
+_elbl:' `popdef(`_wlbl')'`popdef(`_elbl')')
 
 define(`_dw',dnl
 `ifelse(regexp($2, `^s'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
@@ -426,6 +431,11 @@ $2,&,`jump nz, _wlbl', `errmsg(`Invalid operation: $2')')'
 ; Wrapper used to swap arguments when using C-style "do { } while()" syntax
 define(`_dowhile2', `dowhile($2, `$1')')
 
+; Break statement to exit loops
+define(`break', `jump _elbl')
+
+; Continue statement to restart loop
+define(`continue', `jump _wlbl')
 
 ;=============== SHIFT AND ROTATE OPERATIONS ===============
 
