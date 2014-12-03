@@ -174,6 +174,115 @@ define(`_vardef', `ifelse(`$1',,`errmsg(Invalid variable definition)')'`pushdef(
 `ifelse(`$3',,,`load $1, evalx($3, 16, 2) `;' Var `$2' := $3')')
 
 
+;=============== DELAYS ===============
+
+;---------------------------------
+; Define system clock frequency
+; ** Only invoke once. Must be executed before any delay macros **
+; Arg1: Clock frequency in MHz
+; Ex: use_clock(50) ; 50 MHz clock
+define(`use_clock', `define(`_cfreq', $1)')
+
+define(`_delay_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. Use `use_clock()' before any delay operation')')
+
+
+
+;---------------------------------
+; Delay by milliseconds
+; Arg1: Milliseconds to delay
+; Arg2, Arg3: MSB, LSB of delay counter
+; Ex:
+;             use_clock(50) ; 50 MHz clock
+;  delay_5ms: delay_ms(5, s4,s5)
+;             return
+;  ...
+;  call delay_5ms
+define(`delay_ms', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
+`; Delay for $1 ms at' _cfreq MHz
+ifelse(eval(_dval_ms($1) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
+load16($2,$3, _dval_ms($1))
+_dly: `; Total loop delay:' eval(3 + _dnop_ms($1)) instructions
+delay_cycles(_dnop_ms($1))
+sub16($2,$3, 1)
+jump nc, _dly
+`;' Adjust delay with _dadj_ms($1) additional instructions
+delay_cycles(_dadj_ms($1))'
+`popdef(`_dly')')
+
+; Calculate number of nops needed to fit delay count into 16-bits
+; Arg1: Milliseconds to delay
+define(`_dnop_ms', `ifelse(eval(_dnop_calc($1, 1000) < 0),1,0,_dnop_calc($1, 1000))')
+define(`_dnop_calc', `eval( ($1 * $2 * 100 * _cfreq / (2 * (2**16 + 2)) - 300 + 100) / 100 )')
+
+; Final adjustment delays needed to reach requested delay
+define(`_dadj_ms', `eval( ($1*1000* _cfreq - ((_dval_ms($1)+1)*(3 + _dnop_ms($1)) + 2)*2) / 2  )')
+
+; Calculate millisecond delay value
+; Arg1: Milliseconds to delay
+define(`_dval_ms', `eval($1 * 1000 * _cfreq / 2 / (3 + _dnop_ms($1)) - 2)')
+
+
+;---------------------------------
+; Delay by microseconds
+; Arg1: Microseconds to delay
+; Arg2, Arg3: MSB, LSB of delay counter
+; Ex:
+;              use_clock(50) ; 50 MHz clock
+;  delay_40us: delay_us(40, s4,s5)
+;              return
+;  ...
+;  call delay_40us
+define(`delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
+`; Delay for' $1 us at _cfreq MHz
+ifelse(eval(_dval_us($1) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
+load16($2,$3, _dval_us($1))
+_dly: `; Total loop delay:' eval(3 + _dnop_us($1)) instructions
+delay_cycles(_dnop_us($1))
+sub16($2,$3, 1)
+jump nc, _dly
+`;' Adjust delay with _dadj_us($1) additional instructions
+delay_cycles(_dadj_us($1))'
+`popdef(`_dly')')
+
+; Calculate number of nops needed to fit delay count into 16-bits
+; Arg1: Microseconds to delay
+define(`_dnop_us', `ifelse(eval(_dnop_calc($1, 1) < 0),1,0,_dnop_calc($1, 1))')
+
+; Final adjustment delays needed to reach requested delay
+define(`_dadj_us', `eval( ($1* _cfreq - ((_dval_us($1)+1)*(3 + _dnop_us($1)) + 2)*2) / 2  )')
+
+; Calculate microsecond delay value
+; Arg1: Microseconds to delay
+define(`_dval_us', `eval($1 * _cfreq / 2 / (3 + _dnop_us($1)) - 2)')
+
+
+;---------------------------------
+; Delay for a number of instruction cycles
+; Arg1: Number of instructions to delay
+; This delay generator constructs a minimal delay using a combination of
+; delay trees and NOPs. The result uses fewer instructions that a plain chain
+; of NOPs. Note that the delay trees use recursion on the stack to maintain delay state.
+; There is a slight risk of overflowing the stack if this routine is invoked for long delays
+; when already in a deeply nested call frame.
+; Ex: delay_cycles(10) ; Delay for 10 instructions (20 clock cycles)
+define(`delay_cycles', `ifelse(eval($1 < 5),1,`repeat(`nop', $1)',`_delay_tree(floor_log2(decr($1)))'
+`$0(eval($1 - 2**floor_log2(decr($1)) - 1))')')
+
+
+define(`floor_log2', `ifelse(eval($1 <= 1),1,0,`eval($0(eval($1 >> 1)) + 1)')')
+
+; Generate a binary tree delay with recursive calls
+; Arg1: Number of stages. Delayed instructions are 2**Arg1 + 1
+define(`_delay_tree', `pushdef(`_dt', uniqlabel(DTREE_))'dnl
+`call _dt`'_`'decr($1) `; Delay for' eval(2**$1 + 1) cycles
+jump _dt`'_end
+_delay_tree_gen(decr($1))dnl
+_dt`'_0: return
+_dt`'_end:'`popdef(`_dt')')
+
+define(`_delay_tree_gen', `_dt`'_$1: call _dt`'_`'decr($1)'
+`ifelse(eval($1 > 1),1,`$0(decr($1))')')
+
 
 ;=============== CARRY FLAG OPERATIONS ===============
 
@@ -400,10 +509,10 @@ define(`warnmsg', `errprint($1  __file__ line __line__)')
 ; Ex: load s0, 00
 ;     while(s0 < 10, `output s3, P_foo
 ;                     add s0, 01')
-define(`while', `pushdef(`_wlbl', uniqlabel(WHILE_))'`pushdef(`_elbl', uniqlabel(ENDLOOP_))'`_wlbl:
+define(`while', `pushdef(`_clbl', uniqlabel(WHILE_))'`pushdef(`_elbl', uniqlabel(ENDLOOP_))'`_clbl:
 if($1,`$2
-jump _wlbl')
-_elbl:' `popdef(`_wlbl')'`popdef(`_elbl')') 
+jump _clbl')
+_elbl:' `popdef(`_clbl')'`popdef(`_elbl')') 
 
 
 ;---------------------------------
@@ -414,28 +523,47 @@ _elbl:' `popdef(`_wlbl')'`popdef(`_elbl')')
 ; Ex: load s0, 15'd
 ;     dowhile(s0 != 10, `output s3, P_foo
 ;                        sub s0, 01')
-define(`dowhile', `pushdef(`_wlbl', uniqlabel(DOWHILE_))'`pushdef(`_elbl', uniqlabel(ENDLOOP_))'`_wlbl: ; Do-while $1
+define(`dowhile', `pushdef(`_clbl', uniqlabel(DOWHILE_))'`pushdef(`_elbl', uniqlabel(ENDLOOP_))'`_clbl: ; Do-while $1
 $2
 _dw(_iftokens($1))
-_elbl:' `popdef(`_wlbl')'`popdef(`_elbl')')
+_elbl:' `popdef(`_clbl')'`popdef(`_elbl')')
 
 define(`_dw',dnl
 `ifelse(regexp($2, `^s'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
 `compare $1, evalx($3, 16, 2)')'
-`ifelse($2,<,`jump c, _wlbl', $2,>=,`jump nc, _wlbl',dnl
-$2,s<,`jump c, _wlbl', $2,s>=,`jump nc, _wlbl',dnl
-$2,==,`jump z, _wlbl', $2,!=,`jump nz, _wlbl',
-$2,&,`jump nz, _wlbl', `errmsg(`Invalid operation: $2')')'
+`ifelse($2,<,`jump c, _clbl', $2,>=,`jump nc, _clbl',dnl
+$2,s<,`jump c, _clbl', $2,s>=,`jump nc, _clbl',dnl
+$2,==,`jump z, _clbl', $2,!=,`jump nz, _clbl',
+$2,&,`jump nz, _clbl', `errmsg(`Invalid operation: $2')')'
 )
 
 ; Wrapper used to swap arguments when using C-style "do { } while()" syntax
 define(`_dowhile2', `dowhile($2, `$1')')
 
+
+;---------------------------------
+; For loop
+; Arg1: Initialization expression (passed to expr()) This can be empty
+; Arg2: Boolean comparison expression
+; Arg3: Update expression (passed to expr()) This can be empty
+; Arg4: Code block for loop body
+; Ex: for(s0 := 0, s0 < 5, s0 := s0 + 1, `output s0, 00')
+; Note that the "continue" macro will behave as in C by jumping to the update code before
+; restarting the loop
+define(`for', `pushdef(`_slbl', uniqlabel(FOR_))'`pushdef(`_clbl', uniqlabel(NEXTFOR_))'dnl
+`pushdef(`_elbl', uniqlabel(ENDLOOP_))'`ifelse(`$1',,,`expr($1)')
+_slbl:
+if($2,`$4
+_clbl: ifelse(`$3',,,`expr($3)')
+jump _slbl')
+_elbl:' `popdef(`_clbl')'`popdef(`_elbl')') 
+
+
 ; Break statement to exit loops
 define(`break', `jump _elbl')
 
 ; Continue statement to restart loop
-define(`continue', `jump _wlbl')
+define(`continue', `jump _clbl')
 
 ;=============== SHIFT AND ROTATE OPERATIONS ===============
 
@@ -1267,7 +1395,6 @@ $0(shift(shift($@)))')')
 define(`_expr16_binary', `ifelse($1,>>,`sr0_16(_exreg, $2)',dnl
 `_expr16_binary_common($1,$2)')')
 
-; FIXME: consider implementing the sp() and spi() indirect assignment targets
 define(`_expr16_binary_common', `ifelse($1,+,`add16(_exreg, _decode16($2))', $1,-,`sub16(_exreg, _decode16($2))',
 $1,&,`and16(_exreg, _decode16($2))', $1,|,`or16(_exreg, _decode16($2))', $1,^,`xor16(_exreg, _decode16($2))',
 $1,<<,`sl0_16(_exreg, _decode16($2))',
