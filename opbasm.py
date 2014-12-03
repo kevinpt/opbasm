@@ -700,6 +700,7 @@ class Assembler(object):
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"')\nwhile(\1, `", ecode)
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)', r"',\1)", ecode) # end of do-while
     ecode = re.sub(r'while\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'while(\1, `', ecode) # plain while
+    ecode = re.sub(r'for\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'for(\1, `', ecode) # for loop
     ecode = re.sub(r'}', r"')", ecode) # end of a block
     #print('XXX\n', ecode, '\nYYY')
     return ecode
