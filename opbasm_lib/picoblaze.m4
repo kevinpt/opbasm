@@ -186,75 +186,67 @@ define(`use_clock', `define(`_cfreq', $1)')
 define(`_delay_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. Use `use_clock()' before any delay operation')')
 
 
-
 ;---------------------------------
 ; Delay by milliseconds
 ; Arg1: Milliseconds to delay
 ; Arg2, Arg3: MSB, LSB of delay counter
+; Arg4: Optional number of instructions to deduct from the delay (default is 2)
 ; Ex:
 ;             use_clock(50) ; 50 MHz clock
-;  delay_5ms: delay_ms(5, s4,s5)
+;  delay_5ms: delay_ms(5, s4,s5, 4) ; Deduct 2 additional instructions to account for call and return
 ;             return
 ;  ...
 ;  call delay_5ms
-define(`delay_ms', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
-`; Delay for $1 ms at' _cfreq MHz
-ifelse(eval(_dval_ms($1) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
-load16($2,$3, _dval_ms($1))
-_dly: `; Total loop delay:' eval(3 + _dnop_ms($1)) instructions
-delay_cycles(_dnop_ms($1))
-sub16($2,$3, 1)
-jump nc, _dly
-`;' Adjust delay with _dadj_ms($1) additional instructions
-delay_cycles(_dadj_ms($1))'
-`popdef(`_dly')')
-
-; Calculate number of nops needed to fit delay count into 16-bits
-; Arg1: Milliseconds to delay
-define(`_dnop_ms', `ifelse(eval(_dnop_calc($1, 1000) < 0),1,0,_dnop_calc($1, 1000))')
-define(`_dnop_calc', `eval( ($1 * $2 * 100 * _cfreq / (2 * (2**16 + 2)) - 300 + 100) / 100 )')
-
-; Final adjustment delays needed to reach requested delay
-define(`_dadj_ms', `eval( ($1*1000* _cfreq - ((_dval_ms($1)+1)*(3 + _dnop_ms($1)) + 2)*2) / 2  )')
-
-; Calculate millisecond delay value
-; Arg1: Milliseconds to delay
-define(`_dval_ms', `eval($1 * 1000 * _cfreq / 2 / (3 + _dnop_ms($1)) - 2)')
+define(`delay_ms', ``; Delay for $1 ms at' _cfreq MHz
+_delay_us(eval($1*1000),$2,$3,`ifelse(`$4',,2,$4)')')
 
 
 ;---------------------------------
 ; Delay by microseconds
 ; Arg1: Microseconds to delay
 ; Arg2, Arg3: MSB, LSB of delay counter
+; Arg4: Optional number of instructions to deduct from the delay (default is 2)
 ; Ex:
 ;              use_clock(50) ; 50 MHz clock
 ;  delay_40us: delay_us(40, s4,s5)
 ;              return
 ;  ...
 ;  call delay_40us
-define(`delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
-`; Delay for' $1 us at _cfreq MHz
-ifelse(eval(_dval_us($1) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
-load16($2,$3, _dval_us($1))
-_dly: `; Total loop delay:' eval(3 + _dnop_us($1)) instructions
-delay_cycles(_dnop_us($1))
+define(`delay_us', ``; Delay for' $1 us at _cfreq MHz
+_delay_us($1,$2,$3,`ifelse(`$4',,2,$4)')')
+
+define(`_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
+ifelse(eval(_dval_us($1,$4) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
+load16($2,$3, _dval_us($1,$4))
+_dly: `; Total loop delay:' eval(3 + _dnop_us($1,$4)) instructions
+delay_cycles(_dnop_us($1,$4))
 sub16($2,$3, 1)
 jump nc, _dly
-`;' Adjust delay with _dadj_us($1) additional instructions
-delay_cycles(_dadj_us($1))'
+`;' Adjust delay with _dadj_us($1,$4) additional instruction cycles
+delay_cycles(_dadj_us($1,$4))'
 `popdef(`_dly')')
 
 ; Calculate number of nops needed to fit delay count into 16-bits
 ; Arg1: Microseconds to delay
-define(`_dnop_us', `ifelse(eval(_dnop_calc($1, 1) < 0),1,0,_dnop_calc($1, 1))')
-
-; Final adjustment delays needed to reach requested delay
-define(`_dadj_us', `eval( ($1* _cfreq - ((_dval_us($1)+1)*(3 + _dnop_us($1)) + 2)*2) / 2  )')
+; Arg2: Additional instructions
+define(`_dnop_us', `ifelse(eval(_dnop_calc($1,$2) < 0),1,0,_dnop_calc($1,$2))')
+; Note: Scaled by 100 to retain fractional bits until the end. The +100 term is
+; used to round up result to the next integer.
+define(`_dnop_calc', `eval( (100 * $1 * _cfreq / (2 * (2**16 + $2)) - 300 + 100) / 100 )')
 
 ; Calculate microsecond delay value
 ; Arg1: Microseconds to delay
-define(`_dval_us', `eval($1 * _cfreq / 2 / (3 + _dnop_us($1)) - 2)')
+; Arg2: Additional instructions
+;define(`_dval_us', `eval($1 * _cfreq / 2 / (3 + _dnop_us($1,$2)) - 2)')
+define(`_dval_pre', `eval(($1 * _cfreq / 2 - 2) / (3 + _dnop_us($1,$2)) - 1)')
 
+; Final adjustment delays needed to reach requested delay
+;define(`_dadj_us', `eval( ($1 * _cfreq - ((_dval_us($1)+1)*(3 + _dnop_us($1,$2)) + 2)*2) / 2  )')
+define(`_dadj_pre', `eval( ($1 * _cfreq - ((_dval_pre($1,$2)+1)*(3 + _dnop_us($1,$2)) + $2)*2) / 2  )')
+
+
+define(`_dval_us', `ifelse(eval(_dadj_pre($1,$2) < 0),1,`eval(_dval_pre($1,$2) - 1)',`_dval_pre($1,$2)')')
+define(`_dadj_us', `eval( ($1 * _cfreq - ((_dval_us($1,$2)+1)*(3 + _dnop_us($1,$2)) + $2)*2) / 2  )')
 
 ;---------------------------------
 ; Delay for a number of instruction cycles
