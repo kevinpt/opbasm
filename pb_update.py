@@ -47,12 +47,13 @@ except ImportError:
 
 def parse_command_line():
     progname = os.path.basename(sys.argv[0])
-    usage = '{} -m <mem file> -n <NCD file> [-r <RAM inst name>] [-o <output bit file>]'.format(progname)
+    usage = '{} -m <mem file> -n <NCD file> [-l <Layout spec>] [-o <output bit file>]'.format(progname)
     parser = OptionParser(usage=usage)
 
     parser.add_option('-m', '--mem', dest='mem_file', help='mem file')
     parser.add_option('-n', '--ncd', dest='ncd_file', help='NCD file')
-    parser.add_option('-r', '--ram_inst', dest='ram_inst', help='RAM instance name')
+    parser.add_option('-l', '--layout-spec', dest='layout_spec', \
+      help='Memory layout specification "inst1,inst2,...instN[:next row...]"')
     parser.add_option('-o', '--output', dest='out_bit_file', help='Output bit file')
 
     options, args = parser.parse_args()
@@ -124,8 +125,8 @@ def main():
       lo.add_row(MemRow(0,0))
       lo.rows[0].add_bram(copy.deepcopy(ram_insts[inames[0]]))
       prompt_user = False
-    elif options.ram_inst is not None: # Check if named instance(s) exists
-      spec = [r.split(',') for r in options.ram_inst.split(':')]
+    elif options.layout_spec is not None: # Check if layout specification exists
+      spec = [[b.strip() for b in r.split(',')] for r in options.layout_spec.split(':')]
       spec_flat = [i for s in spec for i in s]
 
       def show_instances(inames, ram_insts):
@@ -160,7 +161,7 @@ def main():
       mem_data = [l.strip() for l in fh.readlines()]
 
     if len(mem_data) > 1: # Remove first line with address offset
-      mem_data = mem_data[1:]
+      mem_data = [int(w, 16) for w in mem_data[1:]]
 
     print('Required memory depth:', len(mem_data))
 
@@ -208,40 +209,96 @@ def main():
 
 
     # Show final layout
-    print('\nFinal memory layout:')
+    print(success('\nFinal memory layout:'))
     print('\n'.join(lo.summary(4)))
     print()
 
-    # Make sure all BRAMs in layout have the same width
-    widths = [b.width for r in lo.rows for b in r.brams]
-    if len(widths) > 0:
-      if not all(widths[0] == w for w in widths[1:]):
-        report_error('Mixed width BRAMs not supported in memory layout', exit=1)
+#    # Make sure all BRAMs in layout have the same width
+#    widths = [b.width for r in lo.rows for b in r.brams]
+#    if len(widths) > 0:
+#      if not all(widths[0] == w for w in widths[1:]):
+#        report_error('Mixed width BRAMs not supported in memory layout', exit=1)
 
     # Make sure the layout depth is correct
     if lo.rows[-1].end + 1 != target_depth:
       report_error('Memory layout depth does not match required {} words'.format(target_depth), exit=1)
 
-    print('Instances: "{}"'.format(lo.instance_spec))
-
-    # Generate BMM file
-    with open(bmm_file, 'w') as fh:
-        fh.write(lo.bmm)
+    print('{} "{}"'.format(success('Layout Spec:'),lo.instance_spec))
 
 
-    # Run data2mem
-    print('\nRunning data2mem...')
-    d2m_cmd = ['data2mem', '-bm', bmm_file, '-bd', options.mem_file, \
-               '-bt', bit_file, '-bx', '.','-o', 'b', options.out_bit_file]
-    print(' ', ' '.join(d2m_cmd))
-    try:
-      check_call(d2m_cmd)
-    except CalledProcessError:
-      report_error('data2mem failure', exit=1)
+    # data2mem doesn't work right if there multiple BRAMs in a row of memory with
+    # parity bits in use. We get around this by replacing BRAMs one at a time if there
+    # is more than one BRAM in the layout.
 
+    if len(lo.rows) == 1 and len(lo.rows[0].brams) == 1: # Single BRAM
+      # Generate BMM file
+      with open(bmm_file, 'w') as fh:
+          fh.write(lo.bmm)
+
+      run_data2mem(bmm_file, options.mem_file, bit_file, options.out_bit_file)
+
+    else: # Multiple BRAMs
+      prev_bit_file = bit_file
+      cur_bit_file = None
+
+      for rn, r in enumerate(lo.rows):
+        row_data = mem_data[r.start:r.end+1]
+        for b in r.brams:
+          mask = (2**b.width - 1) << b.lsb
+          bram_data = [(w & mask) >> b.lsb for w in row_data]
+
+          base_name = 'r{}_b{}_{}'.format(rn, b.msb, b.lsb)
+          bmm_file = base_name + '.bmm'
+          mem_file = base_name + '.mem'
+          cur_bit_file = base_name + '.bit'
+
+          # Build a new single BRAM layout so we can generate a BMM
+          nlo = MemLayout()
+          nlo.add_row(MemRow(0,0))
+          nlo.rows[0].add_bram(copy.deepcopy(b))
+          nlo.rows[0].brams[0].lsb = 0 # Reset bit lanes
+
+          # data2mem has a bug when handling 2-bit wide memories. It pads words out to 4-bits with 0's.
+          # We will handle this case by re-encoding these memories as 4-bits wide.
+          width = b.width
+          if width == 2:
+            it = iter(bram_data)
+            bram_pairs = itertools.izip(it, it)
+            bram_data = [(p[0] << 2) + p[1] for p in bram_pairs]
+            width = 4
+            nlo.rows[0].brams[0].width = width
+            nlo.rows[0].brams[0].depth = nlo.rows[0].brams[0].depth // 2
+            nlo.rows[0].end = nlo.rows[0].brams[0].depth - 1
+
+          # Write a mem file
+          with open(mem_file, 'w') as fh:
+            print('@00000000', file=fh)
+            fh.writelines('{:0{}X}\n'.format(w,(width+3)//4) for w in bram_data)
+
+          # Write the BMM
+          with open(bmm_file, 'w') as fh:
+            fh.write(nlo.bmm)
+
+          run_data2mem(bmm_file, mem_file, prev_bit_file, cur_bit_file)
+
+          if prev_bit_file != bit_file: os.remove(prev_bit_file)
+          prev_bit_file = cur_bit_file
+
+      if cur_bit_file: os.rename(cur_bit_file, options.out_bit_file)
 
     print(success('Generated updated bit file:'), options.out_bit_file)
     sys.exit(0)
+
+
+def run_data2mem(bmm_file, mem_file, bit_file, out_bit_file):
+  print('\nRunning data2mem...')
+  d2m_cmd = ['data2mem', '-bm', bmm_file, '-bd', mem_file, \
+             '-bt', bit_file,'-o', 'b', out_bit_file]
+  print(' ', ' '.join(d2m_cmd))
+  try:
+    check_call(d2m_cmd)
+  except CalledProcessError:
+    report_error('data2mem failure', exit=1)
 
 
 class Bram(object):
@@ -364,10 +421,9 @@ class MemRow(object):
   def valid(self, width):
     return True if self.width == width else False
 
-  # FIXME: Remove OUTPUT parameter from bit lane def.
   @property
   def bus_block(self):
-    lanes = ['    {} [{}:{}] LOC = {} OUTPUT = {}.mem;'.format(b.instance, b.msb, b.lsb, b.loc, b.loc) for b in self.brams]
+    lanes = ['    {} [{}:{}] LOC = {};'.format(b.instance, b.msb, b.lsb, b.loc) for b in self.brams]
     return '  BUS_BLOCK\n' + '\n'.join(lanes) + '\n  END_BUS_BLOCK;'
 
   def summary(self, indent=0):
@@ -393,7 +449,9 @@ class MemLayout(object):
     first_bram = self.rows[0].brams[0]
     size = first_bram.depth * first_bram.width
     btype = 'unknown'
-    if size <= 1024*16:
+    if size <= 1024*8:
+      btype = 'RAMB8'
+    elif size <= 1024*16:
       btype = 'RAMB16'
     elif size <= 1024*18:
       btype = 'RAMB18'
@@ -407,7 +465,7 @@ class MemLayout(object):
     # data2mem has some goofy way of counting "words" that changes depending on how
     # many BRAMs are in a row
     end_addr = (self.rows[-1].end+1)*len(self.rows[0].brams)-1
-    return 'ADDRESS_SPACE pb_rom {} INDEX_ADDRESSING [0x{:08X}:0x{:08X}]\n'.format(btype, 0, end_addr) + \
+    return 'ADDRESS_SPACE pb_rom {} WORD_ADDRESSING [0x{:08X}:0x{:08X}]\n'.format(btype, 0, end_addr) + \
             '\n'.join(blocks) + '\nEND_ADDRESS_SPACE;'
 
   @property
