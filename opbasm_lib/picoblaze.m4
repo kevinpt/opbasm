@@ -187,68 +187,6 @@ define(`_delay_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. 
 
 
 ;---------------------------------
-; Delay by milliseconds
-; Arg1: Milliseconds to delay
-; Arg2, Arg3: MSB, LSB of delay counter
-; Arg4: Optional number of instructions to deduct from the delay (default is 2)
-; Ex:
-;             use_clock(50) ; 50 MHz clock
-;  delay_5ms: delay_ms(5, s4,s5, 4) ; Deduct 2 additional instructions to account for call and return
-;             return
-;  ...
-;  call delay_5ms
-define(`delay_ms', ``; Delay for $1 ms at' _cfreq MHz
-_delay_us(eval($1*1000),$2,$3,`ifelse(`$4',,2,$4)')')
-
-
-;---------------------------------
-; Delay by microseconds
-; Arg1: Microseconds to delay
-; Arg2, Arg3: MSB, LSB of delay counter
-; Arg4: Optional number of instructions to deduct from the delay (default is 2)
-; Ex:
-;              use_clock(50) ; 50 MHz clock
-;  delay_40us: delay_us(40, s4,s5)
-;              return
-;  ...
-;  call delay_40us
-define(`delay_us', ``; Delay for' $1 us at _cfreq MHz
-_delay_us($1,$2,$3,`ifelse(`$4',,2,$4)')')
-
-define(`_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
-ifelse(eval(_dval_us($1,$4) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
-load16($2,$3, _dval_us($1,$4))
-_dly: `; Total loop delay:' eval(3 + _dnop_us($1,$4)) instructions
-delay_cycles(_dnop_us($1,$4))
-sub16($2,$3, 1)
-jump nc, _dly
-`;' Adjust delay with _dadj_us($1,$4) additional instruction cycles
-delay_cycles(_dadj_us($1,$4))'
-`popdef(`_dly')')
-
-; Calculate number of nops needed to fit delay count into 16-bits
-; Arg1: Microseconds to delay
-; Arg2: Additional instructions
-define(`_dnop_us', `ifelse(eval(_dnop_calc($1,$2) < 0),1,0,_dnop_calc($1,$2))')
-; Note: Scaled by 100 to retain fractional bits until the end. The +100 term is
-; used to round up result to the next integer.
-define(`_dnop_calc', `eval( (100 * $1 * _cfreq / (2 * (2**16 + $2)) - 300 + 100) / 100 )')
-
-; Calculate microsecond delay value
-; Arg1: Microseconds to delay
-; Arg2: Additional instructions
-;define(`_dval_us', `eval($1 * _cfreq / 2 / (3 + _dnop_us($1,$2)) - 2)')
-define(`_dval_pre', `eval(($1 * _cfreq / 2 - 2) / (3 + _dnop_us($1,$2)) - 1)')
-
-; Final adjustment delays needed to reach requested delay
-;define(`_dadj_us', `eval( ($1 * _cfreq - ((_dval_us($1)+1)*(3 + _dnop_us($1,$2)) + 2)*2) / 2  )')
-define(`_dadj_pre', `eval( ($1 * _cfreq - ((_dval_pre($1,$2)+1)*(3 + _dnop_us($1,$2)) + $2)*2) / 2  )')
-
-
-define(`_dval_us', `ifelse(eval(_dadj_pre($1,$2) < 0),1,`eval(_dval_pre($1,$2) - 1)',`_dval_pre($1,$2)')')
-define(`_dadj_us', `eval( ($1 * _cfreq - ((_dval_us($1,$2)+1)*(3 + _dnop_us($1,$2)) + $2)*2) / 2  )')
-
-;---------------------------------
 ; Delay for a number of instruction cycles
 ; Arg1: Number of instructions to delay
 ; This delay generator constructs a minimal delay using a combination of
@@ -256,10 +194,11 @@ define(`_dadj_us', `eval( ($1 * _cfreq - ((_dval_us($1,$2)+1)*(3 + _dnop_us($1,$
 ; of NOPs. Note that the delay trees use recursion on the stack to maintain delay state.
 ; There is a slight risk of overflowing the stack if this routine is invoked for long delays
 ; when already in a deeply nested call frame.
+; The maximum delay is appx. 100e9 cycles (1000sec at 100MHz)
 ; Ex: delay_cycles(10) ; Delay for 10 instructions (20 clock cycles)
+; Yo, dawg! I hard you like recursion so I put some recursion in your recursive loops
 define(`delay_cycles', `ifelse(eval($1 < 5),1,`repeat(`nop', $1)',`_delay_tree(floor_log2(decr($1)))'
 `$0(eval($1 - 2**floor_log2(decr($1)) - 1))')')
-
 
 define(`floor_log2', `ifelse(eval($1 <= 1),1,0,`eval($0(eval($1 >> 1)) + 1)')')
 
@@ -274,6 +213,138 @@ _dt`'_end:'`popdef(`_dt')')
 
 define(`_delay_tree_gen', `_dt`'_$1: call _dt`'_`'decr($1)'
 `ifelse(eval($1 > 1),1,`$0(decr($1))')')
+
+
+;---------------------------------
+; Delay by milliseconds
+; Arg1: Milliseconds to delay
+; Arg2, Arg3: MSB, LSB of delay counter
+; Arg4: Optional number of instructions to deduct from the delay (default is 0)
+; This delay will be cycle accurate if the requested delay is an integer multiple
+; of the clock period.
+; At 100 MHz, the max delay is 214 ms. It increases with lower clock frequencies
+; Ex:
+;             use_clock(50) ; 50 MHz clock
+;  delay_5ms: delay_ms(5, s4,s5, 2) ; Deduct 2 additional instructions to account for call and return
+;             return
+;  ...
+;  call delay_5ms
+define(`delay_ms', ``; Delay for $1 ms at' _cfreq MHz
+_delay_us(eval($1*1000),$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
+
+
+;---------------------------------
+; Delay by microseconds
+; Arg1: Microseconds to delay
+; Arg2, Arg3: MSB, LSB of delay counter
+; Arg4: Optional number of instructions to deduct from the delay (default is 0)
+; This delay will be cycle accurate if the requested delay is an integer multiple
+; of the clock period.
+; Ex:
+;              use_clock(50) ; 50 MHz clock
+;  delay_40us: delay_us(40, s4,s5)
+;              return
+;  ...
+;  call delay_40us
+define(`delay_us', ``; Delay for' $1 us at _cfreq MHz
+_delay_us($1,$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
+
+define(`_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
+ifelse(eval(_dval_us($1,$4) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
+load16($2,$3, _dval_us($1,$4))
+_dly: `; Total loop delay:' eval(3 + _dnop_us($1,$4)) instructions
+delay_cycles(_dnop_us($1,$4))
+sub16($2,$3, 1)
+jump nc, _dly
+`;' Adjust delay with _dadj_us($1,$4) additional instruction cycles
+delay_cycles(_dadj_us($1,$4))'`popdef(`_dly')')
+
+; Calculate number of nops needed to fit delay count into 16-bits
+; Arg1: Microseconds to delay
+; Arg2: Additional instructions
+define(`_dnop_us', `ifelse(eval(_dnop_calc($1,$2) < 0),1,0,_dnop_calc($1,$2))')
+; Note: Scaled by 100 to retain fractional bits until the end. The +100 term is
+; used to round up result to the next integer.
+define(`_dnop_calc', `eval( (100 * $1 * _cfreq / (2 * (2**16 + $2)) - 300 + 100) / 100 )')
+
+; Calculate microsecond delay value
+; Arg1: Microseconds to delay
+; Arg2: Additional instructions
+define(`_dval_pre', `eval(($1 * _cfreq / 2 - $2) / (3 + _dnop_us($1,$2)) - 1)')
+
+; Adjustment delays needed to reach requested delay
+define(`_dadj_pre', `eval( ($1 * _cfreq - ((_dval_pre($1,$2)+1)*(3 + _dnop_us($1,$2)) + $2)*2) / 2  )')
+
+; Final count value and adjustment delays
+define(`_dval_us', `ifelse(eval(_dadj_pre($1,$2) < 0),1,`eval(_dval_pre($1,$2) - 1)',`_dval_pre($1,$2)')')
+define(`_dadj_us', `eval( ($1 * _cfreq - ((_dval_us($1,$2)+1)*(3 + _dnop_us($1,$2)) + $2)*2) / 2  )')
+
+
+;---------------------------------
+; Variable delay by milliseconds
+; Arg1: Maximum milliseconds to delay
+; Arg2, Arg3: MSB, LSB of delay counter
+; The var_count_ms() macro generates a 16-bit count value that is loaded
+; into the counter registers before calling the delay function
+; Ex:
+;         use_clock(50) ; 50 MHz clock
+;         define(MAXDELAY, 10) ; 10ms max delay
+;         reg16(dly_count, s4,s5)
+;  delay: var_delay_ms(MAXDELAY, dly_count)
+;         return
+;  ...
+;  load16(dly_count, var_count_ms(1, MAXDELAY))
+;  call delay ; Delay for 1 ms
+;  ...
+;  load16(dly_count, var_count_ms(8, MAXDELAY))
+;  call delay ; Delay for 8 ms
+define(`var_delay_ms', ``; Variable delay for max' $1 ms at _cfreq MHz
+_var_delay_us(eval($1*1000),$2,$3)')
+
+;---------------------------------
+; Variable delay by microseconds
+; Arg1: Maximum microseconds to delay
+; Arg2, Arg3: MSB, LSB of delay counter
+; The var_count_us() macro generates a 16-bit count value that is loaded
+; into the counter registers before calling the delay function
+; Ex:
+;         use_clock(50) ; 50 MHz clock
+;         define(MAXDELAY, 900) ; 900 us max delay
+;         reg16(dly_count, s4,s5)
+;  delay: var_delay_us(MAXDELAY, dly_count)
+;         return
+;  ...
+;  load16(dly_count, var_count_us(100, MAXDELAY))
+;  call delay ; Delay for 100 us
+;  ...
+;  load16(dly_count, var_count_us(800, MAXDELAY))
+;  call delay ; Delay for 800 us
+define(`var_delay_us', ``; Variable delay for max' $1 us at _cfreq MHz
+_var_delay_us($1,$2,$3)')
+
+define(`_var_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(VDELAY_))'`dnl
+ifelse(eval(_dval_pre($1,0) >= 2**16),1,`errmsg(`Max delay value is too large')')dnl
+_dly: `; Total loop delay:' eval(3 + _dnop_us($1,0)) instructions
+delay_cycles(_dnop_us($1,0))
+sub16($2,$3, 1)
+jump nc, _dly'
+`popdef(`_dly')')
+
+;---------------------------------
+; Generate 16-bit millisecond count for variable delay function
+; Arg1: Milliseconds to delay
+; Arg2: Max milliseconds for the delay loop (from definition using var_delay_ms())
+define(`var_count_ms', `ifelse(eval(_dval_var(eval($1*1000),eval($2*1000)) < 0),1,dnl
+`errmsg(`Delay is too small: $1 ms')',`_dval_var(eval($1*1000),eval($2*1000))')')
+
+;---------------------------------
+; Generate 16-bit microsecond count for variable delay function
+; Arg1: Microseconds to delay
+; Arg2: Max microseconds for the delay loop (from definition using var_delay_us())
+define(`var_count_us', `ifelse(eval(_dval_var($1,$2) < 0),1,`errmsg(`Delay is too small: $1 us')',`_dval_var($1,$2)')')
+
+define(`_dval_var', `eval(($1 * _cfreq / 2 - 2) / (3 + _dnop_us($2,2)) - 1)')
+
 
 
 ;=============== CARRY FLAG OPERATIONS ===============
