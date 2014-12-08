@@ -207,17 +207,16 @@ def main():
       inames.remove(inames[sel])
 
 
-
     # Show final layout
     print(success('\nFinal memory layout:'))
     print('\n'.join(lo.summary(4)))
     print()
 
-#    # Make sure all BRAMs in layout have the same width
-#    widths = [b.width for r in lo.rows for b in r.brams]
-#    if len(widths) > 0:
-#      if not all(widths[0] == w for w in widths[1:]):
-#        report_error('Mixed width BRAMs not supported in memory layout', exit=1)
+
+    # Make sure the layout width is correct
+    for r in lo.rows:
+      if r.width != target_width:
+        report_error('Memory layout width does not match required {} bits'.format(target_width), exit=1)
 
     # Make sure the layout depth is correct
     if lo.rows[-1].end + 1 != target_depth:
