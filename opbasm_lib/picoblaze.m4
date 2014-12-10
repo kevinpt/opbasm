@@ -70,11 +70,9 @@ define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x
 ; Convert a string to a list of decimal ASCII codes
 ; Arg1: String to convert
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
-define(`asciiord', `esyscmd(`python -c "import sys; sys.stdout.write(\", \".join(str(ord(c)) for c in \"$1\"))"')')
-
 changequote(<!,!>) ; Change quotes so we can handle "`" and "'"
 
-define(<!ao!>,<!changequote(<!,!>)<!!>ifelse(<!$1!>, ,0x20,<!$1!>,<!;!>,0x3B,dnl
+define(<!asciiord!>,<!changequote(<!,!>)<!!>ifelse(<!$1!>, ,0x20,<!$1!>,<!;!>,0x3B,dnl
 <!index(<!                                 !"#$%&'()*+,-./0123456789: <=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !>,<!$1!>)!>)<!!>changequote`'dnl
 !>)
 
