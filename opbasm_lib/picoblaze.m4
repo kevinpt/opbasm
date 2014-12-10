@@ -72,6 +72,14 @@ define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
 define(`asciiord', `esyscmd(`python -c "import sys; sys.stdout.write(\", \".join(str(ord(c)) for c in \"$1\"))"')')
 
+changequote(<!,!>) ; Change quotes so we can handle "`" and "'"
+
+define(<!ao!>,<!changequote(<!,!>)<!!>ifelse(<!$1!>, ,0x20,<!$1!>,<!;!>,0x3B,dnl
+<!index(<!                                 !"#$%&'()*+,-./0123456789: <=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !>,<!$1!>)!>)<!!>changequote`'dnl
+!>)
+
+changequote
+
 ;---------------------------------
 ; Convert 16-bit words into bytes
 ; Arg1-Argn: Numbers to split into bytes
@@ -82,6 +90,32 @@ define(`words_be', `ifelse(`$1',,,eval($#>1),1,`_split_be($1), $0(shift($@))',`_
 
 define(`_split_le', `eval(($1) & 0xFF), eval((($1) & 0xFF00) >> 8)')
 define(`_split_be', `eval((($1) & 0xFF00) >> 8), eval(($1) & 0xFF)')
+
+
+
+;---------------------------------
+; Convert Picoblaze literals into m4 syntax
+; Arg1: String to convert
+; Result is an integer in m4 syntax
+; Handles "c" -> ascii ord.,  nn'd -> decimal,  nn -> hex,  nn'b -> bin
+; Ex: pb2m4(10'd) expands to 10,  pb2m4("0") expands to 48
+changequote(<!,!>)
+
+define(<!pb2m4!>,<!changequote(<!,!>)<!!>ifelse(regexp(<!$1!>, <!^[0-9a-fA-F]+$!>),0,<!_conv_hex($1)!>,dnl
+regexp(<!$1!>,<!^[0-9]+['!]d$!>),0,<!_conv_dec($1)!>, regexp(<!$1!>, <!^[01]+['!]b$!>),0,<!_conv_bin($1)!>,dnl
+regexp(<!$1!>, <!^"."$!>),0,<!_conv_char(<!$1!>)!>,<!$1!>)<!!>changequote`'dnl
+!>)
+
+define(<!_conv_hex!>, <!regexp(<!$1!>, <!^\([0-9a-fA-F]+\)$!>, <!0x\1!>)!>)
+define(<!_conv_dec!>, <!regexp(<!$1!>, <!^\([0-9]+\)['!]d$!>, <!\1!>)!>)
+define(<!_conv_bin!>, <!regexp(<!$1!>, <!^\([01]+\)['!]b$!>, <!0b\1!>)!>)
+
+define(<!_alt_ao!>, <!ifelse(<!$1!>, ,0x20,<!$1!>,<!;!>,0x3B,dnl
+<!index(<!                                 !"#$%&'()*+,-./0123456789: <=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !>,<!$1!>)!>)!>)
+
+define(<!_conv_char!>, <!_alt_ao(substr(<!$1!>,1,1))!>)
+
+changequote
 
 ;=============== INTERNAL CONFIGURATION ===============
 
@@ -200,7 +234,10 @@ define(`_delay_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. 
 define(`delay_cycles', `ifelse(eval($1 < 5),1,`repeat(`nop', $1)',`_delay_tree(floor_log2(decr($1)))'
 `$0(eval($1 - 2**floor_log2(decr($1)) - 1))')')
 
-define(`floor_log2', `ifelse(eval($1 <= 1),1,0,`eval($0(eval($1 >> 1)) + 1)')')
+;define(`floor_log2', `ifelse(eval($1 <= 1),1,0,`eval($0(eval($1 >> 1)) + 1)')')
+define(`floor_log', `ifelse(eval($1 < $2),1,0,`eval($0(eval($1 / $2), $2) + 1)')')
+define(`floor_log2', `floor_log($1,2)')
+
 
 ; Generate a binary tree delay with recursive calls
 ; Arg1: Number of stages. Delayed instructions are 2**Arg1 + 1
@@ -467,6 +504,7 @@ define(`retlt', `return c  ; if less than')
 
 ;=============== CONDITIONAL IF-THEN-ELSE ===============
 
+
 ;---------------------------------
 ; Generic if macro
 ; Arg1: Boolean comparison expression
@@ -489,10 +527,16 @@ define(`if', `ifelse(eval($# > 3),1,`_if(_iftokens($1), `$2', `if(shift(shift($@
 define(`_iftokens', `regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\(.+\)', `\1, \2, \3')')
 
 define(`_if', `; If $1 $2 $3'
-`ifelse(regexp($2, `^s'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
+`ifelse(regexp($2,`^\(s<\|s>=\)$'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
+regexp($2,`^\(>\|<=\)$'),0,`_comp_gt_or_le($1,$3)',dnl
+regexp($2,`^\(s<=\|s>\)$'),0,`_comps_gt_or_le($1,$3)',dnl
 `compare $1, evalx($3, 16, 2)')'
 `ifelse($2,<,`iflt(`$4',`$5')', $2,>=,`ifge(`$4',`$5')',
 $2,s<,`iflt(`$4',`$5')', $2,s>=,`ifge(`$4',`$5')',
+$2,>,`ifelse(isnum(const2m4($3)),1,`ifge(`$4',`$5')',`iflt(`$4',`$5')')',
+$2,<=,`ifelse(isnum(const2m4($3)),1,`iflt(`$4',`$5')',`ifge(`$4',`$5')')',
+$2,s>,`ifelse(isnum(const2m4($3)),1,`ifge(`$4',`$5')',`iflt(`$4',`$5')')',
+$2,s<=,`ifelse(isnum(const2m4($3)),1,`iflt(`$4',`$5')',`ifge(`$4',`$5')')',
 $2,==,`ifeq(`$4',`$5')', $2,!=,`ifne(`$4',`$5')',
 $2,&,`ifne(`$4',`$5')', `errmsg(`Invalid operation: $2')' )')'
 
@@ -508,6 +552,28 @@ define(`_rcurly', `}')
 
 ; Restore right parens from signed() macros that were protected
 define(`_rparen', `)')
+
+; The preprocessor converts constant directives into const() macros so that
+; the m4 code is aware of constants declards in picoblaze syntax
+changequote(<!,!>)
+define(<!const!>, <!changequote(<!,!>)<!!>pushdef(<!_cname_$1!>,<!$2!>)!><!constant $1, translit($2,!,')<!!>changequote`'dnl
+!>)
+changequote
+define(`isconst', `ifdef(`_cname_$1',1,0)')
+define(`const2m4', `ifelse(isconst($1),1,`pb2m4(_cname_$1)',`$1')')
+
+
+; To get the <= and > Boolean comparisons we have to modify the arguments depending
+; on the type of the right operand. If the right operand is a literal or a defined constant
+; we increment the constant by 1. If the right operand is a register we swap arguments.
+define(`_comp_gt_or_le',`ifelse(isconst($2),1,`compare $1, eval(pb2m4(_cname_$2)+1,16,2)',dnl
+isnum($2),1,`compare $1, eval($2 + 1,16,2)',dnl
+`compare $2, $1')')
+
+define(`_comps_gt_or_le',`ifelse(isconst($2),1,`compares($1, eval(pb2m4(_cname_$2)+1))',dnl
+isnum($2),1,`compares($1, eval($2 + 1))',dnl
+`compares($2, $1)')')
+
 
 ;---------------------------------
 ; Low level if macros: ifeq, ifne, ifge, iflt
@@ -592,16 +658,23 @@ _dw(_iftokens($1))
 _elbl:' `popdef(`_clbl')'`popdef(`_elbl')')
 
 define(`_dw',dnl
-`ifelse(regexp($2, `^s'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
+`ifelse(regexp($2, `^\(s<\|s>=\)$'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
+regexp($2,`^\(>\|<=\)$'),0,`_comp_gt_or_le($1,$3)',dnl
+regexp($2,`^\(s<=\|s>\)$'),0,`_comps_gt_or_le($1,$3)',dnl
 `compare $1, evalx($3, 16, 2)')'
 `ifelse($2,<,`jump c, _clbl', $2,>=,`jump nc, _clbl',dnl
 $2,s<,`jump c, _clbl', $2,s>=,`jump nc, _clbl',dnl
-$2,==,`jump z, _clbl', $2,!=,`jump nz, _clbl',
+$2,>,`ifelse(isnum(const2m4($3)),1,`jge(_clbl)',`jlt(_clbl)')',dnl
+$2,<=,`ifelse(isnum(const2m4($3)),1,`jlt(_clbl)',`jge(_clbl)')',dnl
+$2,s>,`ifelse(isnum(const2m4($3)),1,`jge(_clbl)',`jlt(_clbl)')',dnl
+$2,s<=,`ifelse(isnum(const2m4($3)),1,`jlt(_clbl)',`jge(_clbl)')',dnl
+$2,==,`jump z, _clbl', $2,!=,`jump nz, _clbl',dnl
 $2,&,`jump nz, _clbl', `errmsg(`Invalid operation: $2')')'
 )
 
 ; Wrapper used to swap arguments when using C-style "do { } while()" syntax
 define(`_dowhile2', `dowhile($2, `$1')')
+
 
 
 ;---------------------------------
@@ -962,7 +1035,7 @@ define(`signex', `if($2 & 0x80, `load $1, FF `;' Sign extend', `load $1, 00')')
 ; Determine if argument is a number in m4 syntax
 ; Arg1: String to check
 ; Returns 1 for true 0 for false
-define(`isnum', `ifelse(regexp($1, `^-?\(0[xX]\)?[0-9]+$'),0,1,0)')
+define(`isnum', `ifelse(regexp($1, `^-?\(0[xXbB][0-9a-fA-F]+\|[0-9]+\)$'),0,1,0)')
 
 ;---------------------------------
 ; Signed compare

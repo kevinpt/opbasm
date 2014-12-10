@@ -95,7 +95,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.1.13'
+__version__ = '1.1.14'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -673,7 +673,11 @@ class Assembler(object):
     # turned into m4 syntax.
     curly_string = re.compile(r'^.*"(.*}.*)".*$')
     # The signed() macro needs its right paren escaped to prevent pattern matching failures
-    signed_macro = re.compile(r'(signed\([^)]+\))')
+    signed_macro = re.compile(r'(signed\([^)]+\))', re.IGNORECASE)
+
+    # Convert constant directives into const() macros
+    const_def = re.compile(r'^(.*)constant\s+([^,]+)\s*,\s*("."|[^;]+)(;.*)?', re.IGNORECASE)
+
     for l in lines:
       m = curly_string.match(l)
       if m:
@@ -686,6 +690,19 @@ class Assembler(object):
         escaped = m.group(1).replace(')', "`'_rparen`'")
         l = re.sub(r'signed\([^)]+\)', escaped, l)
         #print('### escaped:', escaped, '-->', l)
+
+
+      m = const_def.search(l)
+      if m:
+        if m.group(3) not in ('";"', '","', '"`"', '"\'"'):
+          # Wrap quoted chars in m4 quotes to protect ",". This doesn't work for ";" so we leave it in pb syntax
+          arg2 = m.group(3).strip()
+          if arg2[0] == '"':
+            arg2 = "`{}'".format(arg2)
+          else:
+            arg2 = arg2.replace("'", "!") # m4 doesn't play nice with strings that have embedded ' chars
+          l = '{}const({}, {}) {}\n'.format(m.group(1), m.group(2).strip(), arg2, m.group(4) if m.group(4) else '')
+        #print('###', l)
 
       elines.append(l)
 
@@ -1312,7 +1329,7 @@ def parse_command_line():
   progname = os.path.basename(sys.argv[0])
   usage = '''{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
               [-d] [-r] [-e <address>]
-              [-o <output dir>] [--m4] [--pyparsing]
+              [-o <output dir>] [-q] [--m4] [--pyparsing]
               [--debug-preproc <file>]
        {} -g'''.format(progname, progname)
   parser = OptionParser(usage=usage)
