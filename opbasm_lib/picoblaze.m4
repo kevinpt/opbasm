@@ -34,17 +34,20 @@ changecom(;)
 ;---------------------------------
 ; Extensions to eval
 ; Evaluate expression as a decimal number
-define(`evald', `eval($1)''d  `;' $1)
+define(`evald', `eval(const2m4($1))''d  `;' $1)
 
 ; Evaluate expression as an 8-bit hex number
-define(`evalh', `eval(($1) & 0xFF, 16, 2)  ; $1')
+define(`evalh', `eval((const2m4($1)) & 0xFF, 16, 2)  ; $1')
 
 ; Evaluate expression as a 12-bit hex number for addresses
 define(`evala', `eval(($1) & 0xFFF, 16, 3)  ; $1')
 
-
 ; Evaluate expression as an 8-bit binary number
-define(`evalb', `eval(($1) & 0xFF, 2, 8)''b  `;' $1)
+define(`evalb', `eval((const2m4($1)) & 0xFF, 2, 8)''b  `;' $1)
+
+; Evaluate expression as a decimal number
+define(`evalc', `eval(const2m4($1), $2, $3)')
+
 
 ; Only evaluate valid expressions, otherwise reproduce the original text in the
 ; first argument
@@ -72,9 +75,13 @@ define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
 changequote(<!,!>) ; Change quotes so we can handle "`" and "'"
 
-define(<!asciiord!>,<!changequote(<!,!>)<!!>ifelse(<!$1!>, ,0x20,<!$1!>,<!;!>,0x3B,dnl
-<!index(<!                                 !"#$%&'()*+,-./0123456789: <=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !>,<!$1!>)!>)<!!>changequote`'dnl
+define(<!asciiord!>,<!changequote(<!,!>)<!!>_asciiord(<!$1!>)<!!>changequote`'dnl
 !>)
+
+define(<!_asciiord!>,<!ifelse(<!$1!>,,,<!_aconv(substr(<!$1!>,0,1))<!!>ifelse(len(<!$1!>),1,,<!,!>) $0(substr(<!$1!>,1))!>)!>)
+
+define(<!_aconv!>,<!ifelse(<!$1!>,<! !>,32,<!$1!>,<!;!>,59,dnl
+<!index(<!                                 !"#$%&'()*+,-./0123456789: <=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !>,<!$1!>)!>)!>)
 
 changequote
 
@@ -104,11 +111,11 @@ regexp(<!$1!>,<!^[0-9]+['!]d$!>),0,<!_conv_dec($1)!>, regexp(<!$1!>, <!^[01]+['!
 regexp(<!$1!>, <!^"."$!>),0,<!_conv_char(<!$1!>)!>,<!$1!>)<!!>changequote`'dnl
 !>)
 
-define(<!_conv_hex!>, <!regexp(<!$1!>, <!^\([0-9a-fA-F]+\)$!>, <!0x\1!>)!>)
+define(<!_conv_hex!>, <!eval(regexp(<!$1!>, <!^\([0-9a-fA-F]+\)$!>, <!0x\1!>))!>)
 define(<!_conv_dec!>, <!regexp(<!$1!>, <!^\([0-9]+\)['!]d$!>, <!\1!>)!>)
-define(<!_conv_bin!>, <!regexp(<!$1!>, <!^\([01]+\)['!]b$!>, <!0b\1!>)!>)
+define(<!_conv_bin!>, <!eval(regexp(<!$1!>, <!^\([01]+\)['!]b$!>, <!0b\1!>))!>)
 
-define(<!_alt_ao!>, <!ifelse(<!$1!>, ,0x20,<!$1!>,<!;!>,0x3B,dnl
+define(<!_alt_ao!>, <!ifelse(<!$1!>, ,32,<!$1!>,<!;!>,59,dnl
 <!index(<!                                 !"#$%&'()*+,-./0123456789: <=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !>,<!$1!>)!>)!>)
 
 define(<!_conv_char!>, <!_alt_ao(substr(<!$1!>,1,1))!>)
@@ -177,7 +184,7 @@ define(`iodefs', `constant $2, eval($1, 16, 2)'
 ; Arg1: Register to load with value
 ; Arg2: Value to load (constant or other register)
 ; Arg3: Port to output to
-define(`load_out', `load $1, eval($2, 16, 2)
+define(`load_out', `load $1, evalc($2, 16, 2)
 output $1, $3')
 
 ;---------------------------------
@@ -186,7 +193,7 @@ output $1, $3')
 ; Arg2: Value to load (constant or other register)
 ; Arg3: Scratchpad address to output to
 
-define(`load_st', `load $1, eval($2, 16, 2)
+define(`load_st', `load $1, evalc($2, 16, 2)
 store $1, $3')
 
 
@@ -229,8 +236,8 @@ define(`_delay_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. 
 ; The maximum delay is appx. 100e9 cycles (1000sec at 100MHz)
 ; Ex: delay_cycles(10) ; Delay for 10 instructions (20 clock cycles)
 ; Yo, dawg! I hard you like recursion so I put some recursion in your recursive loops
-define(`delay_cycles', `ifelse(eval($1 < 5),1,`repeat(`nop', $1)',`_delay_tree(floor_log2(decr($1)))'
-`$0(eval($1 - 2**floor_log2(decr($1)) - 1))')')
+define(`delay_cycles', `ifelse(eval(const2m4($1) < 5),1,`repeat(`nop', const2m4($1))',`_delay_tree(floor_log2(eval(const2m4($1) - 1)))'
+`$0(eval(const2m4($1) - 2**floor_log2(eval(const2m4($1) - 1)) - 1))')')
 
 ;define(`floor_log2', `ifelse(eval($1 <= 1),1,0,`eval($0(eval($1 >> 1)) + 1)')')
 define(`floor_log', `ifelse(eval($1 < $2),1,0,`eval($0(eval($1 / $2), $2) + 1)')')
@@ -264,8 +271,8 @@ define(`_delay_tree_gen', `_dt`'_$1: call _dt`'_`'decr($1)'
 ;             return
 ;  ...
 ;  call delay_5ms
-define(`delay_ms', ``; Delay for $1 ms at' _cfreq MHz
-_delay_us(eval($1*1000),$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
+define(`delay_ms', ``; Delay for' const2m4($1) ms at _cfreq MHz
+_delay_us(eval(const2m4($1)*1000),$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
 
 
 ;---------------------------------
@@ -281,8 +288,8 @@ _delay_us(eval($1*1000),$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
 ;              return
 ;  ...
 ;  call delay_40us
-define(`delay_us', ``; Delay for' $1 us at _cfreq MHz
-_delay_us($1,$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
+define(`delay_us', ``; Delay for' const2m4($1) us at _cfreq MHz
+_delay_us(const2m4($1),$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
 
 define(`_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
 ifelse(eval(_dval_us($1,$4) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
@@ -333,8 +340,8 @@ define(`_dadj_us', `eval( ($1 * _cfreq - ((_dval_us($1,$2)+1)*(3 + _dnop_us($1,$
 ;  ...
 ;  load16(dly_count, var_count_ms(8, MAXDELAY))
 ;  call delay ; Delay for 8 ms
-define(`var_delay_ms', ``; Variable delay for max' $1 ms at _cfreq MHz
-_var_delay_us(eval($1*1000),$2,$3)')
+define(`var_delay_ms', ``; Variable delay for max' const2m4($1) ms at _cfreq MHz
+_var_delay_us(eval(const2m4($1)*1000),$2,$3)')
 
 ;---------------------------------
 ; Variable delay by microseconds
@@ -354,8 +361,8 @@ _var_delay_us(eval($1*1000),$2,$3)')
 ;  ...
 ;  load16(dly_count, var_count_us(800, MAXDELAY))
 ;  call delay ; Delay for 800 us
-define(`var_delay_us', ``; Variable delay for max' $1 us at _cfreq MHz
-_var_delay_us($1,$2,$3)')
+define(`var_delay_us', ``; Variable delay for max' const2m4($1) us at _cfreq MHz
+_var_delay_us(const2m4($1),$2,$3)')
 
 define(`_var_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(VDELAY_))'`dnl
 ifelse(eval(_dval_pre($1,0) >= 2**16),1,`errmsg(`Max delay value is too large')')dnl
@@ -369,14 +376,15 @@ jump nc, _dly'
 ; Generate 16-bit millisecond count for variable delay function
 ; Arg1: Milliseconds to delay
 ; Arg2: Max milliseconds for the delay loop (from definition using var_delay_ms())
-define(`var_count_ms', `ifelse(eval(_dval_var(eval($1*1000),eval($2*1000)) < 0),1,dnl
-`errmsg(`Delay is too small: $1 ms')',`_dval_var(eval($1*1000),eval($2*1000))')')
+define(`var_count_ms', `ifelse(eval(_dval_var(eval(const2m4($1)*1000),eval(const2m4($2)*1000)) < 0),1,dnl
+`errmsg(`Delay is too small: const2m4($1) ms')',`_dval_var(eval(const2m4($1)*1000),eval(const2m4($2)*1000))')')
 
 ;---------------------------------
 ; Generate 16-bit microsecond count for variable delay function
 ; Arg1: Microseconds to delay
 ; Arg2: Max microseconds for the delay loop (from definition using var_delay_us())
-define(`var_count_us', `ifelse(eval(_dval_var($1,$2) < 0),1,`errmsg(`Delay is too small: $1 us')',`_dval_var($1,$2)')')
+define(`var_count_us', `ifelse(eval(_dval_var(const2m4($1),const2m4($2)) < 0),1,dnl
+`errmsg(`Delay is too small: const2m4($1) us')',`_dval_var(const2m4($1),const2m4($2))')')
 
 define(`_dval_var', `eval(($1 * _cfreq / 2 - 2) / (3 + _dnop_us($2,2)) - 1)')
 
@@ -425,8 +433,8 @@ define(`maskh', `eval(mask($@), 16, 2)')
 ; Arg1: Register to modify
 ; Arg2: Mask value
 ; Ex: setmask(s5, mask(0,1,2))
-define(`setmask', `or $1, eval($2, 16, 2)  ; Set mask')
-define(`clearmask', `and $1, eval((~($2)) & 0xFF, 16, 2)  ; Clear mask')
+define(`setmask', `or $1, eval(const2m4($2), 16, 2)  ; Set mask')
+define(`clearmask', `and $1, eval((~(const2m4($2))) & 0xFF, 16, 2)  ; Clear mask')
 
 ;---------------------------------
 ; Test if a bit is set or clear
@@ -705,32 +713,32 @@ define(`continue', `jump _clbl')
 ; Repeat a string
 ; Arg1: Instruction or macro string to repeat
 ; Arg2: Numper of repetitions
-define(`repeatstr', `ifelse($#,0, ``$0'', eval($2>0),1, `$1`'$0(`$1', decr($2))')')
+define(`repeatstr', `ifelse($#,0, ``$0'', eval(const2m4($2)>0),1, `$1`'$0(`$1', decr(const2m4($2)))')')
 
 ;---------------------------------
 ; Repeat an instruction or macro
 ; Arg1: Instruction or macro string to repeat
 ; Arg2: Numper of repetitions
-define(`repeat', `ifelse($#,0, ``$0'', eval($2>0),1, `$1
-$0(`$1', decr($2))')')
+define(`repeat', `ifelse($#,0,``$0'', eval(const2m4($2)>0),1, `$1
+$0(`$1', eval(const2m4($2) - 1))')')
 
 ;---------------------------------
 ; Repeated shifts
 ; Arg1: Register to shift
 ; Arg2: Number of shifts
 ; Ex: sl0(s2, 4)  ; Shift left by 4
-define(`sl0', `ifelse($#,0, ``$0'', `repeat(`sl0 $1', eval($2))')')
-define(`sl1', `ifelse($#,0, ``$0'', `repeat(`sl1 $1', eval($2))')')
-define(`sla', `ifelse($#,0, ``$0'', `repeat(`sla $1', eval($2))')')
-define(`slx', `ifelse($#,0, ``$0'', `repeat(`slx $1', eval($2))')')
-define(`sr0', `ifelse($#,0, ``$0'', `repeat(`sr0 $1', eval($2))')')
-define(`sr1', `ifelse($#,0, ``$0'', `repeat(`sr1 $1', eval($2))')')
-define(`sra', `ifelse($#,0, ``$0'', `repeat(`sra $1', eval($2))')')
-define(`srx', `ifelse($#,0, ``$0'', `repeat(`srx $1', eval($2))')')
+define(`sl0', `ifelse($#,0, ``$0'', `repeat(`sl0 $1', eval(const2m4($2)))')')
+define(`sl1', `ifelse($#,0, ``$0'', `repeat(`sl1 $1', eval(const2m4($2)))')')
+define(`sla', `ifelse($#,0, ``$0'', `repeat(`sla $1', eval(const2m4($2)))')')
+define(`slx', `ifelse($#,0, ``$0'', `repeat(`slx $1', eval(const2m4($2)))')')
+define(`sr0', `ifelse($#,0, ``$0'', `repeat(`sr0 $1', eval(const2m4($2)))')')
+define(`sr1', `ifelse($#,0, ``$0'', `repeat(`sr1 $1', eval(const2m4($2)))')')
+define(`sra', `ifelse($#,0, ``$0'', `repeat(`sra $1', eval(const2m4($2)))')')
+define(`srx', `ifelse($#,0, ``$0'', `repeat(`srx $1', eval(const2m4($2)))')')
 
 ; Repeated rotates
-define(`rl', `ifelse($#,0, ``$0'', `repeat(`rl $1', eval($2))')')
-define(`rr', `ifelse($#,0, ``$0'', `repeat(`rr $1', eval($2))')')
+define(`rl', `ifelse($#,0, ``$0'', `repeat(`rl $1', eval(const2m4($2)))')')
+define(`rr', `ifelse($#,0, ``$0'', `repeat(`rr $1', eval(const2m4($2)))')')
 
 
 ;=============== STACK OPERATIONS ===============
@@ -742,7 +750,7 @@ define(`rr', `ifelse($#,0, ``$0'', `repeat(`rr $1', eval($2))')')
 ; Arg2: Scratchpad address for top of stack
 ; Ex: namereg sA, SP ; Reserve stack pointer register 
 ;     use_stack(SP, 0x3F) ; Start stack at end of 64-byte scratchpad
-define(`use_stack', `load $1, eval($2, 16, 2)' `define(`_stackptr', $1)')
+define(`use_stack', `load $1, eval(const2m4($2), 16, 2)' `define(`_stackptr', $1)')
 
 
 define(`_initcheck', `ifdef(`$1',, `errmsg(`$2')')')
@@ -1044,7 +1052,9 @@ define(`isnum', `ifelse(regexp($1, `^-?\(0[xXbB][0-9a-fA-F]+\|[0-9]+\)$'),0,1,0)
 ; Zero flag is indeterminate. Use normal compare instruction for == and !=
 ; Note: This calls the setcy() macro and depends on the temp reg
 ;define(`compares', `_compares_rr($1, $2)')
-define(`compares', `ifelse(isnum($2),1,`_compares_rk($1, $2)',`_compares_rr($1, $2)')')
+define(`compares', `ifelse(isconst($2),1,`_compares_rk($1, eval(pb2m4(_cname_$2)))',dnl
+isnum($2),1,`_compares_rk($1, $2)',`_compares_rr($1, $2)')')
+
 
 define(`_compares_rr', `xor $1, 80 ; Signed compare $1, $2
 xor $2, 80
@@ -1839,8 +1849,8 @@ define(`regupper', $1)
 define(`reglower', $2)
 
 ; Split a 16-bit constant into upper and lower bytes
-define(`constupper', `eval((($1) >> 8) & 0xFF)')
-define(`constlower', `eval(($1) & 0xFF)')
+define(`constupper', `eval(((const2m4($1)) >> 8) & 0xFF)')
+define(`constlower', `eval((const2m4($1)) & 0xFF)')
 
 ;---------------------------------
 ; 16-bit load
@@ -2033,14 +2043,14 @@ sra $2')
 define(`_srx_16', `srx $1
 sra $2')
 
-define(`sl0_16', `repeat(`_sl0_16($1, $2)', eval($3))')
-define(`sl1_16', `repeat(`_sl1_16($1, $2)', eval($3))')
-define(`sla_16', `repeat(`_sla_16($1, $2)', eval($3))')
-define(`slx_16', `repeat(`_slx_16($1, $2)', eval($3))')
-define(`sr0_16', `repeat(`_sr0_16($1, $2)', eval($3))')
-define(`sr1_16', `repeat(`_sr1_16($1, $2)', eval($3))')
-define(`sra_16', `repeat(`_sra_16($1, $2)', eval($3))')
-define(`srx_16', `repeat(`_srx_16($1, $2)', eval($3))')
+define(`sl0_16', `repeat(`_sl0_16($1, $2)', eval(const2m4($3)))')
+define(`sl1_16', `repeat(`_sl1_16($1, $2)', eval(const2m4($3)))')
+define(`sla_16', `repeat(`_sla_16($1, $2)', eval(const2m4($3)))')
+define(`slx_16', `repeat(`_slx_16($1, $2)', eval(const2m4($3)))')
+define(`sr0_16', `repeat(`_sr0_16($1, $2)', eval(const2m4($3)))')
+define(`sr1_16', `repeat(`_sr1_16($1, $2)', eval(const2m4($3)))')
+define(`sra_16', `repeat(`_sra_16($1, $2)', eval(const2m4($3)))')
+define(`srx_16', `repeat(`_srx_16($1, $2)', eval(const2m4($3)))')
 
 
 define(`_rl16', `pushdef(`_rnc',uniqlabel(RL16_))'`sl0 $2
@@ -2050,7 +2060,7 @@ or $2, 01
 _rnc:
 '`popdef(`_rnc')')
 
-define(`rl16', `repeat(`_rl16($1, $2)', eval($3))')
+define(`rl16', `repeat(`_rl16($1, $2)', eval(const2m4($3)))')
 
 define(`_rr16', `pushdef(`_rnc',uniqlabel(RR16_))'`sr0 $1
 sra $2
@@ -2059,7 +2069,7 @@ or $1, 80
 _rnc:
 '`popdef(`_rnc')')
 
-define(`rr16', `repeat(`_rr16($1, $2)', eval($3))')
+define(`rr16', `repeat(`_rr16($1, $2)', eval(const2m4($3)))')
 
 
 ;=============== 16-bit I/O OPERATIONS ===============
