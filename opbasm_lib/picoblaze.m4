@@ -213,6 +213,13 @@ define(`_vardef', `ifelse(`$1',,`errmsg(Invalid variable definition)')'`pushdef(
 `ifelse(`$3',,,`load $1, evalx($3, 16, 2) `;' Var `$2' := $3')')
 
 
+;---------------------------------
+; Count the number of args
+; Arg1-ArgN: Argument list to count
+; Ex: argc(a,b,c,d) expands to 4
+define(`argc',`$#')
+
+
 ;=============== DELAYS ===============
 
 ;---------------------------------

@@ -257,6 +257,8 @@
           <keyword>output16</keyword>
           <keyword>compare16</keyword>
           <keyword>test16</keyword>
+          <keyword>argc</keyword>
+          <keyword>do</keyword>
         </context>
 
 
