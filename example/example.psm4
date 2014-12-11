@@ -7,7 +7,7 @@
 ; implemented in scratchpad RAM.
 ;===================================================================
     namereg sE, SP ; Protect use of sE as the stack pointer
-    stackinit(SP, 0x3F)
+    use_stack(SP, 0x3F)
 
     ; Port words
     mem16(P_ADDR, 0x01, 0x00) ; ROM address
@@ -22,8 +22,8 @@
     reg16(rx, s8, s7)  ; General purpose 16-bit register
 
     ; Constant data loaded into ROM at 0x200
-    define(`R_DATA', 0x200)
-    define(`CONST_DATA', `pbhex(42, 43, 44, 45, 46, 47), words_le(0xaa01, 0xbb02)')
+    define(R_DATA, 0x200)
+    define(CONST_DATA, `pbhex(42, 43, 44, 45, 46, 47), words_le(0xaa01, 0xbb02)')
 
 
     jump main
@@ -46,6 +46,7 @@ read_rom_word:
     pop(rx)
     return
 
+
 ;---------------------------------
 main:
     ; Load constant data stored in ROM into scratchpad memory
@@ -53,26 +54,21 @@ main:
     load16(rx, R_DATA)    ; Begin at start of array in ROM
     store16(rx, M_ADDR)
     load s3, M_DATA_L     ; Start of destination array in scratchpad
-    load s0, evalh(len(CONST_DATA) / 2) ; Reading two bytes at a time
-
-read_rom_loop:
-    call read_rom_word
-    sub s0, 01
-    compare s0, 00
-    jump nz, read_rom_loop
+    load s0, evalh(argc(CONST_DATA) / 2) ; Reading two bytes at a time
+    do {
+      call read_rom_word
+      sub s0, 01
+    } while(s0 > 0)
 
 
     ; Loop over data in scratchpad and push each byte onto the stack
-
-    load s0, evalh(len(CONST_DATA)) ; Reading one byte at a time
     load s3, M_DATA_L
-out_loop:
-    fetch s4, (s3)
-    push(s4)              ; Push byte onto stack for viewing in simulation
-    add s3, 01
-    sub s0, 01
-    compare s0, 00
-    jump nz, out_loop
+    define(CD_LEN, `argc(CONST_DATA)') ; Can't have nested parentheses in C-style macro condition
+    for(s0 := CD_LEN, s0 > 0, s0 := s0 - 1) {
+      fetch s4, (s3)
+      push(s4)              ; Push byte onto stack for viewing in simulation
+      add s3, 01
+    }
 
 
 end_prog:
