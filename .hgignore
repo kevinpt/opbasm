@@ -9,6 +9,9 @@ dist
 test
 ve
 
+x
+arith
+
 opbasm.egg-info
 no-dist
 
