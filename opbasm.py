@@ -1278,9 +1278,10 @@ class Assembler(object):
         elif s.is_instruction(): cur_label = None
 
     # Apply keep_auto to INST directives
-    for s in instructions:
-      if s.command == 'inst' and 'keep' not in s.tags:
-        s.tags['keep_auto'] = (True,)
+    if self.use_static_analysis:
+      for s in instructions:
+        if s.command == 'inst' and 'keep' not in s.tags:
+          s.tags['keep_auto'] = (True,)
 
 
     # Create default jump instruction
