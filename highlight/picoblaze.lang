@@ -101,15 +101,31 @@
           <keyword>evalh</keyword>
           <keyword>evala</keyword>
           <keyword>evalb</keyword>
+          <keyword>evalc</keyword>
           <keyword>evalx</keyword>
           <keyword>pbhex</keyword>
-          <keyword>asciiord</keyword>
+          <keyword>words_le</keyword>
+          <keyword>words_be</keyword>
+          <keyword>use_tempreg</keyword>
           <keyword>nop</keyword>
           <keyword>swap</keyword>
           <keyword>randlabel</keyword>
           <keyword>uniqlabel</keyword>
-          <keyword>len</keyword>
           <keyword>reverse</keyword>
+          <keyword>iodefs</keyword>
+          <keyword>load_out</keyword>
+          <keyword>load_st</keyword>
+          <keyword>vars</keyword>
+          <keyword>use_clock</keyword>
+          <keyword>delay_cycles</keyword>
+          <keyword>floor_log</keyword>
+          <keyword>floor_log2</keyword>
+          <keyword>delay_ms</keyword>
+          <keyword>delay_us</keyword>
+          <keyword>var_delay_ms</keyword>
+          <keyword>var_delay_us</keyword>
+          <keyword>var_count_ms</keyword>
+          <keyword>var_count_us</keyword>
           <keyword>clearcy</keyword>
           <keyword>setcy</keyword>
           <keyword>setbit</keyword>
@@ -127,18 +143,48 @@
           <keyword>calleq</keyword>
           <keyword>callge</keyword>
           <keyword>calllt</keyword>
+          <keyword>retne</keyword>
+          <keyword>reteq</keyword>
+          <keyword>retge</keyword>
+          <keyword>retlt</keyword>
+          <keyword>if</keyword>
+          <keyword>signed</keyword>
+          <keyword>isconst</keyword>
+          <keyword>const2m4</keyword>
           <keyword>ifeq</keyword>
           <keyword>ifne</keyword>
           <keyword>ifge</keyword>
           <keyword>iflt</keyword>
+          <keyword>errmsg</keyword>
+          <keyword>warnmsg</keyword>
+          <keyword>while</keyword>
+          <keyword>dowhile</keyword>
+          <keyword>for</keyword>
+          <keyword>break</keyword>
+          <keyword>continue</keyword>
+          <keyword>repeatstr</keyword>
           <keyword>repeat</keyword>
-          <keyword>stackinit</keyword>
+          <keyword>sl0</keyword>
+          <keyword>sl1</keyword>
+          <keyword>sla</keyword>
+          <keyword>slx</keyword>
+          <keyword>sr0</keyword>
+          <keyword>sr1</keyword>
+          <keyword>sra</keyword>
+          <keyword>srx</keyword>
+          <keyword>rl</keyword>
+          <keyword>rr</keyword>
+          <keyword>use_stack</keyword>
           <keyword>push</keyword>
           <keyword>pop</keyword>
           <keyword>getstack</keyword>
           <keyword>getstackat</keyword>
+          <keyword>putstack</keyword>
+          <keyword>putstackat</keyword>
           <keyword>dropstack</keyword>
           <keyword>dropstackreg</keyword>
+          <keyword>addstack</keyword>
+          <keyword>addstackreg</keyword>
           <keyword>callstring</keyword>
           <keyword>outputstring</keyword>
           <keyword>storestring</keyword>
@@ -152,11 +198,34 @@
           <keyword>insttable_be</keyword>
           <keyword>negate</keyword>
           <keyword>not</keyword>
+          <keyword>abs</keyword>
+          <keyword>signex</keyword>
+          <keyword>isnum</keyword>
+          <keyword>compares</keyword>
           <keyword>multiply8x8</keyword>
+          <keyword>multiply8x8s</keyword>
+          <keyword>multiply8x8su</keyword>
           <keyword>divide8x8</keyword>
+          <keyword>divide8x8s</keyword>
+          <keyword>divide16x8</keyword>
+          <keyword>divide16x8s</keyword>
           <keyword>multiply8xk</keyword>
           <keyword>multiply8xk_small</keyword>
           <keyword>divide8xk</keyword>
+          <keyword>expr</keyword>
+          <keyword>exprs</keyword>
+          <keyword>expr2</keyword>
+          <keyword>expr2s</keyword>
+          <keyword>expr16</keyword>
+          <keyword>expr16s</keyword>
+          <keyword>use_expr_all</keyword>
+          <keyword>use_expr_mul</keyword>
+          <keyword>use_expr_muls</keyword>
+          <keyword>use_expr_mulsu</keyword>
+          <keyword>use_expr_div</keyword>
+          <keyword>use_expr_divs</keyword>
+          <keyword>use_expr_div16</keyword>
+          <keyword>use_expr_div16s</keyword>
           <keyword>reg16</keyword>
           <keyword>mem16</keyword>
           <keyword>regupper</keyword>
@@ -168,6 +237,7 @@
           <keyword>sub16</keyword>
           <keyword>negate16</keyword>
           <keyword>not16</keyword>
+          <keyword>abs16</keyword>
           <keyword>and16</keyword>
           <keyword>or16</keyword>
           <keyword>xor16</keyword>
@@ -185,8 +255,7 @@
           <keyword>store16</keyword>
           <keyword>input16</keyword>
           <keyword>output16</keyword>
-          <keyword>words_le</keyword>
-          <keyword>words_be</keyword>
+          <keyword>compare16</keyword>
           <keyword>test16</keyword>
         </context>
 
