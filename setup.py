@@ -45,11 +45,12 @@ setup(name='opbasm',
     classifiers=['Development Status :: 5 - Production/Stable',
         'Operating System :: OS Independent',
         'Intended Audience :: Developers',
+        'Topic :: Software Development :: Assemblers',
+        'Topic :: Software Development :: Embedded Systems',
         'Natural Language :: English',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Assembly',
-        'License :: OSI Approved :: MIT License',
-        'Topic :: Utilities'
+        'License :: OSI Approved :: MIT License'
         ]
     )
