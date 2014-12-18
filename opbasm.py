@@ -22,26 +22,26 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-'''Open Picoblaze Assembler
+'''Open PicoBlaze Assembler
 
-This is a cross-platform assembler for the Picoblaze-3 and 
-Picoblaze-6 processors from Xilinx.
+This is a cross-platform assembler for the PicoBlaze-3 and 
+PicoBlaze-6 processors from Xilinx.
 
 USAGE:
-Picoblaze-3 mode (default)
+PicoBlaze-3 mode (default)
 
   opbasm.py <source file>.psm [-n <module/entity name>]
 
 
-Picoblaze-6 mode
+PicoBlaze-6 mode
 
   opbasm.py -6 <source file>.psm [-n <module/entity name>]
 
 
-You can use all Picoblaze-6 syntax extensions in Picoblaze-3 code that don't
+You can use all PicoBlaze-6 syntax extensions in PicoBlaze-3 code that don't
 depend on PB-6 specific instructions.
 
-For Picoblaze-3 you can use the following extensions from Picoblaze-6:
+For PicoBlaze-3 you can use the following extensions from PicoBlaze-6:
   * Decimal, binary, and character literals (41'd, 01000001'b, "A")
   * Predefined char constants and date/time stamp fields (CR, LF, HT, datestamp_day, etc.)
   * Inverted constants ( ~my_const )
@@ -49,20 +49,20 @@ For Picoblaze-3 you can use the following extensions from Picoblaze-6:
   * INCLUDE, DEFAULT_JUMP, and INST directives
   * Address label constants (my_label'upper  my_label'lower)
 
-For Picoblaze-3 you CANNOT use the following:
+For PicoBlaze-3 you CANNOT use the following:
   * STRING and TABLE directives
-  * Picoblaze-6 instructions (CALL@, COMPARECY, HWBUILD, JUMP@, LOAD&RETURN,
+  * PicoBlaze-6 instructions (CALL@, COMPARECY, HWBUILD, JUMP@, LOAD&RETURN,
                               OUTPUTK, REGBANK, STAR, TESTCY)
 
 Note that you can use the m4 macro package to get enhanced string processing on PB-3.
 
-Picoblaze-6 enhancements:
+PicoBlaze-6 enhancements:
   KCPSM6.exe has the -c switch to limit the size of memory. OPBASM provides -m to do the same
   as well as -s to limit the scratchpad memory size to 64 or 128 bytes.
   MEM format files are output by default. HEX format is activated with -x.
 
 Refer to the file "all_kcpsm6_syntax.psm" distributed with KCPSM6 for a detailed
-explanation of the new Picoblaze-6 syntax.
+explanation of the new PicoBlaze-6 syntax.
 '''
 
 
@@ -78,6 +78,21 @@ import copy
 import string
 import io
 import re
+import gettext
+
+
+def find_lib_dir():
+  # Look relative to installed library
+  try:
+    lib_dir = os.path.dirname(sys.modules['opbasm_lib'].__file__)
+  except KeyError:
+    # Look relative to this script
+    lib_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'opbasm_lib')
+
+  return lib_dir
+
+
+gettext.install('opbasm', os.path.join(find_lib_dir(), 'lang'), unicode=True)
 
 try:
   from opbasm_lib.color import *
@@ -91,11 +106,11 @@ except ImportError:
 try:
   from pyparsing import *
 except ImportError:
-  print(error('ERROR:') + ' OPBASM requires the Pyparsing library')
+  print(error(_('ERROR:')) + _(' OPBASM requires the Pyparsing library'))
   sys.exit(1)
 
 
-__version__ = '1.2'
+__version__ = '1.2.1'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -110,7 +125,7 @@ class FatalError(Exception):
 
 
 def get_op_info(use_pb6):
-  '''Generate a dict of opcode info for each Picoblaze target'''
+  '''Generate a dict of opcode info for each PicoBlaze target'''
   op_info = {}
 
   if not use_pb6:
@@ -149,7 +164,7 @@ def get_op_info(use_pb6):
     op_info['directives'] = set(('address', 'constant', 'namereg', \
         'include', 'default_jump'))
 
-  else: # Picoblaze-6
+  else: # PicoBlaze-6
     op_info['has_string_table_support'] = True
 
     op_info['opcodes'] = { \
@@ -163,7 +178,7 @@ def get_op_info(use_pb6):
       'sra': 0x14008, 'srx': 0x1400a, 'store': 0x2f000, 'sub': 0x19000, \
       'subcy': 0x1b000, 'test': 0x0d000, 'xor': 0x07000, \
 
-      # New Picoblaze-6 instructions:
+      # New PicoBlaze-6 instructions:
       'call@': 0x24000, 'comparecy': 0x1f000, 'hwbuild': 0x14080, 'jump@': 0x26000, \
       'load&return': 0x21000, 'outputk': 0x2b000, 'regbank': 0x37000, 'star': 0x17000, \
       'testcy': 0x0f000, 'inst': 0x00000 \
@@ -177,7 +192,7 @@ def get_op_info(use_pb6):
       'nz': 0x14000
     }
 
-    # Picoblaze-6 uses inconsistent offsets for the conditional return instructions
+    # PicoBlaze-6 uses inconsistent offsets for the conditional return instructions
     op_info['return_flag_codes'] = {
       'c' : 0x14000,
       'nc': 0x18000,
@@ -206,7 +221,7 @@ def fail(s, loc, tokens):
   raise ParseFatalException(s, loc, 'Unknown token "{}", s:"{}", loc:"{}"'.format(tokens[0], s, loc))
 
 
-def picoblaze_parser(op_info):
+def PicoBlaze_parser(op_info):
   '''Creates a Pyparsing parser object that processes individual lines of assembly'''
   EOL = StringEnd()
 
@@ -320,7 +335,7 @@ def regex_parse_statement(l):
       args.append(m.group('arg2s'))
       
 
-    # Picoblaze-6 *@ instructions
+    # PicoBlaze-6 *@ instructions
     if m.group('addr1') and m.group('addr2'):
       args.append([m.group('addr1'), m.group('addr2')])
       args.append('iaddr')
@@ -532,7 +547,7 @@ class Symbol(object):
 
 def parse_lines(lines, op_info, use_pyparsing):
   '''Parse a list of text lines into Statement objects'''
-  parser = picoblaze_parser(op_info)
+  parser = PicoBlaze_parser(op_info)
 
   statements = []
   for i, l in enumerate(lines):
@@ -540,14 +555,14 @@ def parse_lines(lines, op_info, use_pyparsing):
       try:
         ptree = regex_parse_statement(l)
       except ParseError:
-        print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i+1, l))
+        print(error(_('PARSE ERROR:')) + _(' bad statement in line {}:\n  {}').format(i+1, l))
         sys.exit(1)
         
     else:
       try:
         ptree = parser.parseString(l)
       except ParseException, e:
-        print(error('PARSE ERROR:') + ' bad statement in line {}:\n  {}'.format(i+1, l))
+        print(error(_('PARSE ERROR:')) + _(' bad statement in line {}:\n  {}').format(i+1, l))
         sys.exit(1)
 
     statements.append(Statement(ptree['statement'], i+1))
@@ -592,7 +607,7 @@ class Assembler(object):
 
   def _init_constants(self):
     '''Initialize the constant symbol table with the
-       Picoblaze-6 automatic timestamp and datestamp values'''
+       PicoBlaze-6 automatic timestamp and datestamp values'''
 
     constants = {
       'timestamp_hours'   : Symbol('timestamp_hours', self.timestamp.hour),
@@ -756,7 +771,7 @@ class Assembler(object):
       # Track label sources
       if s.label is not None:
         if s.label in self.labels:
-          raise FatalError(s, 'Redefinition of label:', s.label)
+          raise FatalError(s, _('Redefinition of label:'), s.label)
 
         self.labels[s.label] = Symbol(s.label, -1, source_file=source_file, source_line=s.line)
 
@@ -771,29 +786,29 @@ class Assembler(object):
             include_file = os.path.join(os.path.dirname(source_file), include_file)
 
           if not os.path.exists(include_file):
-            raise FatalError(s, 'Include file not found:', include_file)
+            raise FatalError(s, _('Include file not found:'), include_file)
 
           for inc_file in self.process_includes(include_file):
             yield inc_file
         else:
-          raise FatalError(s, 'Invalid include parameter', s.arg1)
+          raise FatalError(s, _('Invalid include parameter'), s.arg1)
 
       # Handle constant definitions before flattening
       elif s.command == 'constant':
         if s.arg1 is None or s.arg2 is None:
-          raise FatalError(s, 'Missing argument to constant directive')
+          raise FatalError(s, _('Missing argument to constant directive'))
 
         if s.arg1 in self.constants:
-          raise FatalError(s, 'Redefinition of constant:', s.arg1)
+          raise FatalError(s, _('Redefinition of constant:'), s.arg1)
 
         # Prevent the use of 3 or less character constants that are valid hex literals
         if len(s.arg1) <= 3 and hex_to_int(s.arg1) is not None:
-          raise FatalError(s, 'Invalid constant. Conflicts with hex literal', s.arg1)
+          raise FatalError(s, _('Invalid constant. Conflicts with hex literal'), s.arg1)
 
         if s.arg2[0] == '%': # Look up env variable
           ename = s.arg2[1:]
           if ename.upper() not in self.upper_env_names:
-            raise FatalError(s, 'Unknown environment variable:', ename)
+            raise FatalError(s, _('Unknown environment variable:'), ename)
           ename = self.upper_env_names[ename.upper()]
           cval = convert_literal(os.getenv(ename))
           self.constants[s.arg1] = Symbol(s.arg1, cval, val_text=s.arg2, \
@@ -806,26 +821,26 @@ class Assembler(object):
 
       elif s.command == 'string':
         if s.arg1 is None or s.arg2 is None:
-          raise FatalError(s, 'Missing argument to STRING directive')
+          raise FatalError(s, _('Missing argument to STRING directive'))
         if s.arg1[-1] != '$':
-          raise FatalError(s, 'Invalid string name (missing $):', s.arg1)
+          raise FatalError(s, _('Invalid string name (missing $):'), s.arg1)
         if s.arg1 in self.strings:
-          raise FatalError(s, 'Redefinition of string:', s.arg1)
+          raise FatalError(s, _('Redefinition of string:'), s.arg1)
         if s.arg2[0] != '"' or s.arg2[-1] != '"':
-          raise FatalError(s, 'Not a valid string:', s.arg2)
+          raise FatalError(s, _('Not a valid string:'), s.arg2)
 
         self.strings[s.arg1] = Symbol(s.arg1, s.arg2[1:-1], s.arg2, \
             source_file=source_file, source_line=s.line)
 
       elif s.command == 'table':
         if s.arg1 is None or s.arg2 is None:
-          raise FatalError(s, 'Missing argument to TABLE directive')
+          raise FatalError(s, _('Missing argument to TABLE directive'))
         if s.arg1[-1] != '#':
-          raise FatalError(s, 'Invalid table name (missing #):', s.arg1)
+          raise FatalError(s, _('Invalid table name (missing #):'), s.arg1)
         if s.arg1 in self.strings:
-          raise FatalError(s, 'Redefinition of table:', s.arg1)
+          raise FatalError(s, _('Redefinition of table:'), s.arg1)
         if s.table_def is False:
-          raise FatalError(s, 'Missing table definition')
+          raise FatalError(s, _('Missing table definition'))
 
         # Determine the radix of the elements
         if s.arg2[-1].endswith('d'):
@@ -839,12 +854,12 @@ class Assembler(object):
         try:
           tbl = [int(e, radix) for e in s.arg2[:-1]]
         except ValueError:
-          raise FatalError(s, 'Invalid table element (radix {})'.format(radix))
+          raise FatalError(s, _('Invalid table element (radix {})').format(radix))
 
         # Ensure table values are within range
         for e in tbl:
           if not (0 <= e < 256):
-            raise FatalError(s, 'Table value out of range:', e)
+            raise FatalError(s, _('Table value out of range:'), e)
 
         val_text = '[' + ', '.join(s.arg2[:-1]) + s.arg2[-1]
         self.tables[s.arg1] = Symbol(s.arg1, tbl, val_text, \
@@ -868,7 +883,7 @@ class Assembler(object):
           include_file = os.path.join(os.path.dirname(include_stack[-1]), include_file)
 
         if include_file in include_stack:
-          raise FatalError(s, 'Recursive include:', s.arg1)
+          raise FatalError(s, _('Recursive include:'), s.arg1)
         else:
           include_stack.append(include_file)
           islist = list(self.flatten_includes(self.sources[include_file], include_stack))
@@ -957,12 +972,12 @@ class Assembler(object):
       if array_name is not None:
         if array_name[-1] == '$':
           if array_name not in self.strings:
-            raise FatalError(s, 'Unknown string:', array_name)
+            raise FatalError(s, _('Unknown string:'), array_name)
           num_words = len(self.strings[array_name].value)
     
         else: # Table
           if array_name not in self.tables:
-            raise FatalError(s, 'Unknown table:', array_name)
+            raise FatalError(s, _('Unknown table:'), array_name)
           num_words = len(self.tables[array_name].value)
 
       return num_words
@@ -995,7 +1010,7 @@ class Assembler(object):
 
       if s.is_instruction():
         if bounds_check and cur_addr >= self.mem_size:
-          raise FatalError(s, 'Address exceeds memory bounds: {:03X} (limit {:03X})'.format( \
+          raise FatalError(s, _('Address exceeds memory bounds: {:03X} (limit {:03X})').format( \
              cur_addr, self.mem_size-1))
 
         s.address = cur_addr
@@ -1004,10 +1019,10 @@ class Assembler(object):
       elif s.command == 'address':
         cur_addr = convert_literal(s.arg1)
         if cur_addr is None:
-          raise FatalError(s, 'Invalid address:', s.arg1)
+          raise FatalError(s, _('Invalid address:'), s.arg1)
 
         if bounds_check and cur_addr >= self.mem_size:
-          raise FatalError(s, 'Address exceeds memory bounds: {:03X} (limit {:03X})'.format(\
+          raise FatalError(s, _('Address exceeds memory bounds: {:03X} (limit {:03X})').format(\
             cur_addr, self.mem_size-1))
 
     # Assign phony addresses to non-instruction lines with comment or label
@@ -1027,7 +1042,7 @@ class Assembler(object):
       if s.is_instruction():
         # Verify instruction is valid
         if s.command not in self.op_info['opcodes']:
-          raise FatalError(s, 'Invalid Picoblaze-{} instruction:'.format( \
+          raise FatalError(s, _('Invalid PicoBlaze-{} instruction:').format( \
             6 if self.use_pb6 else 3), s.command)
 
         s.opcode = self.op_info['opcodes'][s.command] # Set base opcode
@@ -1047,31 +1062,31 @@ class Assembler(object):
 
           if s.command in self.op_info['addr_opcodes']: # Include address for call and jump
             if addr_label is None:
-              raise FatalError(s, 'Missing address')
+              raise FatalError(s, _('Missing address'))
 
             s.immediate = self.get_address(addr_label)
             if s.immediate is None:
-              raise FatalError(s, 'Invalid address:', addr_label)
+              raise FatalError(s, _('Invalid address:'), addr_label)
             if bounds_check and s.immediate >= self.mem_size:
-              raise FatalError(s, 'Out of range address')
+              raise FatalError(s, _('Out of range address'))
 
         elif s.command in self.op_info['one_reg_opcodes']:
           if s.arg1 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
           if s.arg2 is not None:
-            raise FatalError(s, 'Illegal operand:', s.arg2)
+            raise FatalError(s, _('Illegal operand:'), s.arg2)
 
           s.regx = self.get_register(s.arg1)
           if s.regx is None:
-            raise FatalError(s, 'Invalid register:', s.arg1)
+            raise FatalError(s, _('Invalid register:'), s.arg1)
 
         elif s.command in self.op_info['two_reg_opcodes']:
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
 
           s.regx = self.get_register(s.arg1)
           if s.regx is None:
-            raise FatalError(s, 'Invalid register:', s.arg1)
+            raise FatalError(s, _('Invalid register:'), s.arg1)
 
           s.regy = self.get_register(s.arg2)
           if s.regy is not None: # Using y register opcode
@@ -1082,48 +1097,48 @@ class Assembler(object):
             s.immediate = self.get_constant(s.arg2)
 
             if s.immediate is None:
-              raise FatalError(s, 'Invalid operand:', s.arg2)
+              raise FatalError(s, _('Invalid operand:'), s.arg2)
             if not (0 <= s.immediate < 256):
-              raise FatalError(s, 'Immediate value out of range:', s.immediate)
+              raise FatalError(s, _('Immediate value out of range:'), s.immediate)
 
             if s.command in ('fetch', 'store'):
               if s.immediate >= self.scratch_size:
-                raise FatalError(s, 'Scratchpad address out of range:', hex(s.immediate))
+                raise FatalError(s, _('Scratchpad address out of range:'), hex(s.immediate))
 
         elif s.command in ('enable', 'disable'):
           if s.arg1 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
           if s.arg1.lower() != 'interrupt' or s.arg2 is not None:
-            raise FatalError(s, 'Invalid operand to {}'.format(s.command.upper()))
+            raise FatalError(s, _('Invalid operand to {}').format(s.command.upper()))
 
         elif s.command == 'returni':
           if s.arg1 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
           if s.arg1.lower() not in ('enable', 'disable'):
-            raise FatalError(s, 'Invalid operand to RETURNI')
+            raise FatalError(s, _('Invalid operand to RETURNI'))
 
           if s.arg1.lower() == 'enable':
             s.opcode += 1
 
-        # Irregular Picoblaze-6 instructions
+        # Irregular PicoBlaze-6 instructions
         elif s.command in ('call@', 'jump@'):
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
           s.regx = self.get_register(s.arg1)
           if s.regx is None:
-            raise FatalError(s, 'Invalid register:', s.arg1)
+            raise FatalError(s, _('Invalid register:'), s.arg1)
 
           s.regy = self.get_register(s.arg2)
           if s.regy is None:
-            raise FatalError(s, 'Invalid register:', s.arg2)
+            raise FatalError(s, _('Invalid register:'), s.arg2)
 
         elif s.command == 'load&return':
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
 
           s.regx = self.get_register(s.arg1)
           if s.regx is None:
-            raise FatalError(s, 'Invalid register:', s.arg1)
+            raise FatalError(s, _('Invalid register:'), s.arg1)
 
           elems = []
           if s.arg2.endswith('$'):
@@ -1146,18 +1161,18 @@ class Assembler(object):
           else:
             s.immediate = self.get_constant(s.arg2)
             if s.immediate is None:
-              raise FatalError(s, 'Invalid operand:', s.arg2)
+              raise FatalError(s, _('Invalid operand:'), s.arg2)
 
 
         elif s.command == 'outputk':
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
 
           port = self.get_constant(s.arg2)
           if port is None:
-            raise FatalError(s, 'Invalid operand:', s.arg2)
+            raise FatalError(s, _('Invalid operand:'), s.arg2)
           if not 0 <= port < 16:
-            raise FatalError(s, 'Invalid port for OUTPUTK:', s.arg2)
+            raise FatalError(s, _('Invalid port for OUTPUTK:'), s.arg2)
 
           elems = []
           if s.arg1.endswith('$'):
@@ -1180,24 +1195,24 @@ class Assembler(object):
           else: # Single constant argument
             const = self.get_constant(s.arg1)
             if const is None:
-              raise FatalError(s, 'Invalid operand:', s.arg1)
+              raise FatalError(s, _('Invalid operand:'), s.arg1)
             if not (0 <= const < 256):
-              raise FatalError(s, 'Immediate value out of range:', const)
+              raise FatalError(s, _('Immediate value out of range:'), const)
 
           s.immediate = (const << 4) + port
 
         elif s.command == 'regbank':
           if s.arg1 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
           if s.arg1.lower() not in ('a', 'b'):
-            raise FatalError(s, 'Invalid operand to REGBANK')
+            raise FatalError(s, _('Invalid operand to REGBANK'))
 
           if s.arg1.lower() == 'b':
             s.opcode += 1
 
         elif s.command == 'star':
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
 
           # The STAR instruction has special rules for RegX (arg1)
           # It MUST be in the form: s[hexdigit]
@@ -1205,7 +1220,7 @@ class Assembler(object):
           if len(s.arg1) == 2 and s.arg1[0].lower() == 's' and s.arg1[1] in string.hexdigits:
             s.regx = int(s.arg1[1], 16)
           else:
-            raise FatalError(s, 'Invalid register:', s.arg1)
+            raise FatalError(s, _('Invalid register:'), s.arg1)
 
           # PB6 has an undocumented STAR sX, kk variant so we will accept a constant
           # as the second argument as well as a register.
@@ -1220,9 +1235,9 @@ class Assembler(object):
             s.immediate = self.get_constant(s.arg2)
 
             if s.immediate is None:
-              raise FatalError(s, 'Invalid operand:', s.arg2)
+              raise FatalError(s, _('Invalid operand:'), s.arg2)
             if not (0 <= s.immediate < 256):
-              raise FatalError(s, 'Immediate value out of range:', s.immediate)
+              raise FatalError(s, _('Immediate value out of range:'), s.immediate)
 
 
         elif s.command == 'inst':
@@ -1230,21 +1245,21 @@ class Assembler(object):
           # address map for its value so we treat it as an instruction with 0x00 opcode.
 
           if s.arg1 is None:
-            raise FatalError(s, 'Missing operand')
+            raise FatalError(s, _('Missing operand'))
           s.immediate = convert_literal(s.arg1)
           if s.immediate is None or not 0 <= s.immediate < 2**18:
-            raise FatalError(s, 'Invalid INST value:', s.arg1)
+            raise FatalError(s, _('Invalid INST value:'), s.arg1)
 
         else:
-          raise FatalError(s, 'Unknown instruction:', s.command)
+          raise FatalError(s, _('Unknown instruction:'), s.command)
 
 
       else: # Not an instruction
         if s.command == 'namereg':
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, 'Missing argument to NAMEREG directive')
+            raise FatalError(s, _('Missing argument to NAMEREG directive'))
           if s.arg1 not in self.registers:
-            raise FatalError(s, 'Unknown register name:', s.arg1)
+            raise FatalError(s, _('Unknown register name:'), s.arg1)
 
           self.registers[s.arg2] = self.get_register(s.arg1)
           del self.registers[s.arg1]
@@ -1252,13 +1267,13 @@ class Assembler(object):
 
         elif s.command == 'default_jump':
           if self.default_jump is not None:
-            raise FatalError(s, 'Redefinition of default jump')
+            raise FatalError(s, _('Redefinition of default jump'))
           if s.arg2 is not None:
-            raise FatalError(s, 'Too many arguments to DEFAULT_JUMP')
+            raise FatalError(s, _('Too many arguments to DEFAULT_JUMP'))
 
           self.default_jump = self.get_address(s.arg1)
           if self.default_jump is None:
-            raise FatalError(s, 'Invalid address:', s.arg1)
+            raise FatalError(s, _('Invalid address:'), s.arg1)
 
       instructions.append(s)
 
@@ -1321,10 +1336,10 @@ def convert_literal(arg):
 
 def asm_error(*args, **kwargs):
   '''Print an error message'''
-  print(error('\nERROR:'), *args, file=sys.stderr)
+  print(error(_('\nERROR:')), *args, file=sys.stderr)
   if 'statement' in kwargs:
     s = kwargs['statement']
-    print( '  line {}:  {}'.format(s.line, s.format().lstrip()))
+    print(_('  line {}:  {}').format(s.line, s.format().lstrip()))
   if 'exit' in kwargs:
     sys.exit(kwargs['exit'])
 
@@ -1333,55 +1348,55 @@ def asm_error(*args, **kwargs):
 def parse_command_line():
   '''Process command line arguments'''
   progname = os.path.basename(sys.argv[0])
-  usage = '''{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
+  usage = _('''{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
               [-d] [-r] [-e <address>]
               [-o <output dir>] [-q] [--m4] [--pyparsing]
               [--debug-preproc <file>]
-       {} -g'''.format(progname, progname)
+       {} -g''').format(progname, progname)
   parser = OptionParser(usage=usage)
 
-  parser.add_option('-i', '--input', dest='input_file', help='Input file')
-  parser.add_option('-n', '--name', dest='module_name', help='Module or entity name (defaults to input file name)')
-  parser.add_option('-t', '--template', dest='template_file', help='Template file')
+  parser.add_option('-i', '--input', dest='input_file', help=_('Input file'))
+  parser.add_option('-n', '--name', dest='module_name', help=_('Module or entity name (defaults to input file name)'))
+  parser.add_option('-t', '--template', dest='template_file', help=_('Template file'))
   parser.add_option('-6', '--pb6', dest='use_pb6', action='store_true', default=False, \
-        help='Assemble Picoblaze-6 code')
+        help=_('Assemble PicoBlaze-6 code'))
   parser.add_option('-3', '--pb3', dest='use_pb3', action='store_true', default=False, \
-        help='Assemble Picoblaze-3 code')
+        help=_('Assemble PicoBlaze-3 code'))
   parser.add_option('-m', '--mem-size', dest='mem_size', \
-                    default=0, type=int, help='Program memory size')
+                    default=0, type=int, help=_('Program memory size'))
   parser.add_option('-s', '--scratch-size', dest='scratch_size', \
-                    default=0, type=int, help='Scratchpad memory size')
+                    default=0, type=int, help=_('Scratchpad memory size'))
   parser.add_option('-x', '--hex', dest='hex_output', action='store_true', default=False, \
-        help='Write HEX in place of MEM file')
-  parser.add_option('-o', '--outdir', dest='output_dir', default='.', help='Output directory')
+        help=_('Write HEX in place of MEM file'))
+  parser.add_option('-o', '--outdir', dest='output_dir', default='.', help=_('Output directory'))
 
 
   parser.add_option('-d', '--report-dead-code', dest='report_dead_code', action='store_true', \
-        default=False, help='Perform dead code analysis shown in log file')
+        default=False, help=_('Perform dead code analysis shown in log file'))
   parser.add_option('-r', '--remove-dead-code', dest='remove_dead_code', action='store_true', \
-        default=False, help='Remove dead code from assembled source')
+        default=False, help=_('Remove dead code from assembled source'))
   parser.add_option('-e', '--entry-point', dest='entry_point', default=[], action='append', \
-        metavar='ADDRESS', help='Set address of ISR (or other) entry point')
+        metavar='ADDRESS', help=_('Set address of ISR (or other) entry point'))
 
   parser.add_option('-c', '--color-log', dest='color_log', action='store_true', default=False, \
-        help='Colorize log file')
+        help=_('Colorize log file'))
   parser.add_option('-g', '--get-templates', dest='get_templates', action='store_true', default=False, \
-        help='Get default template files')
+        help=_('Get default template files'))
   parser.add_option('-v', '--version', dest='version', action='store_true', default=False, \
-        help='Show OPBASM version')
+        help=_('Show OPBASM version'))
   parser.add_option('-q', '--quiet', dest='quiet', action='store_true', default=False, \
-        help='Quiet output')
+        help=_('Quiet output'))
   parser.add_option('--m4', dest='use_m4', action='store_true', default=False, \
-        help='Use m4 preprocessor on all source files')
+        help=_('Use m4 preprocessor on all source files'))
   parser.add_option('--debug-preproc', dest='debug_preproc', metavar='FILE', \
-        help='Transformed source file after initial preprocessing')
+        help=_('Transformed source file after initial preprocessing'))
   parser.add_option('--pyparsing', dest='use_pyparsing', action='store_true', default=False, \
-        help='Use alternate pyparsing parser')
+        help=_('Use alternate pyparsing parser'))
 
   options, args = parser.parse_args()
 
   if options.version:
-    print('OPBASM version', __version__)
+    print(_('OPBASM version'), __version__)
     sys.exit(0)
 
   if not options.get_templates:
@@ -1389,13 +1404,13 @@ def parse_command_line():
       if len(args) > 0:
         options.input_file = args[0]
 
-    if not options.input_file: parser.error('Missing input file')
+    if not options.input_file: parser.error(_('Missing input file'))
 
     if not options.module_name:
       options.module_name = os.path.splitext(os.path.basename(options.input_file))[0]
 
     if options.use_pb3 and options.use_pb6:
-      parser.error('Cannot select both Picoblaze architectures')
+      parser.error(_('Cannot select both PicoBlaze architectures'))
 
     if options.use_pb6:
       scratch_sizes = (64, 128, 256)
@@ -1407,12 +1422,12 @@ def parse_command_line():
     if options.scratch_size == 0:
       options.scratch_size = max(scratch_sizes)
     elif options.scratch_size not in scratch_sizes:
-      parser.error('Invalid scratchpad size')
+      parser.error(_('Invalid scratchpad size'))
 
     if options.mem_size == 0:
       options.mem_size = max_mem_size
     elif options.mem_size > max_mem_size:
-      parser.error('Memory size is too large')
+      parser.error(_('Memory size is too large'))
 
 
     if len(options.entry_point) == 0:
@@ -1421,7 +1436,7 @@ def parse_command_line():
     try:
       options.entry_point = [int(ep,0) for ep in options.entry_point]    
     except ValueError:
-        parser.error('Invalid entry point address')
+        parser.error(_('Invalid entry point address'))
 
   return options
 
@@ -1526,7 +1541,7 @@ def annotate_pragmas(slist):
         if pragma in active_tags:
           del_pragma = True # Schedule this pragma for removal from active_tags
       else:
-        print('\n' + note('WARNING') + ': unrecognized pragma at line', s.line)
+        print('\n' + note(_('WARNING')) + _(': unrecognized pragma at line'), s.line)
 
     if s.is_instruction():
       for p, a in active_tags.iteritems():
@@ -1677,36 +1692,36 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
       # before passing them to print().
       return print(*[unicode(a) for a in args], file=fh)
 
-    printf('Open Picoblaze Assembler log for program "{}"'.format(asm.top_source_file))
-    printf('Generated by opbasm v', __version__)
-    printf('  Assembled on {}'.format(asm.timestamp.isoformat()))
-    printf('  Picoblaze-{} mode\n'.format(6 if asm.use_pb6 else 3))
+    printf(_('Open PicoBlaze Assembler log for program "{}"').format(asm.top_source_file))
+    printf(_('Generated by opbasm v{}').format(__version__))
+    printf(_('  Assembled on {}').format(asm.timestamp.isoformat()))
+    printf(_('  PicoBlaze-{} mode\n').format(6 if asm.use_pb6 else 3))
 
-    printf('  Last occupied address: {:03X} hex'.format(stats['last_addr']))
-    printf('  Nominal program memory size: {}K ({})  address({}:0)'.format( \
+    printf(_('  Last occupied address: {:03X} hex').format(stats['last_addr']))
+    printf(_('  Nominal program memory size: {}K ({})  address({}:0)').format( \
                 stats['nom_size'] // 1024, stats['nom_size'], stats['addr_bits']-1))
-    printf('  Actual memory size:', asm.mem_size)
-    printf('  Occupied memory locations:', stats['inst_count'])
-    printf('  Memory locations available:', asm.mem_size - stats['inst_count'])
-    printf('  Scratchpad size:', asm.scratch_size)
+    printf(_('  Actual memory size:'), asm.mem_size)
+    printf(_('  Occupied memory locations:'), stats['inst_count'])
+    printf(_('  Memory locations available:'), asm.mem_size - stats['inst_count'])
+    printf(_('  Scratchpad size:'), asm.scratch_size)
 
     if stats['dead_inst'] is not None:
-      printf('  Dead instructions {}: {}'.format( \
-        'removed' if stats['dead_removed'] else 'found', stats['dead_inst']))
-      printf('  Analyzed entry points:', ', '.join(['0x{:03X}'.format(e) for e in \
+      printf(_('  Dead instructions {}: {}').format( \
+        _('removed') if stats['dead_removed'] else _('found'), stats['dead_inst']))
+      printf(_('  Analyzed entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
         sorted(stats['entry_points'])]))
 
 
-    printf('\n\n' + underline('Assembly listing'))
+    printf('\n\n' + underline(_('Assembly listing')))
     for s in assembled_code:
       printf(s.format(show_addr=True, show_dead=show_dead, colorize=colorize))
 
-    printf('\n\n' + underline('PSM files that have been assembled'))
+    printf('\n\n' + underline(_('PSM files that have been assembled')))
     for f in asm.sources.iterkeys():
       printf('   ', os.path.abspath(f))
 
-    printf('\n\n' + underline('List of defined constants'))
-    headings = ['CONSTANT name', 'Value', 'Source PSM file']
+    printf('\n\n' + underline(_('List of defined constants')))
+    headings = [_('CONSTANT name'), _('Value'), _('Source PSM file')]
     rows = [(c, asm.constants[c].val_text, asm.constants[c].source_file) \
       for c in sorted(asm.constants.iterkeys())]
     for r in format_table(rows, headings, indent=3):
@@ -1715,10 +1730,10 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
       
 
     if len(asm.tables) == 0:
-      printf('\n\n  No tables defined')
+      printf(_('\n\n  No tables defined'))
     else:
-      printf('\n\n' + underline('List of defined tables'))
-      headings = ['TABLE name', 'Value', 'Source PSM file']
+      printf('\n\n' + underline(_('List of defined tables')))
+      headings = [_('TABLE name'), _('Value'), _('Source PSM file')]
       rows = [(t, asm.tables[t].val_text, asm.tables[t].source_file) \
         for t in sorted(asm.tables.iterkeys())]
       for r in format_table(rows, headings, indent=3):
@@ -1726,17 +1741,17 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
 
 
 
-    printf('\n\n' + underline('List of text strings'))
-    headings = ['STRING name', 'Value', 'Source PSM file']
+    printf('\n\n' + underline(_('List of text strings')))
+    headings = [_('STRING name'), _('Value'), _('Source PSM file')]
     rows = [(s, asm.strings[s].val_text, asm.strings[s].source_file) \
       for s in sorted(asm.strings.iterkeys())]
     for r in format_table(rows, headings, indent=3):
       printf(r)
     
 
-    printf('\n\n' + underline('List of line labels'))
+    printf('\n\n' + underline(_('List of line labels')))
     show_caption = not all(l.in_use for l in asm.labels.itervalues())
-    headings = ['   Label', 'Addr', 'Source PSM file']
+    headings = [_('   Label'), _('Addr'), _('Source PSM file')]
     rows = [(('   ' if asm.labels[l].in_use else '*  ') + l, \
       '{:03X}'.format(asm.labels[l].value), asm.labels[l].source_file) \
       for l in sorted(asm.labels.iterkeys())]
@@ -1744,20 +1759,20 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
       printf(r)
 
     if show_caption:
-      printf('\n       * Unreferenced label(s)')
+      printf(_('\n       * Unreferenced label(s)'))
 
 
-    printf('\n\n' + underline('List of pragma blocks'))
+    printf('\n\n' + underline(_('List of pragma blocks')))
     all_blocks = extract_pragma_blocks(assembled_code)
-    headings = ['Name', 'Addr range', 'Value']
+    headings = [_('Name'), _('Addr range'), _('Value')]
     rows = [(b.name, '({:03X} - {:03X})'.format(b.start, b.end), \
       ' '.join([unicode(a) for a in b.args])) for b in all_blocks]
     for r in format_table(rows, headings, indent=3):
       printf(r)
 
-    printf('\n\n' + underline('Instruction usage statistics'))
+    printf('\n\n' + underline(_('Instruction usage statistics')))
     inst_usage = instruction_usage(assembled_code, asm)
-    headings = ['Instruction', 'Instances']
+    headings = [_('Instruction'), _('Instances')]
     rows = [(i.upper(), inst_usage[i] if inst_usage[i] > 0 else '-') \
       for i in sorted(inst_usage.iterkeys())]
     for r in format_table(rows, headings, indent=3):
@@ -1883,8 +1898,8 @@ def find_templates(template_file):
 def template_data_size(template_file):
   ''''Determine the data bus width used by an HDL template
 
-  On Spartan-6 The Picoblaze-6 2K and 4K memories must be split across
-  2Kx9 BRAMs and on Virtex-6 and 7-series the Picoblaze-6 4K memories
+  On Spartan-6 The PicoBlaze-6 2K and 4K memories must be split across
+  2Kx9 BRAMs and on Virtex-6 and 7-series the PicoBlaze-6 4K memories
   must be split across 4Kx9 BRAMs.
 
   This scans a template file to see what format of init placeholder is
@@ -1900,17 +1915,13 @@ def template_data_size(template_file):
   return 18
 
 
+
 def find_standard_m4_macros():
-  # Look relative to installed library
-  try:
-    lib_dir = os.path.dirname(sys.modules['opbasm_lib'].__file__)
-  except KeyError:
-    # Look relative to this script
-    lib_dir = os.path.realpath(__file__)
+  lib_dir = find_lib_dir()
 
   macro_file = os.path.join(lib_dir, 'picoblaze.m4')
   if not os.path.exists(macro_file):
-    print('  No m4 macro directory found', macro_file)
+    print(_('  No m4 macro directory found'), macro_file)
     sys.exit(1)
 
   return macro_file
@@ -1921,18 +1932,20 @@ import shutil
 
 def get_standard_templates():
   '''Create copies of standard templates from the installed package'''
-  print('Retrieving default templates...')
+  print(_('Retrieving default templates...'))
 
-  # Look relative to installed library
-  try:
-    lib_dir = os.path.dirname(sys.modules['opbasm_lib'].__file__)
-    tpl_dir = os.path.normpath(os.path.join(lib_dir, '../templates'))
-  except KeyError:
-    # Look relative to this script
-    tpl_dir = os.path.normpath(os.path.join(os.path.realpath(__file__), '../templates'))
+  lib_dir = find_lib_dir()
+  tpl_dir = os.path.normpath(os.path.join(lib_dir, '../templates'))
+#  # Look relative to installed library
+#  try:
+#    lib_dir = os.path.dirname(sys.modules['opbasm_lib'].__file__)
+#    tpl_dir = os.path.normpath(os.path.join(lib_dir, '../templates'))
+#  except KeyError:
+#    # Look relative to this script
+#    tpl_dir = os.path.normpath(os.path.join(os.path.realpath(__file__), '../templates'))
 
   if not os.path.exists(tpl_dir):
-    print('  No template directory found')
+    print(_('  No template directory found'))
     sys.exit(1)
 
   files = os.listdir(tpl_dir)
@@ -1942,7 +1955,7 @@ def get_standard_templates():
     if not os.path.isfile(p): continue # Skip anything that isn't a file
     if os.path.isfile(f): continue # Skip files that already exist in the current directory
 
-    print('  COPYING: ', p)
+    print(_('  COPYING: '), p)
     shutil.copyfile(p, f)
 
 
@@ -1957,7 +1970,7 @@ def main():
   def printq(*args, **keys):
     if not options.quiet: print(*args, **keys)
 
-  printq(note('OPBASM - Open Picoblaze Assembler {}'.format(__version__)))
+  printq(note(_('OPBASM - Open PicoBlaze Assembler {}').format(__version__)))
 
   if options.get_templates:
     get_standard_templates()
@@ -1983,12 +1996,13 @@ def main():
   
   # Check for existence of input files
   if not os.path.exists(options.input_file):
-    asm_error('Input file not found', exit=1)
+    asm_error(_('Input file not found'), exit=1)
 
+  mode = _('Running in PicoBlaze-{} mode').format(6 if options.use_pb6 else 3)
+  m = re.match('(^.*)(PicoBlaze-[0-9])(.*$)', mode)
+  printq(note(m.group(1)) + success(m.group(2)) + note(m.group(3)))
 
-  printq(note('Running in ') + success('Picoblaze-{}'.format(6 if options.use_pb6 else 3)) + note(' mode'))
-
-  printq('  Device configuration:\n    Memory size: {}, Scratchpad size: {}\n'.format(\
+  printq(_('  Device configuration:\n    Memory size: {}, Scratchpad size: {}\n').format(\
     options.mem_size, options.scratch_size))
 
   timestamp = get_timestamp()
@@ -2006,10 +2020,10 @@ def main():
   try:
     # Read input source
     for fname in asm.process_includes():
-      printq('  Reading source:', fname)
+      printq(_('  Reading source:'), fname)
 
     # Assemble program
-    printq('\n  Assembling code... ', end='')
+    printq(_('\n  Assembling code... '), end='')
     sys.stdout.flush()
 
     assembled_code = asm.assemble(bounds_check=not options.remove_dead_code)
@@ -2017,31 +2031,31 @@ def main():
   except FatalError, e:
     asm_error(*e.args, exit=1, statement=e.statement)
 
-  printq(success('SUCCESS'))
+  printq(success(_('SUCCESS')))
 
   dead_instructions = None
   entry_points = None
   if options.remove_dead_code or options.report_dead_code:
     # Run static analysis
-    printq('  Static analysis: searching for dead code... ', end='')
+    printq(_('  Static analysis: searching for dead code... '), end='')
     entry_points = set((asm.default_jump & 0xFFF, 0))
     entry_points |= set(options.entry_point)
     itable = build_instruction_table(assembled_code)
     analyze_code_reachability(assembled_code, itable, entry_points)
     analyze_recursive_keeps(assembled_code, itable)
-    printq(success('COMPLETE'))
+    printq(success(_('COMPLETE')))
 
     # Summarize analysis
-    printq('    Entry points:', ', '.join(['0x{:03X}'.format(e) for e in \
+    printq(_('    Entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
       sorted(entry_points)]))
     dead_instructions = len([s for s in assembled_code if s.removable()])
-    printq('    {} dead instructions found'.format(dead_instructions))
+    printq(_('    {} dead instructions found').format(dead_instructions))
 
   if options.remove_dead_code:
     # Remove dead code
     for s in assembled_code:
       if s.removable():
-        s.comment = 'REMOVED: ' + s.format().lstrip()
+        s.comment = _('REMOVED: ') + s.format().lstrip()
         s.command = None
         if s.label is not None:
           if s.label in asm.labels:
@@ -2052,13 +2066,13 @@ def main():
     # Reinitialize registers to default names
     asm.init_registers()
 
-    printq('  Removing dead code... ', end='')
+    printq(_('  Removing dead code... '), end='')
     try:
       assembled_code = asm.raw_assemble(assembled_code)
     except FatalError, e:
       asm_error(*e.args, exit=1, statement=e.statement)
 
-    printq(success('COMPLETE'))
+    printq(success(_('COMPLETE')))
 
   # Print summary
   stats = code_stats(assembled_code)
@@ -2066,29 +2080,29 @@ def main():
   stats['dead_removed'] = options.remove_dead_code
   stats['entry_points'] = entry_points
   if not options.quiet:
-    print('    {} instructions out of {} ({}%)'.format(stats['inst_count'], \
+    print(_('    {} instructions out of {} ({}%)').format(stats['inst_count'], \
           options.mem_size, int(stats['inst_count'] / options.mem_size * 100)))
-    print('    Highest occupied address: {:03X} hex'.format(stats['last_addr']))
+    print(_('    Highest occupied address: {:03X} hex').format(stats['last_addr']))
 
     if len(templates) > 0:
-      print('\n  Found template{}:'.format('s' if len(templates) > 1 else ''))
+      print(_('\n  Found {}:').format(_('templates') if len(templates) > 1 else _('template')))
       for f in templates.itervalues():
         print('   ', f)
 
 
   # Write results
-  printq('\n  Writing output')
+  printq(_(_('\n  Writing output')))
 
   if options.debug_preproc:
-    printq('   preprocessor:', options.debug_preproc)
+    printq(_('   preprocessor:'), options.debug_preproc)
 
   mmap = build_memmap(assembled_code, options.mem_size, asm.default_jump)
   write_hex_file(hex_mem_file, mmap)
-  printq('        mem map:', hex_mem_file)
+  printq(_('        mem map:'), hex_mem_file)
   
   show_dead = True if options.report_dead_code or options.remove_dead_code else False
   write_log_file(log_file, assembled_code, stats, asm, options.color_log, show_dead)
-  printq('       log file:', log_file)
+  printq(_('       log file:'), log_file)
 
   minit_18 = build_xilinx_mem_init(mmap)
   minit_9 = build_xilinx_mem_init(mmap, split_data=True)
@@ -2098,17 +2112,17 @@ def main():
     minit = minit_18 if data_size == 18 else minit_9
 
     write_hdl_file(options.input_file, vhdl_file, templates['vhdl'], minit, timestamp.isoformat())
-    printq('      VHDL file:', vhdl_file)
+    printq(_('      VHDL file:'), vhdl_file)
 
   if 'verilog' in templates:
     data_size = template_data_size(templates['verilog'])
     minit = minit_18 if data_size == 18 else minit_9
 
     write_hdl_file(options.input_file, verilog_file, templates['verilog'], minit, timestamp.isoformat())
-    printq('   Verilog file:', verilog_file)
+    printq(_('   Verilog file:'), verilog_file)
 
 
-  printq('\n  Formatted source:')
+  printq(_('\n  Formatted source:'))
   for fname, source in asm.sources.iteritems():
     fname = os.path.splitext(os.path.basename(fname))[0] + '.fmt'
     fname = add_output_dir(options.output_dir, fname)

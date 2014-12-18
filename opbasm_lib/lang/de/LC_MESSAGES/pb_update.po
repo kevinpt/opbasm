@@ -1,0 +1,181 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: pb_update 1.2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2014-12-17 21:32-0500\n"
+"PO-Revision-Date: 2014-12-17 21:47-0500\n"
+"Last-Translator: Kevin Thibedeau <kevin.thibedeau@gmail.com>\n"
+"Language-Team: \n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: German\n"
+"X-Poedit-Country: GERMANY\n"
+"X-Poedit-SourceCharset: utf-8\n"
+
+#: pb_update.py:66
+msgid "{} -m <mem file> -n <NCD file> [-l <Layout spec>] [-o <output bit file>]"
+msgstr "{} -m <MEM-Datei> -n <NCD-Datei> [-l <Layout-spec>] [-o <Ausgang BIT-Datei>]"
+
+#: pb_update.py:69
+msgid "mem file"
+msgstr "MEM-Datei"
+
+#: pb_update.py:70
+msgid "NCD file"
+msgstr "NCD-Datei"
+
+#: pb_update.py:72
+msgid "Memory layout specification \"inst1,inst2,...instN[:next row...]\""
+msgstr "Speicherlayout Spezifikation \"inst1,inst2,...INSTN[:nächste Reihe...]\""
+
+#: pb_update.py:73
+msgid "Output bit file"
+msgstr "Ausgangs-Bit-Datei"
+
+#: pb_update.py:77
+msgid "Missing MEM file"
+msgstr "Fehlende MEM-Datei"
+
+#: pb_update.py:78
+msgid "Missing NCD file"
+msgstr "Fehlende NCD-Datei"
+
+#: pb_update.py:83
+msgid "ERROR:"
+msgstr "ERROR:"
+
+#: pb_update.py:89
+msgid "PicoBlaze ROM updater"
+msgstr "PicoBlaze ROM Updater"
+
+#: pb_update.py:104
+msgid "MEM file not found"
+msgstr "MEM Datei nicht gefunden"
+
+#: pb_update.py:107
+msgid "NCD file not found"
+msgstr "NCD-Datei nicht gefunden"
+
+#: pb_update.py:110
+msgid "BIT file not found ({})"
+msgstr "BIT-Datei nicht gefunden ({})"
+
+#: pb_update.py:120
+msgid "Running XDL..."
+msgstr "Laufende XDL..."
+
+#: pb_update.py:124
+msgid "XDL failure"
+msgstr "XDL Ausfall"
+
+#: pb_update.py:127
+msgid "XDL file not generated"
+msgstr "XDL Datei nicht erzeugt"
+
+#: pb_update.py:134
+msgid "No RAM instances found"
+msgstr "Keine RAM-Instanzen gefunden"
+
+#: pb_update.py:149
+msgid " Available RAM instances:"
+msgstr " Erhältlich RAM Fällen:"
+
+#: pb_update.py:156
+msgid "Duplicate instances in BRAM spec"
+msgstr "Doppelte Instanzen in BRAM spec"
+
+#: pb_update.py:162
+msgid "Instance does not exist in netlist ({})"
+msgstr "Instanz nicht in Netzliste existiert ({})"
+
+#: pb_update.py:182
+msgid "Required memory depth:"
+msgstr "Erforderliche Speichertiefe:"
+
+#: pb_update.py:192
+msgid ""
+"\n"
+"Memory layout:"
+msgstr ""
+"\n"
+"Speicherlayout:"
+
+#: pb_update.py:196
+msgid "No BRAMs remaining"
+msgstr "Keine Brams verbleibenden"
+
+#: pb_update.py:199
+msgid ""
+"\n"
+"Available RAM instances:"
+msgstr ""
+"\n"
+"Erhältlich RAM Fällen:"
+
+#: pb_update.py:202
+msgid "  q) Quit"
+msgstr "  q) Beenden"
+
+#: pb_update.py:203
+msgid ""
+"\n"
+"Select RAM instance: "
+msgstr ""
+"\n"
+"Wählen RAM Beispiel:"
+
+#: pb_update.py:212
+msgid "Invalid selection"
+msgstr "Ungültige Auswahl"
+
+#: pb_update.py:216
+msgid "Row is too wide ({} bits)"
+msgstr "Row zu breit ist ({} Bit)"
+
+#: pb_update.py:227
+msgid ""
+"\n"
+"Final memory layout:"
+msgstr ""
+"\n"
+"Schlussspeicherlayout:"
+
+#: pb_update.py:235
+msgid "Memory layout width does not match required {} bits"
+msgstr "Speicherlayout Breite nicht erforderlich {} Bits entsprechen"
+
+#: pb_update.py:239
+msgid "Memory layout depth does not match required {} words"
+msgstr "Speicherlayout Tiefe nicht erforderlich {} Worten entsprechen"
+
+#: pb_update.py:241
+msgid "Layout Spec:"
+msgstr "Layout-Spec:"
+
+#: pb_update.py:304
+msgid "Generated updated bit file:"
+msgstr "Generierte aktualisiert Bit-Datei:"
+
+#: pb_update.py:309
+msgid ""
+"\n"
+"Running data2mem..."
+msgstr ""
+"\n"
+"Laufende data2mem..."
+
+#: pb_update.py:316
+msgid "data2mem failure"
+msgstr "data2mem Ausfall"
+
+#: pb_update.py:502
+msgid "{}Row {}:  {:4} - {:<4}    {}"
+msgstr "{}Row {}:  {:4} - {:<4}    {}"
+

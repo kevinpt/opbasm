@@ -22,7 +22,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-'''Picoblaze ROM update script
+'''PicoBlaze ROM update script
 '''
 from __future__ import print_function, division
 
@@ -32,8 +32,24 @@ import re
 import math
 import copy
 import itertools
+import gettext
 from optparse import OptionParser
 from subprocess import check_call, CalledProcessError
+
+
+
+def find_lib_dir():
+  # Look relative to installed library
+  try:
+    lib_dir = os.path.dirname(sys.modules['opbasm_lib'].__file__)
+  except KeyError:
+    # Look relative to this script
+    lib_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'opbasm_lib')
+
+  return lib_dir
+
+gettext.install('pb_update', os.path.join(find_lib_dir(), 'lang'), unicode=True)
+
 
 try:
   from opbasm_lib.color import *
@@ -47,30 +63,30 @@ except ImportError:
 
 def parse_command_line():
     progname = os.path.basename(sys.argv[0])
-    usage = '{} -m <mem file> -n <NCD file> [-l <Layout spec>] [-o <output bit file>]'.format(progname)
+    usage = _('{} -m <mem file> -n <NCD file> [-l <Layout spec>] [-o <output bit file>]').format(progname)
     parser = OptionParser(usage=usage)
 
-    parser.add_option('-m', '--mem', dest='mem_file', help='mem file')
-    parser.add_option('-n', '--ncd', dest='ncd_file', help='NCD file')
+    parser.add_option('-m', '--mem', dest='mem_file', help=_('mem file'))
+    parser.add_option('-n', '--ncd', dest='ncd_file', help=_('NCD file'))
     parser.add_option('-l', '--layout-spec', dest='layout_spec', \
-      help='Memory layout specification "inst1,inst2,...instN[:next row...]"')
-    parser.add_option('-o', '--output', dest='out_bit_file', help='Output bit file')
+      help=_('Memory layout specification "inst1,inst2,...instN[:next row...]"'))
+    parser.add_option('-o', '--output', dest='out_bit_file', help=_('Output bit file'))
 
     options, args = parser.parse_args()
 
-    if not options.mem_file: parser.error('Missing mem file')
-    if not options.ncd_file: parser.error('Missing NCD file')
+    if not options.mem_file: parser.error(_('Missing MEM file'))
+    if not options.ncd_file: parser.error(_('Missing NCD file'))
 
     return options
 
 def report_error(*args, **kwargs):
-  print(error('ERROR:'), *args, file=sys.stderr)
+  print(error(_('ERROR:')), *args, file=sys.stderr)
   if 'exit' in kwargs:
     sys.exit(kwargs['exit'])
 
 
 def main():
-    print(note('Picoblaze ROM updater'))
+    print(note(_('PicoBlaze ROM updater')))
     options = parse_command_line()
 
     # Set up file names
@@ -85,13 +101,13 @@ def main():
 
     # Check for existence of input files
     if not os.path.exists(options.mem_file):
-        report_error('mem file not found', exit=1)
+        report_error(_('MEM file not found'), exit=1)
 
     if not os.path.exists(options.ncd_file):
-        report_error('NCD file not found', exit=1)
+        report_error(_('NCD file not found'), exit=1)
 
     if not os.path.exists(bit_file):
-        report_error('bit file not found ({})'.format(bit_file), exit=1)
+        report_error(_('BIT file not found ({})').format(bit_file), exit=1)
 
     # Check timestamp of XDL and NCD to see if we need to update the XDL
     run_xdl = True
@@ -101,21 +117,21 @@ def main():
 
     # Run XDL to get instance information
     if run_xdl:
-        print('Running XDL...')
+        print(_('Running XDL...'))
         try:
           check_call(['xdl', '-ncd2xdl', options.ncd_file, xdl_file])
         except CalledProcessError:
-          report_error('XDL failure', exit=1)
+          report_error(_('XDL failure'), exit=1)
 
     if not os.path.exists(xdl_file):
-        report_error('XDL file not generated', exit=1)
+        report_error(_('XDL file not generated'), exit=1)
 
     # Find BRAM instances in XDL file
     ram_insts = find_ram_instances(xdl_file)
     inames = sorted(ram_insts.keys())
 
     if len(inames) == 0:
-        report_error('No RAM instances found', exit=1)
+        report_error(_('No RAM instances found'), exit=1)
 
     prompt_user = True
 
@@ -130,20 +146,20 @@ def main():
       spec_flat = [i for s in spec for i in s]
 
       def show_instances(inames, ram_insts):
-        print(' Available RAM instances:', file=sys.stderr)
+        print(_(' Available RAM instances:'), file=sys.stderr)
         for n in inames:
           print('  {}  [{} {}]'.format(n, ram_insts[n].primitive, ram_insts[n].dimensions), file=sys.stderr)
         sys.exit(1)
 
       # Check for duplicate instances in the spec
       if len(set(spec_flat)) < len(spec_flat):
-        report_error('Duplicate instances in BRAM spec')
+        report_error(_('Duplicate instances in BRAM spec'))
         show_instances(inames, ram_insts)
 
       # Verify all instances in the spec are in the netlist
       for i in spec_flat:
         if i not in inames:
-          report_error('Instance does not exist in netlist ({})'.format(i))
+          report_error(_('Instance does not exist in netlist ({})').format(i))
           show_instances(inames, ram_insts)
 
       # Build a layout from the specification
@@ -163,7 +179,7 @@ def main():
     if len(mem_data) > 1: # Remove first line with address offset
       mem_data = [int(w, 16) for w in mem_data[1:]]
 
-    print('Required memory depth:', len(mem_data))
+    print(_('Required memory depth:'), len(mem_data))
 
     # Interactive selection of BRAM blocks to build memory layout
     target_width = 18
@@ -173,18 +189,18 @@ def main():
     while prompt_user and not lo.valid(target_depth, target_width):
       if len(lo.rows[0].brams) > 0:
         # Show current layout
-        print('\nMemory layout:')
+        print(_('\nMemory layout:'))
         print('\n'.join(lo.summary(4)))
 
       if len(inames) == 0:
-        report_error('No BRAMs remaining', exit=1)
+        report_error(_('No BRAMs remaining'), exit=1)
 
       # Prompt user
-      print('\nAvailable RAM instances:')
+      print(_('\nAvailable RAM instances:'))
       for i, n in enumerate(inames):
         print('  {}) {}  [{} {}]'.format(i+1, n, ram_insts[n].primitive, ram_insts[n].dimensions))
-      print('  q) Quit')
-      sel = raw_input('\nSelect RAM instance: ')
+      print(_('  q) Quit'))
+      sel = raw_input(_('\nSelect RAM instance: ').encode('utf-8'))
       if sel.lower() == 'q': sys.exit(0)
 
       try:
@@ -193,11 +209,11 @@ def main():
         sel = -1
 
       if sel < 0 or sel >= len(inames):
-        report_error('Invalid selection', exit=1)
+        report_error(_('Invalid selection'), exit=1)
 
       lo.rows[-1].add_bram(copy.deepcopy(ram_insts[inames[sel]]))
       if lo.rows[-1].width > target_width:
-        report_error('Row is too wide ({} bits)'.format(lo.rows[-1].width), exit=1)
+        report_error(_('Row is too wide ({} bits)').format(lo.rows[-1].width), exit=1)
 
       if lo.rows[-1].valid(target_width) and not lo.valid(target_depth, target_width):
         # Row is complete but depth is not satisfied
@@ -208,7 +224,7 @@ def main():
 
 
     # Show final layout
-    print(success('\nFinal memory layout:'))
+    print(success(_('\nFinal memory layout:')))
     print('\n'.join(lo.summary(4)))
     print()
 
@@ -216,13 +232,13 @@ def main():
     # Make sure the layout width is correct
     for r in lo.rows:
       if r.width != target_width:
-        report_error('Memory layout width does not match required {} bits'.format(target_width), exit=1)
+        report_error(_('Memory layout width does not match required {} bits').format(target_width), exit=1)
 
     # Make sure the layout depth is correct
     if lo.rows[-1].end + 1 != target_depth:
-      report_error('Memory layout depth does not match required {} words'.format(target_depth), exit=1)
+      report_error(_('Memory layout depth does not match required {} words').format(target_depth), exit=1)
 
-    print('{} "{}"'.format(success('Layout Spec:'),lo.instance_spec))
+    print('{} "{}"'.format(success(_('Layout Spec:')),lo.instance_spec))
 
 
     # data2mem doesn't work right if there multiple BRAMs in a row of memory with
@@ -285,19 +301,19 @@ def main():
 
       if cur_bit_file: os.rename(cur_bit_file, options.out_bit_file)
 
-    print(success('Generated updated bit file:'), options.out_bit_file)
+    print(success(_('Generated updated bit file:')), options.out_bit_file)
     sys.exit(0)
 
 
 def run_data2mem(bmm_file, mem_file, bit_file, out_bit_file):
-  print('\nRunning data2mem...')
+  print(_('\nRunning data2mem...'))
   d2m_cmd = ['data2mem', '-bm', bmm_file, '-bd', mem_file, \
              '-bt', bit_file,'-o', 'b', out_bit_file]
   print(' ', ' '.join(d2m_cmd))
   try:
     check_call(d2m_cmd)
   except CalledProcessError:
-    report_error('data2mem failure', exit=1)
+    report_error(_('data2mem failure'), exit=1)
 
 
 class Bram(object):
@@ -483,7 +499,7 @@ class MemLayout(object):
 
   def summary(self, indent=0):
     for i, r in enumerate(self.rows):
-      yield '{}Row {}:  {:4} - {:<4}    {}'.format(' '*indent, i, r.start, r.end, r.map())
+      yield _('{}Row {}:  {:4} - {:<4}    {}').format(' '*indent, i, r.start, r.end, r.map())
       for s in r.summary(indent + 2):
         yield s
 

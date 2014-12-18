@@ -1,0 +1,601 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2014-12-17 21:20-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: opbasm.py:109
+msgid "ERROR:"
+msgstr ""
+
+#: opbasm.py:109
+msgid " OPBASM requires the Pyparsing library"
+msgstr ""
+
+#: opbasm.py:558 opbasm.py:565
+msgid "PARSE ERROR:"
+msgstr ""
+
+#: opbasm.py:558 opbasm.py:565
+msgid ""
+" bad statement in line {}:\n"
+"  {}"
+msgstr ""
+
+#: opbasm.py:774
+msgid "Redefinition of label:"
+msgstr ""
+
+#: opbasm.py:789
+msgid "Include file not found:"
+msgstr ""
+
+#: opbasm.py:794
+msgid "Invalid include parameter"
+msgstr ""
+
+#: opbasm.py:799
+msgid "Missing argument to constant directive"
+msgstr ""
+
+#: opbasm.py:802
+msgid "Redefinition of constant:"
+msgstr ""
+
+#: opbasm.py:806
+msgid "Invalid constant. Conflicts with hex literal"
+msgstr ""
+
+#: opbasm.py:811
+msgid "Unknown environment variable:"
+msgstr ""
+
+#: opbasm.py:824
+msgid "Missing argument to STRING directive"
+msgstr ""
+
+#: opbasm.py:826
+msgid "Invalid string name (missing $):"
+msgstr ""
+
+#: opbasm.py:828
+msgid "Redefinition of string:"
+msgstr ""
+
+#: opbasm.py:830
+msgid "Not a valid string:"
+msgstr ""
+
+#: opbasm.py:837
+msgid "Missing argument to TABLE directive"
+msgstr ""
+
+#: opbasm.py:839
+msgid "Invalid table name (missing #):"
+msgstr ""
+
+#: opbasm.py:841
+msgid "Redefinition of table:"
+msgstr ""
+
+#: opbasm.py:843
+msgid "Missing table definition"
+msgstr ""
+
+#: opbasm.py:857
+msgid "Invalid table element (radix {})"
+msgstr ""
+
+#: opbasm.py:862
+msgid "Table value out of range:"
+msgstr ""
+
+#: opbasm.py:886
+msgid "Recursive include:"
+msgstr ""
+
+#: opbasm.py:975
+msgid "Unknown string:"
+msgstr ""
+
+#: opbasm.py:980
+msgid "Unknown table:"
+msgstr ""
+
+#: opbasm.py:1013 opbasm.py:1025
+msgid "Address exceeds memory bounds: {:03X} (limit {:03X})"
+msgstr ""
+
+#: opbasm.py:1022 opbasm.py:1069 opbasm.py:1276
+msgid "Invalid address:"
+msgstr ""
+
+#: opbasm.py:1045
+msgid "Invalid PicoBlaze-{} instruction:"
+msgstr ""
+
+#: opbasm.py:1065
+msgid "Missing address"
+msgstr ""
+
+#: opbasm.py:1071
+msgid "Out of range address"
+msgstr ""
+
+#: opbasm.py:1075 opbasm.py:1085 opbasm.py:1110 opbasm.py:1116 opbasm.py:1126
+#: opbasm.py:1137 opbasm.py:1169 opbasm.py:1206 opbasm.py:1215 opbasm.py:1248
+msgid "Missing operand"
+msgstr ""
+
+#: opbasm.py:1077
+msgid "Illegal operand:"
+msgstr ""
+
+#: opbasm.py:1081 opbasm.py:1089 opbasm.py:1129 opbasm.py:1133 opbasm.py:1141
+#: opbasm.py:1223
+msgid "Invalid register:"
+msgstr ""
+
+#: opbasm.py:1100 opbasm.py:1164 opbasm.py:1173 opbasm.py:1198 opbasm.py:1238
+msgid "Invalid operand:"
+msgstr ""
+
+#: opbasm.py:1102 opbasm.py:1200 opbasm.py:1240
+msgid "Immediate value out of range:"
+msgstr ""
+
+#: opbasm.py:1106
+msgid "Scratchpad address out of range:"
+msgstr ""
+
+#: opbasm.py:1112
+msgid "Invalid operand to {}"
+msgstr ""
+
+#: opbasm.py:1118
+msgid "Invalid operand to RETURNI"
+msgstr ""
+
+#: opbasm.py:1175
+msgid "Invalid port for OUTPUTK:"
+msgstr ""
+
+#: opbasm.py:1208
+msgid "Invalid operand to REGBANK"
+msgstr ""
+
+#: opbasm.py:1251
+msgid "Invalid INST value:"
+msgstr ""
+
+#: opbasm.py:1254
+msgid "Unknown instruction:"
+msgstr ""
+
+#: opbasm.py:1260
+msgid "Missing argument to NAMEREG directive"
+msgstr ""
+
+#: opbasm.py:1262
+msgid "Unknown register name:"
+msgstr ""
+
+#: opbasm.py:1270
+msgid "Redefinition of default jump"
+msgstr ""
+
+#: opbasm.py:1272
+msgid "Too many arguments to DEFAULT_JUMP"
+msgstr ""
+
+#: opbasm.py:1339
+msgid ""
+"\n"
+"ERROR:"
+msgstr ""
+
+#: opbasm.py:1342
+msgid "  line {}:  {}"
+msgstr ""
+
+#: opbasm.py:1351
+msgid ""
+"{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s "
+"<scratch size>]\n"
+"              [-d] [-r] [-e <address>]\n"
+"              [-o <output dir>] [-q] [--m4] [--pyparsing]\n"
+"              [--debug-preproc <file>]\n"
+"       {} -g"
+msgstr ""
+
+#: opbasm.py:1358
+msgid "Input file"
+msgstr ""
+
+#: opbasm.py:1359
+msgid "Module or entity name (defaults to input file name)"
+msgstr ""
+
+#: opbasm.py:1360
+msgid "Template file"
+msgstr ""
+
+#: opbasm.py:1362
+msgid "Assemble PicoBlaze-6 code"
+msgstr ""
+
+#: opbasm.py:1364
+msgid "Assemble PicoBlaze-3 code"
+msgstr ""
+
+#: opbasm.py:1366
+msgid "Program memory size"
+msgstr ""
+
+#: opbasm.py:1368
+msgid "Scratchpad memory size"
+msgstr ""
+
+#: opbasm.py:1370
+msgid "Write HEX in place of MEM file"
+msgstr ""
+
+#: opbasm.py:1371
+msgid "Output directory"
+msgstr ""
+
+#: opbasm.py:1375
+msgid "Perform dead code analysis shown in log file"
+msgstr ""
+
+#: opbasm.py:1377
+msgid "Remove dead code from assembled source"
+msgstr ""
+
+#: opbasm.py:1379
+msgid "Set address of ISR (or other) entry point"
+msgstr ""
+
+#: opbasm.py:1382
+msgid "Colorize log file"
+msgstr ""
+
+#: opbasm.py:1384
+msgid "Get default template files"
+msgstr ""
+
+#: opbasm.py:1386
+msgid "Show OPBASM version"
+msgstr ""
+
+#: opbasm.py:1388
+msgid "Quiet output"
+msgstr ""
+
+#: opbasm.py:1390
+msgid "Use m4 preprocessor on all source files"
+msgstr ""
+
+#: opbasm.py:1392
+msgid "Transformed source file after initial preprocessing"
+msgstr ""
+
+#: opbasm.py:1394
+msgid "Use alternate pyparsing parser"
+msgstr ""
+
+#: opbasm.py:1399
+msgid "OPBASM version"
+msgstr ""
+
+#: opbasm.py:1407
+msgid "Missing input file"
+msgstr ""
+
+#: opbasm.py:1413
+msgid "Cannot select both PicoBlaze architectures"
+msgstr ""
+
+#: opbasm.py:1425
+msgid "Invalid scratchpad size"
+msgstr ""
+
+#: opbasm.py:1430
+msgid "Memory size is too large"
+msgstr ""
+
+#: opbasm.py:1439
+msgid "Invalid entry point address"
+msgstr ""
+
+#: opbasm.py:1544
+msgid "WARNING"
+msgstr ""
+
+#: opbasm.py:1544
+msgid ": unrecognized pragma at line"
+msgstr ""
+
+#: opbasm.py:1695
+msgid "Open PicoBlaze Assembler log for program \"{}\""
+msgstr ""
+
+#: opbasm.py:1696
+msgid "Generated by opbasm v{}"
+msgstr ""
+
+#: opbasm.py:1697
+msgid "  Assembled on {}"
+msgstr ""
+
+#: opbasm.py:1698
+msgid "  PicoBlaze-{} mode\n"
+msgstr ""
+
+#: opbasm.py:1700
+msgid "  Last occupied address: {:03X} hex"
+msgstr ""
+
+#: opbasm.py:1701
+msgid "  Nominal program memory size: {}K ({})  address({}:0)"
+msgstr ""
+
+#: opbasm.py:1703
+msgid "  Actual memory size:"
+msgstr ""
+
+#: opbasm.py:1704
+msgid "  Occupied memory locations:"
+msgstr ""
+
+#: opbasm.py:1705
+msgid "  Memory locations available:"
+msgstr ""
+
+#: opbasm.py:1706
+msgid "  Scratchpad size:"
+msgstr ""
+
+#: opbasm.py:1709
+msgid "  Dead instructions {}: {}"
+msgstr ""
+
+#: opbasm.py:1710
+msgid "removed"
+msgstr ""
+
+#: opbasm.py:1710
+msgid "found"
+msgstr ""
+
+#: opbasm.py:1711
+msgid "  Analyzed entry points:"
+msgstr ""
+
+#: opbasm.py:1715
+msgid "Assembly listing"
+msgstr ""
+
+#: opbasm.py:1719
+msgid "PSM files that have been assembled"
+msgstr ""
+
+#: opbasm.py:1723
+msgid "List of defined constants"
+msgstr ""
+
+#: opbasm.py:1724
+msgid "CONSTANT name"
+msgstr ""
+
+#: opbasm.py:1724 opbasm.py:1736 opbasm.py:1745 opbasm.py:1767
+msgid "Value"
+msgstr ""
+
+#: opbasm.py:1724 opbasm.py:1736 opbasm.py:1745 opbasm.py:1754
+msgid "Source PSM file"
+msgstr ""
+
+#: opbasm.py:1733
+msgid ""
+"\n"
+"\n"
+"  No tables defined"
+msgstr ""
+
+#: opbasm.py:1735
+msgid "List of defined tables"
+msgstr ""
+
+#: opbasm.py:1736
+msgid "TABLE name"
+msgstr ""
+
+#: opbasm.py:1744
+msgid "List of text strings"
+msgstr ""
+
+#: opbasm.py:1745
+msgid "STRING name"
+msgstr ""
+
+#: opbasm.py:1752
+msgid "List of line labels"
+msgstr ""
+
+#: opbasm.py:1754
+msgid "   Label"
+msgstr ""
+
+#: opbasm.py:1754
+msgid "Addr"
+msgstr ""
+
+#: opbasm.py:1762
+msgid ""
+"\n"
+"       * Unreferenced label(s)"
+msgstr ""
+
+#: opbasm.py:1765
+msgid "List of pragma blocks"
+msgstr ""
+
+#: opbasm.py:1767
+msgid "Name"
+msgstr ""
+
+#: opbasm.py:1767
+msgid "Addr range"
+msgstr ""
+
+#: opbasm.py:1773
+msgid "Instruction usage statistics"
+msgstr ""
+
+#: opbasm.py:1775
+msgid "Instruction"
+msgstr ""
+
+#: opbasm.py:1775
+msgid "Instances"
+msgstr ""
+
+#: opbasm.py:1924
+msgid "  No m4 macro directory found"
+msgstr ""
+
+#: opbasm.py:1935
+msgid "Retrieving default templates..."
+msgstr ""
+
+#: opbasm.py:1948
+msgid "  No template directory found"
+msgstr ""
+
+#: opbasm.py:1958
+msgid "  COPYING: "
+msgstr ""
+
+#: opbasm.py:1973
+msgid "OPBASM - Open PicoBlaze Assembler {}"
+msgstr ""
+
+#: opbasm.py:1999
+msgid "Input file not found"
+msgstr ""
+
+#: opbasm.py:2001
+msgid "Running in PicoBlaze-{} mode"
+msgstr ""
+
+#: opbasm.py:2006
+msgid ""
+"  Device configuration:\n"
+"    Memory size: {}, Scratchpad size: {}\n"
+msgstr ""
+
+#: opbasm.py:2024
+msgid "  Reading source:"
+msgstr ""
+
+#: opbasm.py:2027
+msgid ""
+"\n"
+"  Assembling code... "
+msgstr ""
+
+#: opbasm.py:2035
+msgid "SUCCESS"
+msgstr ""
+
+#: opbasm.py:2041
+msgid "  Static analysis: searching for dead code... "
+msgstr ""
+
+#: opbasm.py:2047 opbasm.py:2076
+msgid "COMPLETE"
+msgstr ""
+
+#: opbasm.py:2050
+msgid "    Entry points:"
+msgstr ""
+
+#: opbasm.py:2053
+msgid "    {} dead instructions found"
+msgstr ""
+
+#: opbasm.py:2059
+msgid "REMOVED: "
+msgstr ""
+
+#: opbasm.py:2070
+msgid "  Removing dead code... "
+msgstr ""
+
+#: opbasm.py:2084
+msgid "    {} instructions out of {} ({}%)"
+msgstr ""
+
+#: opbasm.py:2086
+msgid "    Highest occupied address: {:03X} hex"
+msgstr ""
+
+#: opbasm.py:2089
+msgid ""
+"\n"
+"  Found {}:"
+msgstr ""
+
+#: opbasm.py:2089
+msgid "templates"
+msgstr ""
+
+#: opbasm.py:2089
+msgid "template"
+msgstr ""
+
+#: opbasm.py:2095
+msgid ""
+"\n"
+"  Writing output"
+msgstr ""
+
+#: opbasm.py:2098
+msgid "   preprocessor:"
+msgstr ""
+
+#: opbasm.py:2102
+msgid "        mem map:"
+msgstr ""
+
+#: opbasm.py:2106
+msgid "       log file:"
+msgstr ""
+
+#: opbasm.py:2116
+msgid "      VHDL file:"
+msgstr ""
+
+#: opbasm.py:2123
+msgid "   Verilog file:"
+msgstr ""
+
+#: opbasm.py:2126
+msgid ""
+"\n"
+"  Formatted source:"
+msgstr ""
