@@ -37,6 +37,14 @@ from optparse import OptionParser
 from subprocess import check_call, CalledProcessError
 
 
+# Fix broken UTF-8 support on Windows console
+if sys.platform == "win32" and sys.stdout.encoding == 'cp65001':
+  try:
+    from opbasm_lib.win_console import *
+    fix_broken_win_console()
+  except ImportError:
+    pass
+
 
 def find_lib_dir():
   # Look relative to installed library
@@ -200,7 +208,7 @@ def main():
       for i, n in enumerate(inames):
         print('  {}) {}  [{} {}]'.format(i+1, n, ram_insts[n].primitive, ram_insts[n].dimensions))
       print(_('  q) Quit'))
-      sel = raw_input(_('\nSelect RAM instance: ').encode('utf-8'))
+      sel = raw_input(_('\nSelect RAM instance: ').encode(sys.stdout.encoding))
       if sel.lower() == 'q': sys.exit(0)
 
       try:
