@@ -81,6 +81,15 @@ import re
 import gettext
 
 
+# Fix broken UTF-8 support on Windows console
+if sys.platform == "win32" and sys.stdout.encoding == 'cp65001':
+  try:
+    from opbasm_lib.win_console import *
+    fix_broken_win_console()
+  except ImportError:
+    pass
+
+
 def find_lib_dir():
   # Look relative to installed library
   try:
