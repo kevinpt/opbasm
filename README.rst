@@ -1,8 +1,8 @@
 ========================
-Open Picoblaze Assembler
+Open PicoBlaze Assembler
 ========================
 
-Opbasm is a free cross-platform assembler for the Picoblaze-3 (PB3) and Picoblaze-6 (PB6) microcontrollers `provided by Xilinx <http://www.xilinx.com/products/intellectual-property/picoblaze.htm>`_. It will run readily on any platform with a functional Python intepreter. Opbasm provides a better perfoming solution to assembling Picoblaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers. 
+Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers `provided by Xilinx <http://www.xilinx.com/products/intellectual-property/picoblaze.htm>`_. It will run readily on any platform with a functional Python intepreter. Opbasm provides a better perfoming solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers. 
 
 **Special features of Opbasm:**
 
@@ -24,9 +24,9 @@ Opbasm is a free cross-platform assembler for the Picoblaze-3 (PB3) and Picoblaz
 * Code block annotations with `user defined PRAGMA meta-comments <http://code.google.com/p/opbasm/#User_defined_PRAGMAs>`_.
 
 
-Support for the full Picoblaze-6 syntax is provided as well as `enabling most of the new PB6 syntax enhancements in Picoblaze-3 code <http://code.google.com/p/opbasm/#Picoblaze-3_enhancements>`_. The original templating system for ROM components is supported as well as a more flexible `generic ROM component <https://code.google.com/p/opbasm/#Generic_ROM_component>`_ that can read *.mem* and *.hex* files directly during synthesis and simulation. A utility script is included that permits `updating the ROM contents of a bitstream file <http://code.google.com/p/opbasm/#Updating_bit_files>`_ without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
+Support for the full PicoBlaze-6 syntax is provided as well as `enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code <http://code.google.com/p/opbasm/#PicoBlaze_-3_enhancements>`_. The original templating system for ROM components is supported as well as a more flexible `generic ROM component <https://code.google.com/p/opbasm/#Generic_ROM_component>`_ that can read *.mem* and *.hex* files directly during synthesis and simulation. A utility script is included that permits `updating the ROM contents of a bitstream file <http://code.google.com/p/opbasm/#Updating_bit_files>`_ without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
 
-Files generated on non-Windows platforms will not have DOS line endings and Picoblaze-3 files are not restricted to 8.3 file names. Opbasm also runs significantly faster than the native implementation:
+Files generated on non-Windows platforms will not have DOS line endings and PicoBlaze-3 files are not restricted to 8.3 file names. Opbasm also runs significantly faster than the native implementation:
 
 .. image:: http://opbasm.googlecode.com/hg/doc/opbasm_perf.png
 
