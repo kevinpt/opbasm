@@ -1,0 +1,19 @@
+syntax: glob
+
+*.pyc
+*~
+
+_build
+build
+dist
+test
+ve
+
+x
+arith
+
+opbasm.egg-info
+no-dist
+
+MANIFEST
+

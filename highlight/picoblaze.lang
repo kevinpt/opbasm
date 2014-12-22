@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language id="picoblaze" _name="Picoblaze" version="2.0" _section="Sources">
+  <metadata>
+    <property name="mimetypes">text/x-asm</property>
+    <property name="globs">*.psm;*.psm4</property>
+    <property name="line-comment-start">;</property>
+  </metadata>
+
+  <styles>
+    <style id="comment" _name="Comment" map-to="def:comment"/>
+    <style id="instruction" _name="Instruction" map-to="def:keyword"/>
+    <style id="directive" _name="Directive" map-to="def:preprocessor"/>
+    <style id="macro" _name="Macro" map-to="def:preprocessor"/>
+    <style id="string" _name="String" map-to="def:string"/>
+    <style id="number" _name="Number" map-to="def:number"/>
+    <style id="constant" _name="Constant" map-to="def:identifier"/>
+    <style id="label" _name="Label" map-to="def:identifier"/>
+    <style id="operator" _name="Operator" map-to="def:operator"/>
+  </styles>
+
+  <default-regex-options case-sensitive="false"/>
+
+  <definitions>
+
+    <context id="picoblaze">
+      <include>
+
+        <context id="comment" style-ref="comment">
+          <start>;</start>
+          <end>$</end>
+        </context>
+
+
+        <context id="string" end-at-line-end="true" style-ref="string">
+          <start>"</start>
+          <end>"</end>
+        </context>
+
+        <context id="directives" style-ref="directive">
+          <keyword>address</keyword>
+          <keyword>constant</keyword>
+          <keyword>namereg</keyword>
+          <keyword>include</keyword>
+          <keyword>default_jump</keyword>
+          <keyword>string</keyword>
+          <keyword>table</keyword>
+        </context>
+
+
+        <context id="instructions" style-ref="instruction">
+          <keyword>add</keyword>
+          <keyword>addcy</keyword>
+          <keyword>and</keyword>
+          <keyword>call</keyword>
+          <keyword>compare</keyword>
+          <keyword>disable</keyword>
+          <keyword>enable</keyword>
+          <keyword>fetch</keyword>
+          <keyword>input</keyword>
+          <keyword>jump</keyword>
+          <keyword>load</keyword>
+          <keyword>or</keyword>
+          <keyword>output</keyword>
+          <keyword>return</keyword>
+          <keyword>returni</keyword>
+          <keyword>rl</keyword>
+          <keyword>rr</keyword>
+          <keyword>sl0</keyword>
+          <keyword>sl1</keyword>
+          <keyword>slx</keyword>
+          <keyword>sla</keyword>
+          <keyword>sr0</keyword>
+          <keyword>sr1</keyword>
+          <keyword>sra</keyword>
+          <keyword>srx</keyword>
+          <keyword>store</keyword>
+          <keyword>sub</keyword>
+          <keyword>subcy</keyword>
+          <keyword>test</keyword>
+          <keyword>xor</keyword>
+          <keyword>inst</keyword>
+          <keyword>call@</keyword>
+          <keyword>comparecy</keyword>
+          <keyword>hwbuild</keyword>
+          <keyword>jump@</keyword>
+          <keyword>load&amp;return</keyword>
+          <keyword>outputk</keyword>
+          <keyword>regbank</keyword>
+          <keyword>star</keyword>
+          <keyword>testcy</keyword>
+          <keyword>inst</keyword>
+          <keyword>interrupt</keyword>
+        </context>
+
+        <context id="macros" style-ref="macro">
+          <keyword>eval</keyword>
+          <keyword>define</keyword>
+          <keyword>ifdef</keyword>
+
+          <keyword>evald</keyword>
+          <keyword>evalh</keyword>
+          <keyword>evala</keyword>
+          <keyword>evalb</keyword>
+          <keyword>evalc</keyword>
+          <keyword>evalx</keyword>
+          <keyword>pbhex</keyword>
+          <keyword>words_le</keyword>
+          <keyword>words_be</keyword>
+          <keyword>use_tempreg</keyword>
+          <keyword>nop</keyword>
+          <keyword>swap</keyword>
+          <keyword>randlabel</keyword>
+          <keyword>uniqlabel</keyword>
+          <keyword>reverse</keyword>
+          <keyword>iodefs</keyword>
+          <keyword>load_out</keyword>
+          <keyword>load_st</keyword>
+          <keyword>vars</keyword>
+          <keyword>use_clock</keyword>
+          <keyword>delay_cycles</keyword>
+          <keyword>floor_log</keyword>
+          <keyword>floor_log2</keyword>
+          <keyword>delay_ms</keyword>
+          <keyword>delay_us</keyword>
+          <keyword>var_delay_ms</keyword>
+          <keyword>var_delay_us</keyword>
+          <keyword>var_count_ms</keyword>
+          <keyword>var_count_us</keyword>
+          <keyword>clearcy</keyword>
+          <keyword>setcy</keyword>
+          <keyword>setbit</keyword>
+          <keyword>clearbit</keyword>
+          <keyword>mask</keyword>
+          <keyword>maskh</keyword>
+          <keyword>setmask</keyword>
+          <keyword>clearmask</keyword>
+          <keyword>testbit</keyword>
+          <keyword>jne</keyword>
+          <keyword>jeq</keyword>
+          <keyword>jge</keyword>
+          <keyword>jlt</keyword>
+          <keyword>callne</keyword>
+          <keyword>calleq</keyword>
+          <keyword>callge</keyword>
+          <keyword>calllt</keyword>
+          <keyword>retne</keyword>
+          <keyword>reteq</keyword>
+          <keyword>retge</keyword>
+          <keyword>retlt</keyword>
+          <keyword>if</keyword>
+          <keyword>signed</keyword>
+          <keyword>isconst</keyword>
+          <keyword>const2m4</keyword>
+          <keyword>ifeq</keyword>
+          <keyword>ifne</keyword>
+          <keyword>ifge</keyword>
+          <keyword>iflt</keyword>
+          <keyword>errmsg</keyword>
+          <keyword>warnmsg</keyword>
+          <keyword>while</keyword>
+          <keyword>dowhile</keyword>
+          <keyword>for</keyword>
+          <keyword>break</keyword>
+          <keyword>continue</keyword>
+          <keyword>repeatstr</keyword>
+          <keyword>repeat</keyword>
+          <keyword>sl0</keyword>
+          <keyword>sl1</keyword>
+          <keyword>sla</keyword>
+          <keyword>slx</keyword>
+          <keyword>sr0</keyword>
+          <keyword>sr1</keyword>
+          <keyword>sra</keyword>
+          <keyword>srx</keyword>
+          <keyword>rl</keyword>
+          <keyword>rr</keyword>
+          <keyword>use_stack</keyword>
+          <keyword>push</keyword>
+          <keyword>pop</keyword>
+          <keyword>getstack</keyword>
+          <keyword>getstackat</keyword>
+          <keyword>putstack</keyword>
+          <keyword>putstackat</keyword>
+          <keyword>dropstack</keyword>
+          <keyword>dropstackreg</keyword>
+          <keyword>addstack</keyword>
+          <keyword>addstackreg</keyword>
+          <keyword>callstring</keyword>
+          <keyword>outputstring</keyword>
+          <keyword>storestring</keyword>
+          <keyword>storestringat</keyword>
+          <keyword>calltable</keyword>
+          <keyword>outputtable</keyword>
+          <keyword>storetable</keyword>
+          <keyword>storetableat</keyword>
+          <keyword>instdata</keyword>
+          <keyword>insttable_le</keyword>
+          <keyword>insttable_be</keyword>
+          <keyword>negate</keyword>
+          <keyword>not</keyword>
+          <keyword>abs</keyword>
+          <keyword>signex</keyword>
+          <keyword>isnum</keyword>
+          <keyword>compares</keyword>
+          <keyword>multiply8x8</keyword>
+          <keyword>multiply8x8s</keyword>
+          <keyword>multiply8x8su</keyword>
+          <keyword>divide8x8</keyword>
+          <keyword>divide8x8s</keyword>
+          <keyword>divide16x8</keyword>
+          <keyword>divide16x8s</keyword>
+          <keyword>multiply8xk</keyword>
+          <keyword>multiply8xk_small</keyword>
+          <keyword>divide8xk</keyword>
+          <keyword>expr</keyword>
+          <keyword>exprs</keyword>
+          <keyword>expr2</keyword>
+          <keyword>expr2s</keyword>
+          <keyword>expr16</keyword>
+          <keyword>expr16s</keyword>
+          <keyword>use_expr_all</keyword>
+          <keyword>use_expr_mul</keyword>
+          <keyword>use_expr_muls</keyword>
+          <keyword>use_expr_mulsu</keyword>
+          <keyword>use_expr_div</keyword>
+          <keyword>use_expr_divs</keyword>
+          <keyword>use_expr_div16</keyword>
+          <keyword>use_expr_div16s</keyword>
+          <keyword>reg16</keyword>
+          <keyword>mem16</keyword>
+          <keyword>regupper</keyword>
+          <keyword>reglower</keyword>
+          <keyword>constupper</keyword>
+          <keyword>constlower</keyword>
+          <keyword>load16</keyword>
+          <keyword>add16</keyword>
+          <keyword>sub16</keyword>
+          <keyword>negate16</keyword>
+          <keyword>not16</keyword>
+          <keyword>abs16</keyword>
+          <keyword>and16</keyword>
+          <keyword>or16</keyword>
+          <keyword>xor16</keyword>
+          <keyword>sl0_16</keyword>
+          <keyword>sl1_16</keyword>
+          <keyword>sla_16</keyword>
+          <keyword>slx_16</keyword>
+          <keyword>sr0_16</keyword>
+          <keyword>sr1_16</keyword>
+          <keyword>sra_16</keyword>
+          <keyword>srx_16</keyword>
+          <keyword>rl16</keyword>
+          <keyword>rr16</keyword>
+          <keyword>fetch16</keyword>
+          <keyword>store16</keyword>
+          <keyword>input16</keyword>
+          <keyword>output16</keyword>
+          <keyword>compare16</keyword>
+          <keyword>test16</keyword>
+          <keyword>argc</keyword>
+          <keyword>do</keyword>
+        </context>
+
+
+        <define-regex id="flag" extended="true">
+          (?&lt;![\w\.]) (c|z|nc|nz) (?![\w\.])
+        </define-regex>
+
+        <context id="flag" style-ref="constant">
+          <match>\%{flag}</match>
+        </context>
+
+
+        <define-regex id="decimal" extended="true">
+          (?&lt;![\w\.]) ([0-9]+'d) (?![\w\.])
+        </define-regex>
+
+        <context id="decimal" style-ref="number">
+          <match>\%{decimal}</match>
+        </context>
+
+        <define-regex id="binary" extended="true">
+          (?&lt;![\w\.]) ([01]+'b) (?![\w\.])
+        </define-regex>
+
+        <context id="binary" style-ref="number">
+          <match>\%{binary}</match>
+        </context>
+
+        <define-regex id="hexadecimal" extended="true">
+          (?&lt;![\w\.]) ([0-9a-f]+) (?![\w\.])
+        </define-regex>
+
+        <context id="hexadecimal" style-ref="number">
+          <match>\%{hexadecimal}</match>
+        </context>
+
+
+        <define-regex id="register" extended="true">
+          (?&lt;![\w\.]) (s[0-9a-f]) (?![\w\.])
+        </define-regex>
+
+        <context id="register" style-ref="constant">
+          <match>\%{register}</match>
+        </context>
+
+
+
+        <define-regex id="operator" extended="true">
+          (?&lt;![\w\.]) (~)
+        </define-regex>
+
+        <context id="operator" style-ref="operator">
+          <match>\%{operator}</match>
+        </context>
+
+        <define-regex id="operator-suf" extended="true">
+          ('lower|'upper) (?![\w\.])
+        </define-regex>
+
+        <context id="operator-suf" style-ref="operator">
+          <match>\%{operator-suf}</match>
+        </context>
+
+
+        <define-regex id="label" extended="true">
+          (?&lt;![\w\.]) (\w+:) (?![\w\.])
+        </define-regex>
+
+        <context id="label" style-ref="label">
+          <match>\%{label}</match>
+        </context>
+
+      </include>
+    </context>
+  </definitions>
+</language>

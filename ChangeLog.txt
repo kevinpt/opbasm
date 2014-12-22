@@ -1,0 +1,44 @@
+=================
+Opbasm change log
+=================
+
+v1.2 / 2014-12-12
+=================
+
+  Changes
+  -------
+  * Add static code analysis to identify dead code and optionally remove it
+    ~ Suggested by Patrick Lehmann ~
+  * New high-level macros: relational if(), for(), while(), dowhile(), named variables
+  * C-style syntax for control flow macros: if(foo) { bar } else { baz }
+  * PL360-style expressions including signed and unsigned mul/div among varying
+    operand sizes
+  * New cycle accurate delay macros
+  * Add PRAGMA meta-comments with support for keeping dead code and arbitrary
+    user-defined pragmas reported in the log file
+  * Add UTF-8 support for comments
+  * The pb_update script now supports memories split across multiple BRAMs
+  * Picoblaze constants can be passed as arguments to most m4 macros
+
+  Bug fixes
+  -------
+  * Fix error parsing include statements with relative paths and Windows-style paths
+  * Fix bug with formatting label fields in colorized log
+  * Fix bug with OUTPUTK instructions containing punctuation char constants
+
+
+v1.1 / 2014-08-18
+=================
+
+  Changes
+  -------
+  * Add new regex based parser that is 6x faster than original pyparsing parser
+  * New m4 preprocessor support and built-in macro package
+  * Add support for undocumented STAR sX, kk instruction
+  * New output directory command line option
+  * Log file has phony addresses for non-instruction statements to match KCPSM behavior
+
+  Bug fixes
+  ---------
+  * Fixed bug in writing latin1 HDL files
+

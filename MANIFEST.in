@@ -1,0 +1,8 @@
+recursive-include templates *
+recursive-include example *.vhdl *.psm4 *.txt *.do
+prune example/build
+include opbasm_lib/*.m4
+recursive-include opbasm_lib/lang *
+prune opbasm_lib/lang/tools
+include README.txt
+include ChangeLog.txt
