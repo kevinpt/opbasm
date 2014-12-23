@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Opbasm 1.2\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2014-12-17 21:20-0500\n"
-"PO-Revision-Date: 2014-12-23 01:55+0100\n"
+"PO-Revision-Date: 2014-12-23 23:40+0100\n"
 "Last-Translator: Patrick Lehmann <Patrick.Lehmann@tu-dresden.de>\n"
 "Language-Team: \n"
 "Language: de_DE\n"
@@ -61,7 +61,7 @@ msgstr "Neudefinition der Konstante:"
 
 #: opbasm.py:806
 msgid "Invalid constant. Conflicts with hex literal"
-msgstr "Ungültige Konstante. Konflikte mit dem hex-Literal"
+msgstr "Ungültiger Konstantenname. Konflikt mit dem hex-Literal"
 
 #: opbasm.py:811
 msgid "Unknown environment variable:"
@@ -271,7 +271,7 @@ msgstr "Ausgabeverzeichnis"
 
 #: opbasm.py:1375
 msgid "Perform dead code analysis shown in log file"
-msgstr "Führe Unerreichbarkeitsanalyse aus, welche in der Protokolldatei angezeigt wird"
+msgstr "Führe Unerreichbarkeitsanalyse aus (Ausgabe in der Protokolldatei)"
 
 #: opbasm.py:1377
 msgid "Remove dead code from assembled source"
@@ -287,7 +287,7 @@ msgstr "Protokolldatei einfärben"
 
 #: opbasm.py:1384
 msgid "Get default template files"
-msgstr "Lade Standardvorlagendateien"
+msgstr "Kopiere Standardvorlagendateien"
 
 #: opbasm.py:1386
 msgid "Show OPBASM version"
@@ -412,7 +412,7 @@ msgstr "Liste der definierten Konstanten"
 
 #: opbasm.py:1724
 msgid "CONSTANT name"
-msgstr "CONSTANT Name"
+msgstr "Konstantenname"
 
 #: opbasm.py:1724 opbasm.py:1736 opbasm.py:1745 opbasm.py:1767
 msgid "Value"
@@ -438,7 +438,7 @@ msgstr "Liste der definierten Tabellen"
 
 #: opbasm.py:1736
 msgid "TABLE name"
-msgstr "TABELLE Name"
+msgstr "Tabellenname"
 
 #: opbasm.py:1744
 msgid "List of text strings"
@@ -446,7 +446,7 @@ msgstr "Liste der Strings"
 
 #: opbasm.py:1745
 msgid "STRING name"
-msgstr "STRING Name"
+msgstr "Stringname"
 
 #: opbasm.py:1752
 msgid "List of line labels"
