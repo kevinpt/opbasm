@@ -8,20 +8,19 @@ msgstr ""
 "Project-Id-Version: pb_update 1.2\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2014-12-17 21:32-0500\n"
-"PO-Revision-Date: 2014-12-17 21:47-0500\n"
-"Last-Translator: Kevin Thibedeau <kevin.thibedeau@gmail.com>\n"
+"PO-Revision-Date: 2015-01-04 20:24+0100\n"
+"Last-Translator: Patrick Lehmann <Patrick.Lehmann@tu-dresden.de>\n"
 "Language-Team: \n"
-"Language: \n"
+"Language: de_DE\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Poedit-Language: German\n"
-"X-Poedit-Country: GERMANY\n"
 "X-Poedit-SourceCharset: utf-8\n"
+"X-Generator: Poedit 1.7.1\n"
 
 #: pb_update.py:66
 msgid "{} -m <mem file> -n <NCD file> [-l <Layout spec>] [-o <output bit file>]"
-msgstr "{} -m <MEM-Datei> -n <NCD-Datei> [-l <Layout-spec>] [-o <Ausgang BIT-Datei>]"
+msgstr "{} -m <MEM-Datei> -n <NCD-Datei> [-l <Layout-Spezifikation>] [-o <Ausgabe BIT-Datei>]"
 
 #: pb_update.py:69
 msgid "mem file"
@@ -33,11 +32,11 @@ msgstr "NCD-Datei"
 
 #: pb_update.py:72
 msgid "Memory layout specification \"inst1,inst2,...instN[:next row...]\""
-msgstr "Speicherlayout Spezifikation \"inst1,inst2,...INSTN[:nächste Reihe...]\""
+msgstr "Speicherlayout Spezifikation \"inst1,inst2,...instN[:nächste Zeile...]\""
 
 #: pb_update.py:73
 msgid "Output bit file"
-msgstr "Ausgangs-Bit-Datei"
+msgstr "Ausgabe BIT-Datei"
 
 #: pb_update.py:77
 msgid "Missing MEM file"
@@ -49,7 +48,7 @@ msgstr "Fehlende NCD-Datei"
 
 #: pb_update.py:83
 msgid "ERROR:"
-msgstr "ERROR:"
+msgstr "FEHLER:"
 
 #: pb_update.py:89
 msgid "PicoBlaze ROM updater"
@@ -57,7 +56,7 @@ msgstr "PicoBlaze ROM Updater"
 
 #: pb_update.py:104
 msgid "MEM file not found"
-msgstr "MEM Datei nicht gefunden"
+msgstr "MEM-Datei nicht gefunden"
 
 #: pb_update.py:107
 msgid "NCD file not found"
@@ -69,15 +68,15 @@ msgstr "BIT-Datei nicht gefunden ({})"
 
 #: pb_update.py:120
 msgid "Running XDL..."
-msgstr "Laufende XDL..."
+msgstr "Führe XDL aus..."
 
 #: pb_update.py:124
 msgid "XDL failure"
-msgstr "XDL Ausfall"
+msgstr "XDL Abbruch"
 
 #: pb_update.py:127
 msgid "XDL file not generated"
-msgstr "XDL Datei nicht erzeugt"
+msgstr "XDL-Datei nicht erzeugt"
 
 #: pb_update.py:134
 msgid "No RAM instances found"
@@ -85,15 +84,15 @@ msgstr "Keine RAM-Instanzen gefunden"
 
 #: pb_update.py:149
 msgid " Available RAM instances:"
-msgstr " Erhältlich RAM Fällen:"
+msgstr " Verfügbare RAM-Instanzen:"
 
 #: pb_update.py:156
 msgid "Duplicate instances in BRAM spec"
-msgstr "Doppelte Instanzen in BRAM spec"
+msgstr "Doppelte Instanzen in BRAM Spezifikation"
 
 #: pb_update.py:162
 msgid "Instance does not exist in netlist ({})"
-msgstr "Instanz nicht in Netzliste existiert ({})"
+msgstr "Instanz existiert nicht in Netzliste ({})"
 
 #: pb_update.py:182
 msgid "Required memory depth:"
@@ -109,7 +108,7 @@ msgstr ""
 
 #: pb_update.py:196
 msgid "No BRAMs remaining"
-msgstr "Keine Brams verbleibenden"
+msgstr "Keine BRAMs verbleibenden"
 
 #: pb_update.py:199
 msgid ""
@@ -117,7 +116,7 @@ msgid ""
 "Available RAM instances:"
 msgstr ""
 "\n"
-"Erhältlich RAM Fällen:"
+"Verfügbare RAM-Instanzen:"
 
 #: pb_update.py:202
 msgid "  q) Quit"
@@ -129,7 +128,7 @@ msgid ""
 "Select RAM instance: "
 msgstr ""
 "\n"
-"Wählen RAM Beispiel:"
+"Wähle RAM-Instanz:"
 
 #: pb_update.py:212
 msgid "Invalid selection"
@@ -137,7 +136,7 @@ msgstr "Ungültige Auswahl"
 
 #: pb_update.py:216
 msgid "Row is too wide ({} bits)"
-msgstr "Row zu breit ist ({} Bit)"
+msgstr "Zeile ist zu lang ({} Bit)"
 
 #: pb_update.py:227
 msgid ""
@@ -145,23 +144,23 @@ msgid ""
 "Final memory layout:"
 msgstr ""
 "\n"
-"Schlussspeicherlayout:"
+"Finales Speicherlayout:"
 
 #: pb_update.py:235
 msgid "Memory layout width does not match required {} bits"
-msgstr "Speicherlayout Breite nicht erforderlich {} Bits entsprechen"
+msgstr "Speicherlayoutbreite entspricht nicht den erforderlich {} Bit"
 
 #: pb_update.py:239
 msgid "Memory layout depth does not match required {} words"
-msgstr "Speicherlayout Tiefe nicht erforderlich {} Worten entsprechen"
+msgstr "Speicherlayouttiefe entspricht nicht den erforderlich {} Worten"
 
 #: pb_update.py:241
 msgid "Layout Spec:"
-msgstr "Layout-Spec:"
+msgstr "Layout-Spezifikation:"
 
 #: pb_update.py:304
 msgid "Generated updated bit file:"
-msgstr "Generierte aktualisiert Bit-Datei:"
+msgstr "Aktualisierte BIT-Datei wurde generiert:"
 
 #: pb_update.py:309
 msgid ""
@@ -169,13 +168,12 @@ msgid ""
 "Running data2mem..."
 msgstr ""
 "\n"
-"Laufende data2mem..."
+"Führe data2mem aus..."
 
 #: pb_update.py:316
 msgid "data2mem failure"
-msgstr "data2mem Ausfall"
+msgstr "data2mem Abbruch"
 
 #: pb_update.py:502
 msgid "{}Row {}:  {:4} - {:<4}    {}"
-msgstr "{}Row {}:  {:4} - {:<4}    {}"
-
+msgstr "{}Zeile {}:  {:4} - {:<4}    {}"
