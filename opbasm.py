@@ -100,8 +100,10 @@ def find_lib_dir():
 
   return lib_dir
 
-
-gettext.install('opbasm', os.path.join(find_lib_dir(), 'lang'), unicode=True)
+if sys.version_info[0] < 3:
+  gettext.install('opbasm', os.path.join(find_lib_dir(), 'lang'), unicode=True)
+else:
+  gettext.install('opbasm', os.path.join(find_lib_dir(), 'lang'))
 
 try:
   from opbasm_lib.color import *
@@ -119,7 +121,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.2.1'
+__version__ = '1.2.2'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
