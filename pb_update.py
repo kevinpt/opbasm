@@ -56,8 +56,10 @@ def find_lib_dir():
 
   return lib_dir
 
-gettext.install('pb_update', os.path.join(find_lib_dir(), 'lang'), unicode=True)
-
+if sys.version_info[0] < 3:
+  gettext.install('pb_update', os.path.join(find_lib_dir(), 'lang'), unicode=True)
+else:
+  gettext.install('pb_update', os.path.join(find_lib_dir(), 'lang'))
 
 try:
   from opbasm_lib.color import *
