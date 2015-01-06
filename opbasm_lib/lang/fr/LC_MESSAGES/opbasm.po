@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: opbasm 1.2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2015-01-06 14:20-0500\n"
-"PO-Revision-Date: 2015-01-06 14:28-0500\n"
+"POT-Creation-Date: 2015-01-06 14:52-0500\n"
+"PO-Revision-Date: 2015-01-06 15:05-0500\n"
 "Last-Translator: Kevin Thibedeau <kevin.thibedeau@gmail.com>\n"
 "Language-Team: \n"
 "Language: \n"
@@ -538,15 +538,27 @@ msgstr "  COPIE:"
 msgid "OPBASM - Open PicoBlaze Assembler {}"
 msgstr "OPBASM - Ouvrir PicoBlaze Assembleur {}"
 
-#: opbasm.py:2010
+#: opbasm.py:1987
+msgid "en"
+msgstr "fr"
+
+#: opbasm.py:1991
+msgid ""
+"  Translation for English is machine generated.\n"
+"  You can improve it by editing the message catalogs."
+msgstr ""
+"  Traduction pour le français est générée par la machine.\n"
+"  Vous pouvez l'améliorer en modifiant les catalogues de messages."
+
+#: opbasm.py:2019
 msgid "Input file not found"
 msgstr "Le fichier d'entrée introuvable"
 
-#: opbasm.py:2012
+#: opbasm.py:2021
 msgid "Running in PicoBlaze-{} mode"
 msgstr "Exécuter dans le mode PicoBlaze-{}"
 
-#: opbasm.py:2016
+#: opbasm.py:2025
 msgid ""
 "  Device configuration:\n"
 "    Memory size: {}, Scratchpad size: {}\n"
@@ -554,11 +566,11 @@ msgstr ""
 "  Configuration de l'appareil:\n"
 "    Taille de la mémoire: {}, Taille de le scratchpad: {}\n"
 
-#: opbasm.py:2034
+#: opbasm.py:2043
 msgid "  Reading source:"
 msgstr "Lire la source:"
 
-#: opbasm.py:2037
+#: opbasm.py:2046
 msgid ""
 "\n"
 "  Assembling code... "
@@ -566,44 +578,44 @@ msgstr ""
 "\n"
 "  Code Montage... "
 
-#: opbasm.py:2045
+#: opbasm.py:2054
 msgid "SUCCESS"
 msgstr "SUCCÈS"
 
-#: opbasm.py:2051
+#: opbasm.py:2060
 msgid "  Static analysis: searching for dead code... "
 msgstr "  Analyse statique: la recherche de code mort..."
 
-#: opbasm.py:2057
-#: opbasm.py:2086
+#: opbasm.py:2066
+#: opbasm.py:2095
 msgid "COMPLETE"
 msgstr "COMPLET"
 
-#: opbasm.py:2060
+#: opbasm.py:2069
 msgid "    Entry points:"
 msgstr "    Les points d'entrée:"
 
-#: opbasm.py:2063
+#: opbasm.py:2072
 msgid "    {} dead instructions found"
 msgstr "    {} Instructions morts trouvés"
 
-#: opbasm.py:2069
+#: opbasm.py:2078
 msgid "REMOVED: "
 msgstr "REMOVED:"
 
-#: opbasm.py:2080
+#: opbasm.py:2089
 msgid "  Removing dead code... "
 msgstr "  Retrait code mort..."
 
-#: opbasm.py:2094
+#: opbasm.py:2103
 msgid "    {} instructions out of {} ({}%)"
 msgstr "    {} Instructions sur {} ({}%)"
 
-#: opbasm.py:2096
+#: opbasm.py:2105
 msgid "    Highest occupied address: {:03X} hex"
 msgstr "    Adresse la plus élevée occupée: {:03X} hex"
 
-#: opbasm.py:2099
+#: opbasm.py:2108
 msgid ""
 "\n"
 "  Found {}:"
@@ -611,15 +623,15 @@ msgstr ""
 "\n"
 "  Trouvé {}:"
 
-#: opbasm.py:2099
+#: opbasm.py:2108
 msgid "templates"
 msgstr "modèles"
 
-#: opbasm.py:2099
+#: opbasm.py:2108
 msgid "template"
 msgstr "modèle"
 
-#: opbasm.py:2105
+#: opbasm.py:2114
 msgid ""
 "\n"
 "  Writing output"
@@ -627,27 +639,27 @@ msgstr ""
 "\n"
 "  Sortie rédaction"
 
-#: opbasm.py:2110
+#: opbasm.py:2119
 msgid "preprocessor:"
 msgstr "préprocesseur:"
 
-#: opbasm.py:2114
+#: opbasm.py:2123
 msgid "mem map:"
 msgstr "mem map:"
 
-#: opbasm.py:2118
+#: opbasm.py:2127
 msgid "log file:"
 msgstr "fichier journal:"
 
-#: opbasm.py:2128
+#: opbasm.py:2137
 msgid "VHDL file:"
 msgstr "fichier VHDL:"
 
-#: opbasm.py:2135
+#: opbasm.py:2144
 msgid "Verilog file:"
 msgstr "fichier Verilog:"
 
-#: opbasm.py:2138
+#: opbasm.py:2147
 msgid ""
 "\n"
 "  Formatted source:"
