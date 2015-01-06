@@ -1983,6 +1983,15 @@ def main():
 
   printq(note(_('OPBASM - Open PicoBlaze Assembler {}').format(__version__)))
 
+  # Get the current language from the message catalog
+  lang = _('en')
+
+  # Notify user about weak translations
+  if lang in ('fr',):
+    printq(success(_('''  Translation for English is machine generated.
+  You can improve it by editing the message catalogs.''')))
+
+
   if options.get_templates:
     get_standard_templates()
     sys.exit(0)
