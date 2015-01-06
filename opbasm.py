@@ -2104,16 +2104,18 @@ def main():
   # Write results
   printq(_(_('\n  Writing output')))
 
+  field_size = 19
+
   if options.debug_preproc:
-    printq(_('   preprocessor:'), options.debug_preproc)
+    printq('{:>{}}'.format(_('preprocessor:'), field_size), options.debug_preproc)
 
   mmap = build_memmap(assembled_code, options.mem_size, asm.default_jump)
   write_hex_file(hex_mem_file, mmap)
-  printq(_('        mem map:'), hex_mem_file)
+  printq('{:>{}}'.format(_('mem map:'), field_size), hex_mem_file)
   
   show_dead = True if options.report_dead_code or options.remove_dead_code else False
   write_log_file(log_file, assembled_code, stats, asm, options.color_log, show_dead)
-  printq(_('       log file:'), log_file)
+  printq('{:>{}}'.format(_('log file:'), field_size), log_file)
 
   minit_18 = build_xilinx_mem_init(mmap)
   minit_9 = build_xilinx_mem_init(mmap, split_data=True)
@@ -2123,14 +2125,14 @@ def main():
     minit = minit_18 if data_size == 18 else minit_9
 
     write_hdl_file(options.input_file, vhdl_file, templates['vhdl'], minit, timestamp.isoformat())
-    printq(_('      VHDL file:'), vhdl_file)
+    printq('{:>{}}'.format(_('VHDL file:'), field_size), vhdl_file)
 
   if 'verilog' in templates:
     data_size = template_data_size(templates['verilog'])
     minit = minit_18 if data_size == 18 else minit_9
 
     write_hdl_file(options.input_file, verilog_file, templates['verilog'], minit, timestamp.isoformat())
-    printq(_('   Verilog file:'), verilog_file)
+    printq('{:>{}}'.format(_('Verilog file:'), field_size), verilog_file)
 
 
   printq(_('\n  Formatted source:'))
