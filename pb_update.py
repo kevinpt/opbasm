@@ -73,14 +73,14 @@ except ImportError:
 
 def parse_command_line():
     progname = os.path.basename(sys.argv[0])
-    usage = _('{} -m <mem file> -n <NCD file> [-l <Layout spec>] [-o <output bit file>]').format(progname)
+    usage = _('{} -m <MEM file> -n <NCD file> [-l <Layout spec>] [-o <output BIT file>]').format(progname)
     parser = OptionParser(usage=usage)
 
-    parser.add_option('-m', '--mem', dest='mem_file', help=_('mem file'))
+    parser.add_option('-m', '--mem', dest='mem_file', help=_('MEM file'))
     parser.add_option('-n', '--ncd', dest='ncd_file', help=_('NCD file'))
     parser.add_option('-l', '--layout-spec', dest='layout_spec', \
       help=_('Memory layout specification "inst1,inst2,...instN[:next row...]"'))
-    parser.add_option('-o', '--output', dest='out_bit_file', help=_('Output bit file'))
+    parser.add_option('-o', '--output', dest='out_bit_file', help=_('Output BIT file'))
 
     options, args = parser.parse_args()
 
