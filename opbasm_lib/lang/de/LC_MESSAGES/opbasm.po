@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Opbasm 1.2\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2014-12-17 21:20-0500\n"
-"PO-Revision-Date: 2014-12-23 23:40+0100\n"
+"PO-Revision-Date: 2015-01-06 02:15+0100\n"
 "Last-Translator: Patrick Lehmann <Patrick.Lehmann@tu-dresden.de>\n"
 "Language-Team: \n"
 "Language: de_DE\n"
@@ -530,7 +530,7 @@ msgstr ""
 
 #: opbasm.py:2024
 msgid "  Reading source:"
-msgstr "  Lesen Quelle:"
+msgstr "  Lese Quelle:"
 
 #: opbasm.py:2027
 msgid ""
@@ -538,11 +538,11 @@ msgid ""
 "  Assembling code... "
 msgstr ""
 "\n"
-"  Übsetze Code..."
+"  Übersetze Code..."
 
 #: opbasm.py:2035
 msgid "SUCCESS"
-msgstr "ERFOLG"
+msgstr "ERFOLGREICH"
 
 #: opbasm.py:2041
 msgid "  Static analysis: searching for dead code... "
@@ -558,7 +558,7 @@ msgstr "    Einstiegspunkte:"
 
 #: opbasm.py:2053
 msgid "    {} dead instructions found"
-msgstr "    {} Unerreichbare Anweisungen gefunden"
+msgstr "    {} unerreichbare Anweisungen gefunden"
 
 #: opbasm.py:2059
 msgid "REMOVED: "
@@ -598,7 +598,7 @@ msgid ""
 "  Writing output"
 msgstr ""
 "\n"
-"  Schreibe Ausgabe"
+"  Schreibe Ausgaben:"
 
 #: opbasm.py:2098
 msgid "   preprocessor:"
