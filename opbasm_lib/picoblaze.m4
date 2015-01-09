@@ -45,7 +45,7 @@ define(`evala', `eval(($1) & 0xFFF, 16, 3)  ; $1')
 ; Evaluate expression as an 8-bit binary number
 define(`evalb', `eval((const2m4($1)) & 0xFF, 2, 8)''b  `;' $1)
 
-; Evaluate expression as a decimal number
+; Evaluate expression with constant expansion
 define(`evalc', `eval(const2m4($1), $2, $3)')
 
 
@@ -175,7 +175,7 @@ define(`reverse', `ifelse(eval($# > 1), 1, `reverse(shift($@)), `$1'', ``$1'')')
 ;       constant P_uart_out, 00
 ;       constant P_uart_in, 01
 ;       constant P_control, 02
-define(`iodefs', `constant $2, eval($1, 16, 2)'
+define(`iodefs', `const($2, eval($1, 16, 2))'
 `ifelse(eval($# > 2), 1, `$0(eval($1 + 1), shift(shift($@)))')')
 
 
@@ -184,7 +184,7 @@ define(`iodefs', `constant $2, eval($1, 16, 2)'
 ; Arg1: Register to load with value
 ; Arg2: Value to load (constant or other register)
 ; Arg3: Port to output to
-define(`load_out', `load $1, evalc($2, 16, 2)
+define(`load_out', `load $1, evalx($2, 16, 2)
 output $1, $3')
 
 ;---------------------------------
@@ -193,7 +193,7 @@ output $1, $3')
 ; Arg2: Value to load (constant or other register)
 ; Arg3: Scratchpad address to output to
 
-define(`load_st', `load $1, evalc($2, 16, 2)
+define(`load_st', `load $1, evalx($2, 16, 2)
 store $1, $3')
 
 
@@ -567,7 +567,7 @@ define(`_rcurly', `}')
 define(`_rparen', `)')
 
 ; The preprocessor converts constant directives into const() macros so that
-; the m4 code is aware of constants declards in picoblaze syntax
+; the m4 code is aware of constants declared in picoblaze syntax
 changequote(<!,!>)
 define(<!const!>, <!changequote(<!,!>)<!!>pushdef(<!_cname_$1!>,<!$2!>)!><!constant $1, translit($2,!,')<!!>changequote`'dnl
 !>)
@@ -1842,8 +1842,8 @@ define(`reg16', `ifelse($#,3,`define(`$1', `$2, $3')',`errmsg(`Wrong number of a
 ; Arg2: MSB address
 ; Arg3: LSB address
 ; Ex: mem16(M_DATA, 0x05, 0x04) ; Allocate scratchpad 05, 04 for use as M_DATA
-define(`mem16', `constant $1_H, evalx($2, 16, 2)
-constant $1_L, evalx($3, 16, 2)'
+define(`mem16', `const($1_H, evalc($2, 16, 2))
+const($1_L, evalc($3, 16, 2))'
 `reg16($1, $1_H, $1_L)')
 
 ;---------------------------------
@@ -2050,14 +2050,40 @@ sra $2')
 define(`_srx_16', `srx $1
 sra $2')
 
-define(`sl0_16', `repeat(`_sl0_16($1, $2)', eval(const2m4($3)))')
-define(`sl1_16', `repeat(`_sl1_16($1, $2)', eval(const2m4($3)))')
 define(`sla_16', `repeat(`_sla_16($1, $2)', eval(const2m4($3)))')
-define(`slx_16', `repeat(`_slx_16($1, $2)', eval(const2m4($3)))')
-define(`sr0_16', `repeat(`_sr0_16($1, $2)', eval(const2m4($3)))')
-define(`sr1_16', `repeat(`_sr1_16($1, $2)', eval(const2m4($3)))')
 define(`sra_16', `repeat(`_sra_16($1, $2)', eval(const2m4($3)))')
-define(`srx_16', `repeat(`_srx_16($1, $2)', eval(const2m4($3)))')
+
+
+define(`sl0_16', `ifelse(eval(const2m4($3) > 8),1,`load $1, $2
+load $2, 00
+repeat(`_sl0_16($1, $2)', eval(const2m4($3) - 8))',dnl
+`repeat(`_sl0_16($1, $2)', eval(const2m4($3)))')')
+
+define(`sl1_16', `ifelse(eval(const2m4($3) > 8),1,`load $1, $2
+load $2, FF
+repeat(`_sl1_16($1, $2)', eval(const2m4($3) - 8))',dnl
+`repeat(`_sl1_16($1, $2)', eval(const2m4($3)))')')
+
+define(`slx_16', `ifelse(eval(const2m4($3) > 8),1,`load $1, $2
+if($2 & 0x01, `load $2, FF', `load $2, 00')
+repeat(`_slx_16($1, $2)', eval(const2m4($3) - 8))',dnl
+`repeat(`_slx_16($1, $2)', eval(const2m4($3)))')')
+
+
+define(`sr0_16', `ifelse(eval(const2m4($3) > 8),1,`load $2, $1
+load $1, 00
+repeat(`_sr0_16($1, $2)', eval(const2m4($3) - 8))',dnl
+`repeat(`_sr0_16($1, $2)', eval(const2m4($3)))')')
+
+define(`sr1_16', `ifelse(eval(const2m4($3) > 8),1,`load $2, $1
+load $1, FF
+repeat(`_sr1_16($1, $2)', eval(const2m4($3) - 8))',dnl
+`repeat(`_sr1_16($1, $2)', eval(const2m4($3)))')')
+
+define(`srx_16', `ifelse(eval(const2m4($3) > 8),1,`load $2, $1
+if($1 & 0x80, `load $1, FF', `load $1, 00')
+repeat(`_srx_16($1, $2)', eval(const2m4($3) - 8))',dnl
+`repeat(`_srx_16($1, $2)', eval(const2m4($3)))')')
 
 
 define(`_rl16', `pushdef(`_rnc',uniqlabel(RL16_))'`sl0 $2
@@ -2067,7 +2093,10 @@ or $2, 01
 _rnc:
 '`popdef(`_rnc')')
 
-define(`rl16', `repeat(`_rl16($1, $2)', eval(const2m4($3)))')
+define(`rl16', `ifelse(eval(const2m4($3) > 8),1,`swap($1,$2)
+repeat(`_rl16($1, $2)', eval(const2m4($3) - 8))',dnl
+`repeat(`_rl16($1, $2)', eval(const2m4($3)))')')
+
 
 define(`_rr16', `pushdef(`_rnc',uniqlabel(RR16_))'`sr0 $1
 sra $2
@@ -2076,7 +2105,10 @@ or $1, 80
 _rnc:
 '`popdef(`_rnc')')
 
-define(`rr16', `repeat(`_rr16($1, $2)', eval(const2m4($3)))')
+define(`rr16', `ifelse(eval(const2m4($3) > 8),1,`swap($1,$2)
+repeat(`_rr16($1, $2)', eval(const2m4($3) - 8))',dnl
+`repeat(`_rr16($1, $2)', eval(const2m4($3)))')')
+
 
 
 ;=============== 16-bit I/O OPERATIONS ===============
