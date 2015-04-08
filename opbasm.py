@@ -121,7 +121,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -1849,7 +1849,9 @@ def build_9_bit_mem_init(mmap, minit, bit_range):
 
 
 def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp):
-  '''Insert INIT strings and other fields into an HDL template'''
+  '''Insert INIT strings and other fields into an HDL template.
+     Returns False if the template contains additional INIT fields
+     not covered by the minit map.'''
   # Read template
   with io.open(hdl_template, 'r', encoding='latin1') as fh:
     template = fh.readlines()
@@ -1869,6 +1871,18 @@ def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp):
   # Substitute template tags
   for k, v in minit.iteritems():
     hdl = hdl.replace('{{{}}}'.format(k), v)
+    
+  # When using the -m <size> option with the KCPSM6 ROM_form.vhd/v files there will
+  # be additional {*INIT_nn} fields remaining for the larger memories that shouldn't
+  # be in use. We will just insert 0s for these init strings. Note that this breaks
+  # intended behavior of the DEFAULT_JUMP directive.
+
+  all_inits_replaced = True  
+  init_re = re.compile(r'{(\[\d+:\d+\]_)?INITP?_..}')
+  m = init_re.search(hdl)
+  if m: # Additional INIT fields were found
+    all_inits_replaced = False
+    hdl = init_re.sub('0'*64, hdl) # Insert all 0s
 
   hdl = hdl.replace('{source file}', input_file)  # Extension not used by KCPSM3.exe
   hdl = hdl.replace('{name}', os.path.splitext(hdl_file)[0])
@@ -1876,6 +1890,8 @@ def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp):
 
   with io.open(hdl_file, 'w', encoding='latin1') as fh:
     fh.write(hdl)
+    
+  return all_inits_replaced
 
 
 def find_templates(template_file):
@@ -1914,18 +1930,33 @@ def template_data_size(template_file):
   must be split across 4Kx9 BRAMs.
 
   This scans a template file to see what format of init placeholder is
-  used for address 00.
+  used for address 00. This breaks for the KCPSM6 ROM_form.vhd/v files
+  using the JTAG uploader because they contain both 18-bit and 9-bit
+  memory declarations so we scan for both types separately and return
+  -1 if both are found.
   '''
+  init_9 = False
+  init_18 = False
+
   with io.open(template_file, 'r', encoding='latin1') as fh:
     for l in fh:
       if '{[8:0]_INIT_00}' in l:
-        return 9
-      elif '{INIT_00}' in l:
-        return 18
+        init_9 = True
+        break
 
-  return 18
-
-
+    fh.seek(0)
+    for l in fh:
+      if '{INIT_00}' in l:
+        init_18 = True
+        break
+        
+  if init_18 and init_9: # This is a ROM_form.vhdl file containing both memories
+    return -1
+  elif init_9:
+    return 9
+  else:
+    return 18
+        
 
 def find_standard_m4_macros():
   lib_dir = find_lib_dir()
@@ -2129,20 +2160,32 @@ def main():
   minit_18 = build_xilinx_mem_init(mmap)
   minit_9 = build_xilinx_mem_init(mmap, split_data=True)
 
+  # Find longest template file name so we can align the warning messages
+  # about unmapped INIT fields.
+  longest_template_name = 0
   if 'vhdl' in templates:
-    data_size = template_data_size(templates['vhdl'])
-    minit = minit_18 if data_size == 18 else minit_9
-
-    write_hdl_file(options.input_file, vhdl_file, templates['vhdl'], minit, timestamp.isoformat())
-    printq('{:>{}}'.format(_('VHDL file:'), field_size), vhdl_file)
-
+    longest_template_name = len(vhdl_file)
   if 'verilog' in templates:
-    data_size = template_data_size(templates['verilog'])
-    minit = minit_18 if data_size == 18 else minit_9
+    longest_template_name = max(len(verilog_file), longest_template_name)
 
-    write_hdl_file(options.input_file, verilog_file, templates['verilog'], minit, timestamp.isoformat())
-    printq('{:>{}}'.format(_('Verilog file:'), field_size), verilog_file)
+  for hdl_name, template_file in templates.iteritems():
+    # Prepare INIT strings for the memory width found in the template
+    data_size = template_data_size(templates[hdl_name])
+    if data_size < 0: # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
+      minit = minit_9.copy()
+      minit.update(minit_18) # Merge the init strings together for both types
+    elif data_size == 9:
+      minit = minit_9
+    else: # 18-bit only
+      minit = minit_18
 
+    target_file = vhdl_file if hdl_name == 'vhdl' else verilog_file
+    file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
+    all_inits_replaced = write_hdl_file(options.input_file, target_file, template_file, minit, timestamp.isoformat())
+    # FIXME: Add translations for this warning
+    unmapped_warn = warn(_('WARNING: Unmapped INIT fields found in template')) if not all_inits_replaced else ''
+    printq('{:>{}} {:<{}}   {}'.format(file_type, field_size, target_file, longest_template_name, unmapped_warn))
+    
 
   printq(_('\n  Formatted source:'))
   for fname, source in asm.sources.iteritems():
