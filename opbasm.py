@@ -396,12 +396,13 @@ def regex_parse_statement(l):
 
 class Statement(object):
   '''Low level representation of a statement (instructions, directives, comments)'''
-  def __init__(self, ptree, line):
+  def __init__(self, ptree, line, source_file):
     '''
     ptree : pyparsing parse tree object for a single statement
     line : source line number
     '''
 
+    self.source_file = source_file
     self.line = line
     self.label = ptree['label'][0] if 'label' in ptree else None
     self.comment = ptree['comment'][0] if 'comment' in ptree else None
@@ -556,7 +557,7 @@ class Symbol(object):
 
 
 
-def parse_lines(lines, op_info, use_pyparsing):
+def parse_lines(lines, op_info, use_pyparsing, source_file):
   '''Parse a list of text lines into Statement objects'''
   parser = PicoBlaze_parser(op_info)
 
@@ -566,17 +567,17 @@ def parse_lines(lines, op_info, use_pyparsing):
       try:
         ptree = regex_parse_statement(l)
       except ParseError:
-        print(error(_('PARSE ERROR:')) + _(' bad statement in line {}:\n  {}').format(i+1, l))
+        print(error(_('PARSE ERROR:')) + _(' bad statement in {} line {}:\n  {}').format(source_file, i+1, l))
         sys.exit(1)
         
     else:
       try:
         ptree = parser.parseString(l)
       except ParseException, e:
-        print(error(_('PARSE ERROR:')) + _(' bad statement in line {}:\n  {}').format(i+1, l))
+        print(error(_('PARSE ERROR:')) + _(' bad statement in {} line {}:\n  {}').format(source_file, i+1, l))
         sys.exit(1)
 
-    statements.append(Statement(ptree['statement'], i+1))
+    statements.append(Statement(ptree['statement'], i+1, source_file))
     #print('### ptree:', i+1, ptree['statement'])
 
   return statements
@@ -774,7 +775,7 @@ class Assembler(object):
         source = [s.rstrip() for s in fh.readlines()]
 
 
-    slist = parse_lines(source, self.op_info, self.use_pyparsing)
+    slist = parse_lines(source, self.op_info, self.use_pyparsing, source_file)
     self.sources[source_file] = slist
 
     # Scan for include directives
@@ -1350,7 +1351,7 @@ def asm_error(*args, **kwargs):
   print(error(_('\nERROR:')), *args, file=sys.stderr)
   if 'statement' in kwargs:
     s = kwargs['statement']
-    print(_('  line {}:  {}').format(s.line, s.format().lstrip()))
+    print(_('  {}  line {}:  {}').format(s.source_file if s.source_file else 'UNKNOWN', s.line, s.format().lstrip()))
   if 'exit' in kwargs:
     sys.exit(kwargs['exit'])
 
