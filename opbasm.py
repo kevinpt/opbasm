@@ -121,7 +121,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.2.3'
+__version__ = '1.2.4'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -542,7 +542,7 @@ class Symbol(object):
     self._val_text = val_text
     self.source_file = source_file
     self.source_line = source_line
-    self.in_use = False # Track use of labels
+    self.in_use = False # Track use of labels, constants, tables, and strings
 
   @property
   def val_text(self):
@@ -642,6 +642,9 @@ class Assembler(object):
       'DCS' : Symbol('DCS', 0x90),
       'ST'  : Symbol('ST', 0x9c)
     }
+    
+    for c in constants.itervalues():
+      c.in_use = True
 
     return constants
 
@@ -654,6 +657,9 @@ class Assembler(object):
       'timestamp$' : Symbol('timestamp$', ts, '"{}"'.format(ts)),
       'datestamp$' : Symbol('datestamp$', ds, '"{}"'.format(ds)),
     }
+    
+    for s in strings.itervalues():
+      s.in_use = True
 
     return strings
 
@@ -934,6 +940,7 @@ class Assembler(object):
         value = (addr >> 8) & 0xF
 
     elif arg in self.constants: # Normal constant
+      self.constants[arg].in_use = True
       value = self.constants[arg].value
     else: # Attempt to convert a constant literal
       value = convert_literal(arg)
@@ -952,12 +959,14 @@ class Assembler(object):
   def get_string(self, name):
     '''Lookup the string associated with name'''
     if name in self.strings:
+      self.strings[name].in_use = True
       return self.strings[name].value
     return None
 
   def get_table(self, name):
     '''Lookup the table associated with name'''
     if name in self.tables:
+      self.tables[name].in_use = True
       return self.tables[name].value
     return None
 
@@ -1154,8 +1163,10 @@ class Assembler(object):
 
           elems = []
           if s.arg2.endswith('$'):
+            self.strings[s.arg2].in_use = True # FIXME: this should all happen in get_string()?
             elems = [(ord(e), '"{}"'.format(e)) for e in self.strings[s.arg2].value]
           elif s.arg2.endswith('#'):
+            self.tables[s.arg2].in_use = True # FIXME: this should all happen in get_table()?
             elems = [(e, '{:02X}'.format(e)) for e in self.tables[s.arg2].value]
 
           if len(elems) > 0:
@@ -1733,36 +1744,45 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
       printf('   ', os.path.abspath(f))
 
     printf('\n\n' + underline(_('List of defined constants')))
-    headings = [_('CONSTANT name'), _('Value'), _('Source PSM file')]
-    rows = [(c, asm.constants[c].val_text, asm.constants[c].source_file) \
+    headings = [_('   CONSTANT name'), _('Value'), _('Source PSM file')]
+    rows = [(('   ' if asm.constants[c].in_use else '*  ') + c, \
+      asm.constants[c].val_text, asm.constants[c].source_file) \
       for c in sorted(asm.constants.iterkeys())]
-    for r in format_table(rows, headings, indent=3):
+    for r in format_table(rows, headings, indent=1):
       printf(r)
 
+    if not all(c.in_use for c in asm.constants.itervalues()): # Show caption
+      printf(_('\n       * Unreferenced constant(s)'))
       
 
     if len(asm.tables) == 0:
       printf(_('\n\n  No tables defined'))
     else:
       printf('\n\n' + underline(_('List of defined tables')))
-      headings = [_('TABLE name'), _('Value'), _('Source PSM file')]
-      rows = [(t, asm.tables[t].val_text, asm.tables[t].source_file) \
+      headings = [_('   TABLE name'), _('Value'), _('Source PSM file')]
+      rows = [(('   ' if asm.tables[t].in_use else '*  ') + t, \
+        asm.tables[t].val_text, asm.tables[t].source_file) \
         for t in sorted(asm.tables.iterkeys())]
-      for r in format_table(rows, headings, indent=3):
+      for r in format_table(rows, headings, indent=1):
         printf(r)
 
+    if not all(t.in_use for t in asm.tables.itervalues()): # Show caption
+      printf(_('\n       * Unreferenced table(s)'))
 
 
     printf('\n\n' + underline(_('List of text strings')))
-    headings = [_('STRING name'), _('Value'), _('Source PSM file')]
-    rows = [(s, asm.strings[s].val_text, asm.strings[s].source_file) \
+    headings = [_('   STRING name'), _('Value'), _('Source PSM file')]
+    rows = [(('   ' if asm.strings[s].in_use else '*  ') + s, \
+      asm.strings[s].val_text, asm.strings[s].source_file) \
       for s in sorted(asm.strings.iterkeys())]
-    for r in format_table(rows, headings, indent=3):
+    for r in format_table(rows, headings, indent=1):
       printf(r)
-    
+
+    if not all(s.in_use for s in asm.strings.itervalues()): # Show caption
+      printf(_('\n       * Unreferenced string(s)'))
+
 
     printf('\n\n' + underline(_('List of line labels')))
-    show_caption = not all(l.in_use for l in asm.labels.itervalues())
     headings = [_('   Label'), _('Addr'), _('Source PSM file')]
     rows = [(('   ' if asm.labels[l].in_use else '*  ') + l, \
       '{:03X}'.format(asm.labels[l].value), asm.labels[l].source_file) \
@@ -1770,7 +1790,7 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
     for r in format_table(rows, headings, indent=1):
       printf(r)
 
-    if show_caption:
+    if not all(l.in_use for l in asm.labels.itervalues()): # Show caption
       printf(_('\n       * Unreferenced label(s)'))
 
 
