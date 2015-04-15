@@ -366,8 +366,8 @@ def find_ram_instances(xdl_file):
         # Spartan-3
         m = cfg_s3_re.search(l)
         if m:
-          ram_insts[last_bram].depth = m.group(1)
-          ram_insts[last_bram].width = m.group(2)
+          ram_insts[last_bram].depth = int(m.group(1))
+          ram_insts[last_bram].width = int(m.group(2))
           last_bram = None
 
         # Spartan-6
