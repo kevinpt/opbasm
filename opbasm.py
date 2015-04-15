@@ -1848,7 +1848,27 @@ def build_9_bit_mem_init(mmap, minit, bit_range):
     minit['[{}]_INITP_{:02X}'.format(bit_range, a)] = init
 
 
-def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp):
+def build_default_jump_inits(default_jump):
+  '''Create a dummy memory map that contains enough default jump instructions to fill
+     out an INIT and INITP string for both 18-bit and 9-bit memories'''
+  dj_mmap = [default_jump] * 256
+  
+  dj_minit_18 = build_xilinx_mem_init(dj_mmap)
+  dj_minit_9 = build_xilinx_mem_init(dj_mmap, split_data=True)
+  
+  dj_inits = { 'INIT':dj_minit_18['INIT_00'], 'INITP':dj_minit_18['INITP_00'],
+                r'\[17:9\]_INIT':dj_minit_9['[17:9]_INIT_00'], r'\[17:9\]_INITP':dj_minit_9['[17:9]_INITP_00'],
+                r'\[8:0\]_INIT':dj_minit_9['[8:0]_INIT_00'], r'\[8:0\]_INITP':dj_minit_9['[8:0]_INITP_00']
+  }
+  # dj_inits = { 'INIT':'Q'*64, 'INITP':'R'*64,
+                # r'\[17:9\]_INIT':'S'*64, r'\[17:9\]_INITP':'T'*64,
+                # r'\[8:0\]_INIT':'U'*64, r'\[8:0\]_INITP':'V'*64
+  # }
+  
+  return dj_inits
+
+  
+def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp, default_jump=0):
   '''Insert INIT strings and other fields into an HDL template.
      Returns False if the template contains additional INIT fields
      not covered by the minit map.'''
@@ -1874,15 +1894,17 @@ def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp):
     
   # When using the -m <size> option with the KCPSM6 ROM_form.vhd/v files there will
   # be additional {*INIT_nn} fields remaining for the larger memories that shouldn't
-  # be in use. We will just insert 0s for these init strings. Note that this breaks
-  # intended behavior of the DEFAULT_JUMP directive.
+  # be in use. We will insert DEFAULT_JUMP instructions for these extra init strings.
 
   all_inits_replaced = True  
-  init_re = re.compile(r'{(\[\d+:\d+\]_)?INITP?_..}')
+  init_re = re.compile(r'{(\[\d+:\d+\]_)?INIT_..}')
   m = init_re.search(hdl)
   if m: # Additional INIT fields were found
     all_inits_replaced = False
-    hdl = init_re.sub('0'*64, hdl) # Insert all 0s
+    # Substitute default jump instructions into the unused INIT fields
+    dj_inits = build_default_jump_inits(default_jump)
+    for k, v in dj_inits.iteritems():
+      hdl = re.sub(r'{{{}_..}}'.format(k), v, hdl)
 
   hdl = hdl.replace('{source file}', input_file)  # Extension not used by KCPSM3.exe
   hdl = hdl.replace('{name}', os.path.splitext(hdl_file)[0])
@@ -2181,7 +2203,7 @@ def main():
 
     target_file = vhdl_file if hdl_name == 'vhdl' else verilog_file
     file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
-    all_inits_replaced = write_hdl_file(options.input_file, target_file, template_file, minit, timestamp.isoformat())
+    all_inits_replaced = write_hdl_file(options.input_file, target_file, template_file, minit, timestamp.isoformat(), asm.default_jump)
     # FIXME: Add translations for this warning
     unmapped_warn = warn(_('WARNING: Unmapped INIT fields found in template')) if not all_inits_replaced else ''
     printq('{:>{}} {:<{}}   {}'.format(file_type, field_size, target_file, longest_template_name, unmapped_warn))
