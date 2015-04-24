@@ -1,0 +1,183 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: opbasm 1.2\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-01-06 14:21-0500\n"
+"PO-Revision-Date: 2015-01-06 14:28-0500\n"
+"Last-Translator: Kevin Thibedeau <kevin.thibedeau@gmail.com>\n"
+"Language-Team: \n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: French\n"
+"X-Poedit-Country: FRANCE\n"
+"X-Poedit-SourceCharset: utf-8\n"
+
+#: pb_update.py:76
+msgid "{} -m <MEM file> -n <NCD file> [-l <Layout spec>] [-o <output BIT file>]"
+msgstr "{} -m <fichier MEM> -n <fichier NCD> [-l <Disposition spec>] [-o <fichier BIT de sortie>]"
+
+#: pb_update.py:79
+msgid "MEM file"
+msgstr "Fichier MEM manquant"
+
+#: pb_update.py:80
+msgid "NCD file"
+msgstr "fichier NCD"
+
+#: pb_update.py:82
+msgid "Memory layout specification \"inst1,inst2,...instN[:next row...]\""
+msgstr "Disposition de la mémoire spécification \"inst1,inst2,...instN [:ligne suivante...]\""
+
+#: pb_update.py:83
+msgid "Output BIT file"
+msgstr "Le fichier de sortie de BIT"
+
+#: pb_update.py:87
+msgid "Missing MEM file"
+msgstr "Fichier MEM manquant"
+
+#: pb_update.py:88
+msgid "Missing NCD file"
+msgstr "Fichier NCD manquant"
+
+#: pb_update.py:93
+msgid "ERROR:"
+msgstr "ERREUR:"
+
+#: pb_update.py:99
+msgid "PicoBlaze ROM updater"
+msgstr "PicoBlaze mise à jour de ROM"
+
+#: pb_update.py:114
+msgid "MEM file not found"
+msgstr "Fichier MEM introuvable"
+
+#: pb_update.py:117
+msgid "NCD file not found"
+msgstr "Fichier NCD introuvable"
+
+#: pb_update.py:120
+msgid "BIT file not found ({})"
+msgstr "Fichier BIT non trouvé ({})"
+
+#: pb_update.py:130
+msgid "Running XDL..."
+msgstr "XDL exécuter..."
+
+#: pb_update.py:134
+msgid "XDL failure"
+msgstr "échec XDL"
+
+#: pb_update.py:137
+msgid "XDL file not generated"
+msgstr "Fichier XDL pas générée"
+
+#: pb_update.py:144
+msgid "No RAM instances found"
+msgstr "Aucun cas de RAM trouvé"
+
+#: pb_update.py:159
+msgid " Available RAM instances:"
+msgstr " Instances de RAM disponibles:"
+
+#: pb_update.py:166
+msgid "Duplicate instances in BRAM spec"
+msgstr "Dupliquer cas dans BRAM spec"
+
+#: pb_update.py:172
+msgid "Instance does not exist in netlist ({})"
+msgstr "Instance ne existe pas dans netlist ({})"
+
+#: pb_update.py:192
+msgid "Required memory depth:"
+msgstr "Requis profondeur de mémoire:"
+
+#: pb_update.py:202
+msgid ""
+"\n"
+"Memory layout:"
+msgstr ""
+"\n"
+"Disposition de la mémoire:"
+
+#: pb_update.py:206
+msgid "No BRAMs remaining"
+msgstr "Aucun BRAM restants"
+
+#: pb_update.py:209
+msgid ""
+"\n"
+"Available RAM instances:"
+msgstr ""
+"\n"
+"Instances de RAM disponible:"
+
+#: pb_update.py:212
+msgid "  q) Quit"
+msgstr "  q) Quitter"
+
+#: pb_update.py:213
+msgid ""
+"\n"
+"Select RAM instance: "
+msgstr ""
+"\n"
+"Sélectionnez instance RAM: "
+
+#: pb_update.py:222
+msgid "Invalid selection"
+msgstr "Sélection invalide"
+
+#: pb_update.py:226
+msgid "Row is too wide ({} bits)"
+msgstr "Rangée est trop large ({} bits)"
+
+#: pb_update.py:237
+msgid ""
+"\n"
+"Final memory layout:"
+msgstr ""
+"\n"
+"Disposition de la mémoire finale:"
+
+#: pb_update.py:245
+msgid "Memory layout width does not match required {} bits"
+msgstr "Largeur de la présentation de la mémoire ne correspond pas requis {} bits"
+
+#: pb_update.py:249
+msgid "Memory layout depth does not match required {} words"
+msgstr "Profondeur de Disposition de la mémoire ne correspond pas requis {} bits"
+
+#: pb_update.py:251
+msgid "Layout Spec:"
+msgstr "Disposition Spec:"
+
+#: pb_update.py:314
+msgid "Generated updated bit file:"
+msgstr "Généré fichier bit mise à jour:"
+
+#: pb_update.py:319
+msgid ""
+"\n"
+"Running data2mem..."
+msgstr ""
+"\n"
+"data2mem exécuter..."
+
+#: pb_update.py:326
+msgid "data2mem failure"
+msgstr "échec data2mem"
+
+#: pb_update.py:512
+msgid "{}Row {}:  {:4} - {:<4}    {}"
+msgstr "{} Rangée: {}  {:4} - {:<4} {}"
+
+#~ msgid "mem file"
+#~ msgstr "fichier mem"

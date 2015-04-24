@@ -1,0 +1,169 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-01-06 14:21-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: pb_update.py:76
+msgid ""
+"{} -m <MEM file> -n <NCD file> [-l <Layout spec>] [-o <output BIT file>]"
+msgstr ""
+
+#: pb_update.py:79
+msgid "MEM file"
+msgstr ""
+
+#: pb_update.py:80
+msgid "NCD file"
+msgstr ""
+
+#: pb_update.py:82
+msgid "Memory layout specification \"inst1,inst2,...instN[:next row...]\""
+msgstr ""
+
+#: pb_update.py:83
+msgid "Output BIT file"
+msgstr ""
+
+#: pb_update.py:87
+msgid "Missing MEM file"
+msgstr ""
+
+#: pb_update.py:88
+msgid "Missing NCD file"
+msgstr ""
+
+#: pb_update.py:93
+msgid "ERROR:"
+msgstr ""
+
+#: pb_update.py:99
+msgid "PicoBlaze ROM updater"
+msgstr ""
+
+#: pb_update.py:114
+msgid "MEM file not found"
+msgstr ""
+
+#: pb_update.py:117
+msgid "NCD file not found"
+msgstr ""
+
+#: pb_update.py:120
+msgid "BIT file not found ({})"
+msgstr ""
+
+#: pb_update.py:130
+msgid "Running XDL..."
+msgstr ""
+
+#: pb_update.py:134
+msgid "XDL failure"
+msgstr ""
+
+#: pb_update.py:137
+msgid "XDL file not generated"
+msgstr ""
+
+#: pb_update.py:144
+msgid "No RAM instances found"
+msgstr ""
+
+#: pb_update.py:159
+msgid " Available RAM instances:"
+msgstr ""
+
+#: pb_update.py:166
+msgid "Duplicate instances in BRAM spec"
+msgstr ""
+
+#: pb_update.py:172
+msgid "Instance does not exist in netlist ({})"
+msgstr ""
+
+#: pb_update.py:192
+msgid "Required memory depth:"
+msgstr ""
+
+#: pb_update.py:202
+msgid ""
+"\n"
+"Memory layout:"
+msgstr ""
+
+#: pb_update.py:206
+msgid "No BRAMs remaining"
+msgstr ""
+
+#: pb_update.py:209
+msgid ""
+"\n"
+"Available RAM instances:"
+msgstr ""
+
+#: pb_update.py:212
+msgid "  q) Quit"
+msgstr ""
+
+#: pb_update.py:213
+msgid ""
+"\n"
+"Select RAM instance: "
+msgstr ""
+
+#: pb_update.py:222
+msgid "Invalid selection"
+msgstr ""
+
+#: pb_update.py:226
+msgid "Row is too wide ({} bits)"
+msgstr ""
+
+#: pb_update.py:237
+msgid ""
+"\n"
+"Final memory layout:"
+msgstr ""
+
+#: pb_update.py:245
+msgid "Memory layout width does not match required {} bits"
+msgstr ""
+
+#: pb_update.py:249
+msgid "Memory layout depth does not match required {} words"
+msgstr ""
+
+#: pb_update.py:251
+msgid "Layout Spec:"
+msgstr ""
+
+#: pb_update.py:314
+msgid "Generated updated bit file:"
+msgstr ""
+
+#: pb_update.py:319
+msgid ""
+"\n"
+"Running data2mem..."
+msgstr ""
+
+#: pb_update.py:326
+msgid "data2mem failure"
+msgstr ""
+
+#: pb_update.py:512
+msgid "{}Row {}:  {:4} - {:<4}    {}"
+msgstr ""

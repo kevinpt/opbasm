@@ -1,0 +1,85 @@
+;===================================================================
+; Example program demonstrating use of m4 macros included in Opbasm
+;
+; Constant data is assembled into the ROM as a sequence of INST
+; directives. The program accesses the data through the second port
+; of the instantiated ROM component and pushes it onto the stack
+; implemented in scratchpad RAM.
+;===================================================================
+    namereg sE, SP ; Protect use of sE as the stack pointer
+    use_stack(SP, 0x3F)
+
+    ; Port words
+    mem16(P_ADDR, 0x01, 0x00) ; ROM address
+    mem16(P_DATA, 0x03, 0x02) ; ROM data
+
+    constant P_TERM, ff  ; Port written to terminate simulation
+
+    ; Scratchpad words
+    mem16(M_ADDR, 0x01, 0x00) ; Pointer to data in ROM
+    mem16(M_DATA, 0x03, 0x02) ; Start of data array
+
+    reg16(rx, s8, s7)  ; General purpose 16-bit register
+
+    ; Constant data loaded into ROM at 0x200
+    define(R_DATA, 0x200)
+    define(CONST_DATA, `pbhex(42, 43, 44, 45, 46, 47), words_le(0xaa01, 0xbb02)')
+
+
+    jump main
+
+;=================================
+
+
+;---------------------------------
+; Read a word from the dual ported ROM
+;   M_ADDR - Address to read from, incremented by 1
+;   s3     - Pointer to Scratchpad for storing word, incremented by 2
+read_rom_word:
+    push(rx)
+    fetch16(rx, M_ADDR)   ; Get address
+    output16(rx, P_ADDR)
+    add16(rx, 1)          ; Increment the address
+    store16(rx, M_ADDR)
+    input16(rx, P_DATA)   ; Read addressed word from ROM
+    store16(rx, s3)       ; Put word into scratchpad array
+    pop(rx)
+    return
+
+
+;---------------------------------
+main:
+    ; Load constant data stored in ROM into scratchpad memory
+
+    load16(rx, R_DATA)    ; Begin at start of array in ROM
+    store16(rx, M_ADDR)
+    load s3, M_DATA_L     ; Start of destination array in scratchpad
+    load s0, evalh(argc(CONST_DATA) / 2) ; Reading two bytes at a time
+    do {
+      call read_rom_word
+      sub s0, 01
+    } while(s0 > 0)
+
+
+    ; Loop over data in scratchpad and push each byte onto the stack
+    load s3, M_DATA_L
+    define(CD_LEN, `argc(CONST_DATA)') ; Can't have nested parentheses in C-style macro condition
+    for(s0 := CD_LEN, s0 > 0, s0 := s0 - 1) {
+      fetch s4, (s3)
+      push(s4)              ; Push byte onto stack for viewing in simulation
+      add s3, 01
+    }
+
+
+end_prog:
+    output s0, P_TERM     ; Terminate simulation with write to port 0xFF
+    jump end_prog
+
+
+;=================================
+
+    ; Assemble constant data into BRAM at designated offset
+    address evala(R_DATA)
+    insttable_le(CONST_DATA)
+
+

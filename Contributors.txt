@@ -1,0 +1,3 @@
+People who have helpfully contributed to Opbasm:
+
+Patrick Lehmann  -  German translations, static analysis
