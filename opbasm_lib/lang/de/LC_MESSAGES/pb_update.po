@@ -8,8 +8,8 @@ msgstr ""
 "Project-Id-Version: pb_update 1.2\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2015-01-06 14:21-0500\n"
-"PO-Revision-Date: 2015-01-06 14:26-0500\n"
-"Last-Translator: Kevin Thibedeau <kevin.thibedeau@gmail.com>\n"
+"PO-Revision-Date: 2015-04-23 18:56+0100\n"
+"Last-Translator: Patrick Lehmann <Patrick.Lehmann@tu-dresden.de>\n"
 "Language-Team: \n"
 "Language: de_DE\n"
 "MIME-Version: 1.0\n"
@@ -19,8 +19,11 @@ msgstr ""
 "X-Generator: Poedit 1.7.1\n"
 
 #: pb_update.py:76
-msgid "{} -m <MEM file> -n <NCD file> [-l <Layout spec>] [-o <output BIT file>]"
-msgstr "{} -m <MEM-Datei> -n <NCD-Datei> [-l <Layout-Spezifikation>] [-o <Ausgabe BIT-Datei>]"
+msgid ""
+"{} -m <MEM file> -n <NCD file> [-l <Layout spec>] [-o <output BIT file>]"
+msgstr ""
+"{} -m <MEM-Datei> -n <NCD-Datei> [-l <Layout-Spezifikation>] [-o <Ausgabe "
+"BIT-Datei>]"
 
 #: pb_update.py:79
 msgid "MEM file"
@@ -32,7 +35,8 @@ msgstr "NCD-Datei"
 
 #: pb_update.py:82
 msgid "Memory layout specification \"inst1,inst2,...instN[:next row...]\""
-msgstr "Speicherlayout Spezifikation \"inst1,inst2,...instN[:nächste Zeile...]\""
+msgstr ""
+"Speicherlayout Spezifikation \"inst1,inst2,...instN[:nächste Zeile...]\""
 
 #: pb_update.py:83
 msgid "Output BIT file"
