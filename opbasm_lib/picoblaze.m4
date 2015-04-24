@@ -705,7 +705,7 @@ _slbl:
 if($2,`$4
 _clbl: ifelse(`$3',,,`expr($3)')
 jump _slbl')
-_elbl:' `popdef(`_clbl')'`popdef(`_elbl')') 
+_elbl:' `popdef(`_slbl')'`popdef(`_clbl')'`popdef(`_elbl')') 
 
 
 ; Break statement to exit loops
