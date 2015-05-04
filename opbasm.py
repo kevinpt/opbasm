@@ -713,7 +713,7 @@ class Assembler(object):
     signed_macro = re.compile(r'(signed\([^)]+\))', re.IGNORECASE)
 
     # Convert constant directives into const() macros
-    const_def = re.compile(r'^(.*)constant\s+([^,]+)\s*,\s*("."|[^;]+)(;.*)?', re.IGNORECASE)
+    const_def = re.compile(r'^([^;]*)constant\s+([^,]+)\s*,\s*("."|[^;]+)(;.*)?', re.IGNORECASE)
     
     # Escape quoted strings to ensure no words in them are expanded by m4
     string_def = re.compile(r'string(.*)("[^"]*")', re.IGNORECASE)
