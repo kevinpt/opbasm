@@ -121,7 +121,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.2.4'
+__version__ = '1.2.5'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -700,6 +700,10 @@ class Assembler(object):
     lines = []
     with io.open(source_file, 'r', encoding='utf-8') as fh:
       lines = fh.readlines()
+      
+    # Add a trailing empty line so that m4 doesn't complain about files without them
+    # or ending with a comment
+    lines.append('\n')
 
     elines = []
     # We need to first protect '}' chars inside strings to prevent them from being
