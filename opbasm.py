@@ -121,7 +121,7 @@ except ImportError:
   sys.exit(1)
 
 
-__version__ = '1.2.5'
+__version__ = '1.2.6'
 
 ParserElement.setDefaultWhitespaceChars(' \t')
 
@@ -714,6 +714,9 @@ class Assembler(object):
 
     # Convert constant directives into const() macros
     const_def = re.compile(r'^(.*)constant\s+([^,]+)\s*,\s*("."|[^;]+)(;.*)?', re.IGNORECASE)
+    
+    # Escape quoted strings to ensure no words in them are expanded by m4
+    string_def = re.compile(r'string(.*)("[^"]*")', re.IGNORECASE)
 
     for l in lines:
       m = curly_string.match(l)
@@ -740,6 +743,10 @@ class Assembler(object):
             arg2 = arg2.replace("'", "!") # m4 doesn't play nice with strings that have embedded ' chars
           l = '{}const({}, {}) {}\n'.format(m.group(1), m.group(2).strip(), arg2, m.group(4) if m.group(4) else '')
         #print('###', l)
+
+      m = string_def.search(l)
+      if m: # Protect quoted strings with extra m4 quotes
+        l = re.sub(r'"[^"]*"', "`{}'".format(m.group(2)), l)
 
       elines.append(l)
 
