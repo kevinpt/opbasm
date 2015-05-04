@@ -30,7 +30,7 @@ setup(name='opbasm',
     description='Open Picoblaze Assembler',
     long_description=long_description,
     platforms = ['Any'],
-    install_requires = ['pyparsing >= 1.5.6'],
+    install_requires = [],
     packages = ['opbasm_lib', 'templates', 'test'],
     py_modules = ['opbasm', 'pb_update', 'ez_setup'],
     entry_points = {
