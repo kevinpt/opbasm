@@ -114,16 +114,8 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-try:
-  from pyparsing import *
-except ImportError:
-  print(error(_('ERROR:')) + _(' OPBASM requires the Pyparsing library'))
-  sys.exit(1)
+__version__ = '1.2.7'
 
-
-__version__ = '1.2.6'
-
-ParserElement.setDefaultWhitespaceChars(' \t')
 
 class FatalError(Exception):
   '''General error reporting exception'''
@@ -231,69 +223,6 @@ def get_op_info(use_pb6):
 def fail(s, loc, tokens):
   raise ParseFatalException(s, loc, 'Unknown token "{}", s:"{}", loc:"{}"'.format(tokens[0], s, loc))
 
-
-def PicoBlaze_parser(op_info):
-  '''Creates a Pyparsing parser object that processes individual lines of assembly'''
-  EOL = StringEnd()
-
-  base_identifier = Word(alphanums + '_', alphanums + '_').setName('identifier')
-  not_identifier = Combine(Literal('~') + base_identifier)
-  env_identifier = Combine(Literal('%') + base_identifier)
-  addr_identifier = Combine(base_identifier + (Literal("'upper") | Literal("'lower")))
-
-  if not op_info['has_string_table_support']:
-    identifier = (not_identifier | env_identifier | addr_identifier | \
-      base_identifier)
-  else:
-    string_identifier = Combine(base_identifier + '$')
-    table_identifier = Combine(base_identifier + '#')
-    identifier = (not_identifier | env_identifier | string_identifier | \
-      table_identifier | addr_identifier | base_identifier)
-
-  hex_literal = Word(nums + srange('[a-fA-F]'))
-  bin_literal = Combine(Word('01') + "'b")
-  dec_literal = Combine(Word(nums) + "'d")
-  string_literal = dblQuotedString.setName('string')
-
-  non_q_chars = ''.join(c for c in string.printable if c != '"')
-  q_string_literal = Combine(Literal('""') + Word(non_q_chars) + Literal('""'))
-  literal = (q_string_literal | string_literal | dec_literal | bin_literal | hex_literal)
-
-  table_def = Group(Suppress('[') + delimitedList(hex_literal) + \
-      (Literal("]'d") | Literal("]'b") | Literal("]"))).setResultsName('table')
-
-
-  label = (base_identifier + Suppress(':')).setResultsName('label')
-
-  comment = (Suppress(';') + restOfLine + EOL).setName('comment').setResultsName('comment')
-
-
-  inst_kw = Or([CaselessKeyword(k) for k in op_info['opcodes'].iterkeys()])
-
-  reg_keys = ['s{}'.format(n) for n in xrange(10)] + ['sa', 'sb', 'sc', 'sd', 'se', 'sf']
-  reg_kw = Or([CaselessKeyword(k) for k in reg_keys])
-
-  directive = Or([CaselessKeyword(k) for k in op_info['directives']])
-
-  indirect_reg = Group(Suppress('(') + (reg_kw | identifier) + Suppress(')')).setResultsName('ireg')
-  indirect_addr = Group(Suppress('(') + (reg_kw | identifier) + Suppress(',') + \
-      (reg_kw | identifier) + Suppress(')')).setResultsName('iaddr')
-
-  instruction = Group((inst_kw | directive) + Optional( \
-      ((literal ^ reg_kw ^ identifier) + \
-      Optional(Suppress(',') + (literal ^ reg_kw ^ identifier ^ indirect_reg ^ table_def)) \
-      ) | indirect_addr \
-    )).setResultsName('instruction')
-
-  cmd = instruction + Optional(comment) + EOL
-
-  empty_label = label + (comment | EOL)
-
-  statement = Group(empty_label | label + cmd | cmd | comment | EOL).setResultsName('statement')
-
-  return statement
-
-
 regex_parser = re.compile(r'''
   (?:
     (?P<label>\w+):\s*
@@ -316,7 +245,7 @@ class ParseError(ValueError):
   pass
 
 def regex_parse_statement(l):
-  '''Regex based parser that performs significantly faster than the pyparsing
+  '''Regex based parser that performs significantly faster than the original pyparsing
   based recursive descent parser
   '''
 
@@ -398,7 +327,7 @@ class Statement(object):
   '''Low level representation of a statement (instructions, directives, comments)'''
   def __init__(self, ptree, line, source_file):
     '''
-    ptree : pyparsing parse tree object for a single statement
+    ptree : pyparsing style parse tree object for a single statement
     line : source line number
     '''
 
@@ -557,26 +486,18 @@ class Symbol(object):
 
 
 
-def parse_lines(lines, op_info, use_pyparsing, source_file):
+def parse_lines(lines, op_info, source_file):
   '''Parse a list of text lines into Statement objects'''
-  parser = PicoBlaze_parser(op_info)
+  #parser = PicoBlaze_parser(op_info)
 
   statements = []
   for i, l in enumerate(lines):
-    if not use_pyparsing:
-      try:
-        ptree = regex_parse_statement(l)
-      except ParseError:
-        print(error(_('PARSE ERROR:')) + _(' bad statement in {} line {}:\n  {}').format(source_file, i+1, l))
-        sys.exit(1)
+    try:
+      ptree = regex_parse_statement(l)
+    except ParseError:
+      print(error(_('PARSE ERROR:')) + _(' bad statement in {} line {}:\n  {}').format(source_file, i+1, l))
+      sys.exit(1)
         
-    else:
-      try:
-        ptree = parser.parseString(l)
-      except ParseException, e:
-        print(error(_('PARSE ERROR:')) + _(' bad statement in {} line {}:\n  {}').format(source_file, i+1, l))
-        sys.exit(1)
-
     statements.append(Statement(ptree['statement'], i+1, source_file))
     #print('### ptree:', i+1, ptree['statement'])
 
@@ -595,7 +516,6 @@ class Assembler(object):
     self.use_static_analysis = options.report_dead_code or options.remove_dead_code
     self.m4_file_num = 0
     self.output_dir = options.output_dir
-    self.use_pyparsing = options.use_pyparsing
     self.timestamp = timestamp
 
     self.constants = self._init_constants()
@@ -792,7 +712,7 @@ class Assembler(object):
         source = [s.rstrip() for s in fh.readlines()]
 
 
-    slist = parse_lines(source, self.op_info, self.use_pyparsing, source_file)
+    slist = parse_lines(source, self.op_info, source_file)
     self.sources[source_file] = slist
 
     # Scan for include directives
@@ -1384,7 +1304,7 @@ def parse_command_line():
   progname = os.path.basename(sys.argv[0])
   usage = _('''{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
               [-d] [-r] [-e <address>]
-              [-o <output dir>] [-q] [--m4] [--pyparsing]
+              [-o <output dir>] [-q] [--m4]
               [--debug-preproc <file>]
        {} -g''').format(progname, progname)
   parser = OptionParser(usage=usage)
@@ -1424,9 +1344,7 @@ def parse_command_line():
         help=_('Use m4 preprocessor on all source files'))
   parser.add_option('--debug-preproc', dest='debug_preproc', metavar='FILE', \
         help=_('Transformed source file after initial preprocessing'))
-  parser.add_option('--pyparsing', dest='use_pyparsing', action='store_true', default=False, \
-        help=_('Use alternate pyparsing parser'))
-
+  
   options, args = parser.parse_args()
 
   if options.version:
