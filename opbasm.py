@@ -1367,7 +1367,7 @@ def parse_command_line():
     if options.use_pb6:
       scratch_sizes = (64, 128, 256)
       max_mem_size = 4096
-    else: # PB3
+    else: # Default to PB3
       scratch_sizes = (64,)
       max_mem_size = 1024
 
@@ -1993,6 +1993,10 @@ def main():
   if lang in ('fr',):
     printq(success(_('''  Translation for English is machine generated.
   You can improve it by editing the message catalogs.''')))
+  
+  if not options.use_pb6 and not options.use_pb3: # We defaulted to PB3
+    printq(warn(_('''  WARNING: PicoBlaze-6 will become the default variant in 1.4.
+  Convert any PicoBlaze-3 projects to use the -3 option.''')))
 
 
   if options.get_templates:
