@@ -325,7 +325,7 @@ def regex_parse_statement(l):
 
 class Statement(object):
   '''Low level representation of a statement (instructions, directives, comments)'''
-  def __init__(self, ptree, line, source_file):
+  def __init__(self, ptree, line, source_file, ix_line):
     '''
     ptree : pyparsing style parse tree object for a single statement
     line : source line number
@@ -333,6 +333,7 @@ class Statement(object):
 
     self.source_file = source_file
     self.line = line
+    self.ix_line = ix_line
     self.label = ptree['label'][0] if 'label' in ptree else None
     self.comment = ptree['comment'][0] if 'comment' in ptree else None
 
@@ -486,7 +487,7 @@ class Symbol(object):
 
 
 
-def parse_lines(lines, op_info, source_file):
+def parse_lines(lines, op_info, source_file, index):
   '''Parse a list of text lines into Statement objects'''
   #parser = PicoBlaze_parser(op_info)
 
@@ -495,10 +496,18 @@ def parse_lines(lines, op_info, source_file):
     try:
       ptree = regex_parse_statement(l)
     except ParseError:
-      print(error(_('PARSE ERROR:')) + _(' bad statement in {} line {}:\n  {}').format(source_file, i+1, l))
+      if index is not None:
+        ix_line = index[i]
+        error_line = _('{} line {} (expanded line {}):').format(ix_line[2], ix_line[1], i+1)
+      else:
+        error_line = _('{} line {}:').format(source_file, i+1)
+      print(error(_('PARSE ERROR:')) + _(' Bad statement in {}\n  {}').format(error_line, l))
+
+
       sys.exit(1)
-        
-    statements.append(Statement(ptree['statement'], i+1, source_file))
+
+    ix_line = index[i] if index is not None else None
+    statements.append(Statement(ptree['statement'], i+1, source_file, ix_line))
     #print('### ptree:', i+1, ptree['statement'])
 
   return statements
@@ -531,6 +540,8 @@ class Assembler(object):
 
     self.op_info = get_op_info(options.use_pb6)
     self.upper_env_names = upper_env_names
+    
+    self.line_index = {}
 
   def init_registers(self):
     '''Initialize table of register names'''
@@ -605,18 +616,22 @@ class Assembler(object):
 
     self.m4_file_num += 1
 
-    cmd = 'm4 -D{} -DM4_FILE_NUM={} {} - > {}'.format(proc_mode, self.m4_file_num,
+    m4_options = '-s' # Activate synclines so we can track original line numbers
+
+    cmd = 'm4 {} -D{} -DM4_FILE_NUM={} {} - > {}'.format(m4_options, proc_mode, self.m4_file_num,
              macro_defs, pp_source_file)
     p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
     p.communicate(input=pure_m4.encode('utf-8'))
     if p.returncode:
       asm_error('m4 failure on file', source_file, exit=1)
 
+    self.index_expanded_line_numbers(pp_source_file, source_file)
+      
     return pp_source_file
 
 
   def preprocess_c_style(self, source_file):
-    '''Perform an intial transformation to convert C-style syntax into valid m4 macros'''
+    '''Perform an initial transformation to convert C-style syntax into valid m4 macros'''
     lines = []
     with io.open(source_file, 'r', encoding='utf-8') as fh:
       lines = fh.readlines()
@@ -686,6 +701,42 @@ class Assembler(object):
     #print('XXX\n', ecode, '\nYYY')
     return ecode
 
+  def index_expanded_line_numbers(self, pp_source_file, source_file):
+    '''Strip out inserted m4 synclines comments and build an index relating original source lines to the
+       macro expanded code'''
+    syncline = re.compile(r'^#line (\d+) *(".*")?')
+    lines = []
+    with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
+      lines = fh.readlines()
+    
+    index = []
+    elines = []    
+    cur_line = 1
+    active_file = None
+    source_lines = {}
+    for l in lines:
+      m = syncline.match(l)
+      if m: # This is a syncline
+        #print('###> {} <{}> <{}>'.format(l, m.group(1), m.group(2)))
+        if m.group(2): # This is start of a new file
+          active_file = m.group(2).strip('"')
+          if active_file == 'stdin':
+            active_file = source_file
+          source_lines[active_file] = int(m.group(1))
+        else: # Expanded macro
+          source_lines[active_file] = int(m.group(1))
+      else: # Ordinary source line
+        elines.append(l)
+        index.append((cur_line, source_lines[active_file], active_file))
+        #print('## {}  [{} {}]'.format(l.rstrip(), source_lines, cur_line))
+        cur_line += 1
+        source_lines[active_file] = source_lines[active_file] + 1
+        
+    # Overwrite preprocessed file with synclines removed
+    with io.open(pp_source_file, 'w', encoding='utf-8') as fh:
+      fh.writelines(elines)
+      
+    self.line_index[source_file] = index
 
   def process_includes(self, source_file=None):
     '''Scan a list of statements for INCLUDE directives and recursively
@@ -712,7 +763,8 @@ class Assembler(object):
         source = [s.rstrip() for s in fh.readlines()]
 
 
-    slist = parse_lines(source, self.op_info, source_file)
+    index = self.line_index[source_file] if source_file in self.line_index else None
+    slist = parse_lines(source, self.op_info, source_file, index)
     self.sources[source_file] = slist
 
     # Scan for include directives
@@ -1293,7 +1345,12 @@ def asm_error(*args, **kwargs):
   print(error(_('\nERROR:')), *args, file=sys.stderr)
   if 'statement' in kwargs:
     s = kwargs['statement']
-    print(_('  {}  line {}:  {}').format(s.source_file if s.source_file else 'UNKNOWN', s.line, s.format().lstrip()))
+    
+    if s.ix_line is not None:
+      error_line = _('{} line {} (expanded line {}):').format(s.ix_line[2], s.ix_line[1], s.line)
+    else:
+      error_line = _('{} line {}:').format(s.source_file if s.source_file else 'UNKNOWN', s.line)
+    print('  {}  {}'.format(error_line, s.format().lstrip()))
   if 'exit' in kwargs:
     sys.exit(kwargs['exit'])
 
@@ -1995,7 +2052,7 @@ def main():
   You can improve it by editing the message catalogs.''')))
   
   if not options.use_pb6 and not options.use_pb3: # We defaulted to PB3
-    printq(warn(_('''  WARNING: PicoBlaze-6 will become the default variant in 1.4.
+    printq(warn(_('''  WARNING: PicoBlaze-6 will become the default target in version 1.4.
   Convert any PicoBlaze-3 projects to use the -3 option.''')))
 
 
