@@ -380,7 +380,6 @@ class Statement(object):
         else:
           self.arg2 = ifields[2]
 
-
   def machine_word(self):
     '''Returns the numeric value of the assembled instruction'''
     return self.opcode + (self.regx << 8) + (self.regy << 4) + self.immediate
@@ -463,6 +462,14 @@ class Statement(object):
     else:
       return '{} {:>{}} {}'.format(addr, label, label_width, comment).rstrip()
 
+  @property
+  def error_line(self):
+    '''Generate line number summary for error messages'''
+    if self.ix_line is not None:
+      return _('{} line {} (expanded line {})').format(self.ix_line[2], self.ix_line[1], self.line)
+    else:
+      return _('{} line {}').format(self.source_file if self.source_file else 'UNKNOWN', self.line)
+
 
 class Symbol(object):
   '''Entry object for symbol tables (labels, constants, registers, strings, tables)'''
@@ -498,10 +505,10 @@ def parse_lines(lines, op_info, source_file, index):
     except ParseError:
       if index is not None:
         ix_line = index[i]
-        error_line = _('{} line {} (expanded line {}):').format(ix_line[2], ix_line[1], i+1)
+        error_line = _('{} line {} (expanded line {})').format(ix_line[2], ix_line[1], i+1)
       else:
-        error_line = _('{} line {}:').format(source_file, i+1)
-      print(error(_('PARSE ERROR:')) + _(' Bad statement in {}\n  {}').format(error_line, l))
+        error_line = _('{} line {}').format(source_file, i+1)
+      print(error(_('PARSE ERROR:')) + _(' Bad statement in {}:\n  {}').format(error_line, l))
 
 
       sys.exit(1)
@@ -618,14 +625,14 @@ class Assembler(object):
 
     m4_options = '-s' # Activate synclines so we can track original line numbers
 
-    cmd = 'm4 {} -D{} -DM4_FILE_NUM={} {} - > {}'.format(m4_options, proc_mode, self.m4_file_num,
-             macro_defs, pp_source_file)
-    p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
-    p.communicate(input=pure_m4.encode('utf-8'))
+    cmd = 'm4 {} -D{} -DM4_FILE_NUM={} {} -'.format(m4_options, proc_mode, self.m4_file_num, macro_defs)
+    p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    m4_result, m4_err = p.communicate(input=pure_m4.encode('utf-8'))
     if p.returncode:
-      asm_error('m4 failure on file', source_file, exit=1)
+      asm_error(_('m4 failure on file'), source_file, exit=1)
 
-    self.index_expanded_line_numbers(pp_source_file, source_file)
+    # Use synclines to build index tracking how original source lines were expanded
+    self.index_expanded_line_numbers(m4_result.decode('utf-8'), pp_source_file, source_file)
       
     return pp_source_file
 
@@ -657,15 +664,12 @@ class Assembler(object):
       m = curly_string.match(l)
       if m:
         escaped = m.group(1).replace('}', "`'_rcurly`'")
-        #print('### escaped:', escaped)
         l = re.sub(r'^(.*").*(".*)$',r'\1{}\2'.format(escaped),l)
 
       m = signed_macro.search(l)
       if m:
         escaped = m.group(1).replace(')', "`'_rparen`'")
         l = re.sub(r'signed\([^)]+\)', escaped, l)
-        #print('### escaped:', escaped, '-->', l)
-
 
       m = const_def.search(l)
       if m:
@@ -677,7 +681,6 @@ class Assembler(object):
           else:
             arg2 = arg2.replace("'", "!") # m4 doesn't play nice with strings that have embedded ' chars
           l = '{}const({}, {}) {}\n'.format(m.group(1), m.group(2).strip(), arg2, m.group(4) if m.group(4) else '')
-        #print('###', l)
 
       m = string_def.search(l)
       if m: # Protect quoted strings with extra m4 quotes
@@ -698,26 +701,22 @@ class Assembler(object):
     ecode = re.sub(r'while\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'while(\1, `', ecode) # plain while
     ecode = re.sub(r'for\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'for(\1, `', ecode) # for loop
     ecode = re.sub(r'}', r"')", ecode) # end of a block
-    #print('XXX\n', ecode, '\nYYY')
     return ecode
 
-  def index_expanded_line_numbers(self, pp_source_file, source_file):
+  def index_expanded_line_numbers(self, m4_result, pp_source_file, source_file):
     '''Strip out inserted m4 synclines comments and build an index relating original source lines to the
        macro expanded code'''
     syncline = re.compile(r'^#line (\d+) *(".*")?')
-    lines = []
-    with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
-      lines = fh.readlines()
-    
+
     index = []
     elines = []    
     cur_line = 1
     active_file = None
     source_lines = {}
-    for l in lines:
+
+    for l in m4_result.splitlines(True):
       m = syncline.match(l)
       if m: # This is a syncline
-        #print('###> {} <{}> <{}>'.format(l, m.group(1), m.group(2)))
         if m.group(2): # This is start of a new file
           active_file = m.group(2).strip('"')
           if active_file == 'stdin':
@@ -728,11 +727,10 @@ class Assembler(object):
       else: # Ordinary source line
         elines.append(l)
         index.append((cur_line, source_lines[active_file], active_file))
-        #print('## {}  [{} {}]'.format(l.rstrip(), source_lines, cur_line))
         cur_line += 1
         source_lines[active_file] = source_lines[active_file] + 1
         
-    # Overwrite preprocessed file with synclines removed
+    # Write preprocessed file with synclines removed
     with io.open(pp_source_file, 'w', encoding='utf-8') as fh:
       fh.writelines(elines)
       
@@ -1345,12 +1343,7 @@ def asm_error(*args, **kwargs):
   print(error(_('\nERROR:')), *args, file=sys.stderr)
   if 'statement' in kwargs:
     s = kwargs['statement']
-    
-    if s.ix_line is not None:
-      error_line = _('{} line {} (expanded line {}):').format(s.ix_line[2], s.ix_line[1], s.line)
-    else:
-      error_line = _('{} line {}:').format(s.source_file if s.source_file else 'UNKNOWN', s.line)
-    print('  {}  {}'.format(error_line, s.format().lstrip()))
+    print('  {}:  {}'.format(s.error_line, s.format().lstrip()))
   if 'exit' in kwargs:
     sys.exit(kwargs['exit'])
 
@@ -1550,7 +1543,7 @@ def annotate_pragmas(slist):
         if pragma in active_tags:
           del_pragma = True # Schedule this pragma for removal from active_tags
       else:
-        print('\n' + note(_('WARNING')) + _(': unrecognized pragma at line'), s.line)
+        print('\n' + warn(_('WARNING:')) + _(' Unrecognized pragma at {}').format(s.error_line))
 
     if s.is_instruction():
       for p, a in active_tags.iteritems():
@@ -2215,8 +2208,8 @@ def main():
     target_file = vhdl_file if hdl_name == 'vhdl' else verilog_file
     file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
     all_inits_replaced = write_hdl_file(options.input_file, target_file, template_file, minit, timestamp.isoformat(), asm.default_jump)
-    # FIXME: Add translations for this warning
-    unmapped_warn = warn(_('WARNING: Unmapped INIT fields found in template')) if not all_inits_replaced else ''
+
+    unmapped_warn = warn(_('WARNING:')) + _(' Unmapped INIT fields found in template') if not all_inits_replaced else ''
     printq('{:>{}} {:<{}}   {}'.format(file_type, field_size, target_file, longest_template_name, unmapped_warn))
     
 
