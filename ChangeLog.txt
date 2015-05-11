@@ -2,6 +2,36 @@
 Opbasm change log
 =================
 
+v1.x / 2015-??-??
+=================
+
+  Changes
+  -------
+  * Added notice that the default target will change to PB6 in 1.4 release
+  * Added multilingual support with German and French translations
+  * More efficient 16-bit shifts and rotates when the shift is greater than 8.
+  * Improved reporting of error line numbers when macros have been expanded in the original source.
+    You will now see a mostly accurate indication of the original source line as well as the line numbers
+	in the expanded source code. They are still off when errors occur inside nested macros and when C-style
+	syntax is used with a line break before the "{".
+  * Error messages now include the original source file. This works even when m4's include() macro is
+    used instead of the PB INCLUDE directive.
+  * Removed the Pyparsing based parser. There are now no required external library dependencies.
+  * Unreferenced constants, strings, and tables are reported in the log.
+  
+  Bug fixes
+  ---------
+  * Templates with multiple implementations containing larger memories than the memory map file would
+    be generated with leftover {INIT...} fields. These are now filled in with assembled DEFAULT_JUMP
+	instructions.
+  * Spartan-3 XDL parsing in pb_update was not properly extracting the memory size parameters.
+  * Nested for() loops had a bug that caused infinite looping.
+  * Uppercase macros for shift and rotate operations were not working properly.
+  * m4 complains about missing newline on the last line of a file. This has been eliminated.
+  * Macro text inside quoted strings no longer expands.
+  * Fixed leftover "const()" macros in commented out constant declarations.
+  * Unicode text mode (cp65001) now works properly on Windows console. ANSI color does not work however.
+
 v1.2 / 2014-12-12
 =================
 
