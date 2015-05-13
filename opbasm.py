@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright © 2014 Kevin Thibedeau
+# Copyright © 2014, 2015 Kevin Thibedeau
 # (kevin 'period' thibedeau 'at' gmail 'punto' com)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.2.7'
+__version__ = '1.2.8'
 
 
 class FatalError(Exception):
@@ -528,6 +528,7 @@ class Assembler(object):
     self.scratch_size = options.scratch_size
     self.use_pb6 = options.use_pb6
     self.use_m4 = options.use_m4
+    self.m4_defines = options.m4_defines
     self.debug_preproc = options.debug_preproc
     self.use_static_analysis = options.report_dead_code or options.remove_dead_code
     self.m4_file_num = 0
@@ -625,11 +626,14 @@ class Assembler(object):
 
     m4_options = '-s' # Activate synclines so we can track original line numbers
     
-    m4_defines = {proc_mode:None,
+    m4_defines = self.m4_defines.copy()
+    # Set default defines for m4, overriding any attempt to redefine them by the user
+    m4_defines.update({proc_mode:None,
                   'M4_FILE_NUM':self.m4_file_num,
                   'DATE_STAMP':self.strings['datestamp$'].val_text,
                   'TIME_STAMP':self.strings['timestamp$'].val_text
-                  }
+                  })
+
     # Build argument string for defines fed into m4
     m4_def_args = ' '.join('-D{}={}'.format(k,v) if v else '-D{}'.format(k) for k,v in m4_defines.iteritems())
 
@@ -1411,6 +1415,8 @@ def parse_command_line():
         help=_('Quiet output'))
   parser.add_option('--m4', dest='use_m4', action='store_true', default=False, \
         help=_('Use m4 preprocessor on all source files'))
+  parser.add_option('-D', '--define', dest='m4_defines', action='append', default=[], \
+        metavar='NAME[=VALUE]', help=_('Define m4 macro NAME as having VALUE or empty'))
   parser.add_option('--debug-preproc', dest='debug_preproc', metavar='FILE', \
         help=_('Transformed source file after initial preprocessing'))
   
@@ -1459,6 +1465,8 @@ def parse_command_line():
     except ValueError:
         parser.error(_('Invalid entry point address'))
 
+    # Convert m4 definitions into a dict
+    options.m4_defines = {t[0]:t[1] if len(t) == 2 else None for t in (d.split('=') for d in options.m4_defines)}
   return options
 
 
@@ -2049,7 +2057,7 @@ def add_output_dir(output_dir, fname):
 def main():
   '''Main application code'''
   options = parse_command_line()
-
+  
   def printq(*args, **keys):
     if not options.quiet: print(*args, **keys)
 

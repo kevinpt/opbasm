@@ -18,6 +18,10 @@ v1.x / 2015-??-??
     used instead of the PB INCLUDE directive.
   * Removed the Pyparsing based parser. There are now no required external library dependencies.
   * Unreferenced constants, strings, and tables are reported in the log.
+  * Added cstr() and estr() macros to generate numeric strings with C character escapes and an optional NUL terminator.
+  * Added qstr() macro to wrap macros in double quotes.
+  * Added DATE_STAMP and TIME_STAMP macros for use within m4.
+  * Add -D option to allow definition of m4 macros from the command line
   
   Bug fixes
   ---------
