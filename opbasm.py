@@ -624,8 +624,16 @@ class Assembler(object):
     self.m4_file_num += 1
 
     m4_options = '-s' # Activate synclines so we can track original line numbers
+    
+    m4_defines = {proc_mode:None,
+                  'M4_FILE_NUM':self.m4_file_num,
+                  'DATE_STAMP':self.strings['datestamp$'].val_text,
+                  'TIME_STAMP':self.strings['timestamp$'].val_text
+                  }
+    # Build argument string for defines fed into m4
+    m4_def_args = ' '.join('-D{}={}'.format(k,v) if v else '-D{}'.format(k) for k,v in m4_defines.iteritems())
 
-    cmd = 'm4 {} -D{} -DM4_FILE_NUM={} {} -'.format(m4_options, proc_mode, self.m4_file_num, macro_defs)
+    cmd = 'm4 {} {} {} -'.format(m4_options, m4_def_args, macro_defs)
     p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     m4_result, m4_err = p.communicate(input=pure_m4.encode('utf-8'))
     if p.returncode:
@@ -640,8 +648,11 @@ class Assembler(object):
   def preprocess_c_style(self, source_file):
     '''Perform an initial transformation to convert C-style syntax into valid m4 macros'''
     lines = []
-    with io.open(source_file, 'r', encoding='utf-8') as fh:
-      lines = fh.readlines()
+    if source_file == '-':
+      lines = [l.decode('utf-8') for l in sys.stdin.readlines()]
+    else:
+      with io.open(source_file, 'r', encoding='utf-8') as fh:
+        lines = fh.readlines()
       
     # Add a trailing empty line so that m4 doesn't complain about files without them
     # or ending with a comment
@@ -745,20 +756,28 @@ class Assembler(object):
     if source_file in self.sources: return
 
     pp_source_file = self.preprocess_with_m4(source_file)
+    
+    source_file_display = source_file if source_file != '-' else '<stdin>'
 
-    if pp_source_file != source_file:
-      yield source_file + ' (m4)'
+    if pp_source_file != source_file: # Preprocessor was run on source
+      yield source_file_display + ' (m4)'
     else:
-      yield source_file
+      yield source_file_display
 
 
     try:
-      with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
-        source = [s.rstrip() for s in fh.readlines()]
+      if pp_source_file == '-':
+        source = [s.decode('utf-8').rstrip() for s in sys.stdin.readlines()]
+      else:
+        with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
+          source = [s.rstrip() for s in fh.readlines()]
     except UnicodeDecodeError:
       # Fall back to Latin-1 if UTF-8 fails
-      with io.open(pp_source_file, 'r', encoding='latin-1') as fh:
-        source = [s.rstrip() for s in fh.readlines()]
+      if pp_source_file == '-':
+        source = [s.decode('latin-1').rstrip() for s in sys.stdin.readlines()]
+      else:
+        with io.open(pp_source_file, 'r', encoding='latin-1') as fh:
+          source = [s.rstrip() for s in fh.readlines()]
 
 
     index = self.line_index[source_file] if source_file in self.line_index else None
@@ -2071,10 +2090,13 @@ def main():
   log_file = add_output_dir(options.output_dir, options.module_name + '.log')
 
   
-  # Check for existence of input files
-  if not os.path.exists(options.input_file):
-    asm_error(_('Input file not found'), exit=1)
-
+  if options.input_file == '-': # Ensure a module name was provided
+    if options.module_name == '-':
+      asm_error(_('Module name must be provided when reading from stdin (use -n <name>)'), exit=1)
+  else: # Check for existence of input file
+    if not os.path.exists(options.input_file):
+      asm_error(_('Input file not found'), exit=1)
+    
   mode = _('Running in PicoBlaze-{} mode').format(6 if options.use_pb6 else 3)
   m = re.match('(^.*)(PicoBlaze-[0-9])(.*$)', mode)
   printq(note(m.group(1)) + success(m.group(2)) + note(m.group(3)))
@@ -2215,6 +2237,7 @@ def main():
 
   printq(_('\n  Formatted source:'))
   for fname, source in asm.sources.iteritems():
+    if fname == '-': fname = 'stdin'
     fname = os.path.splitext(os.path.basename(fname))[0] + '.fmt'
     fname = add_output_dir(options.output_dir, fname)
     printq('   ', fname)
