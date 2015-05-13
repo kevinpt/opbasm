@@ -86,6 +86,37 @@ define(<!_aconv!>,<!ifelse(<!$1!>,<! !>,32,<!$1!>,<!;!>,59,dnl
 changequote
 
 ;---------------------------------
+; Convert a string to a list of decimal ASCII codes with or without a NUL terminator
+; The following C escape codes are translated to their ASCII value:
+;   \\  \
+;   \n  NL\LF
+;   \r  CR
+;   \t  HT
+;   \b  BS
+;   \a  BEL
+; Arg1: String to convert
+; Ex: estr(`My string\r\n')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103, 13, 10
+;     cstr(`My string\r\n')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103, 13, 10, 0
+define(`estr', `_esc(asciiord(`$1'))')
+define(`cstr', `_esc(asciiord(`$1')), 0')
+
+; Step through decimal values replacing escape codes as necessary
+define(`_esc', `ifelse(eval($#>1),1, `ifelse(eval($1==92),1,`_echar($2)`'ifelse(eval($#>2),1,`, $0(shift(shift($@)))')',`$1, $0(shift($@))')', `$1')')
+
+; Convert escaped character codes into their ASCII value
+;                               \\                 \n                  \r                  \t                 \b                \a
+define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,13, eval($1==116),1,9, eval($1==98),1,8, eval($1==97),1,7, `errmsg(`Invalid escape code')')')
+
+;---------------------------------
+; Add double quotes around a string
+; This is allows the use of macros to generate strings where substitution within "" would
+; normally be suppressed.
+; Arg1: String to quote
+; Ex: define(DATE_STAMP, `1 Jan 2015')
+;     string mystr$, qstr(DATE_STAMP)  ; Expands to string mystr$, "1 Jan 2015"
+define(`qstr', `"$1"')
+
+;---------------------------------
 ; Convert 16-bit words into bytes
 ; Arg1-Argn: Numbers to split into bytes
 ; words_le produces little-endian byte order, words_be is big-endian
@@ -246,8 +277,17 @@ define(`_delay_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. 
 define(`delay_cycles', `ifelse(eval(const2m4($1) < 5),1,`repeat(`nop', const2m4($1))',`_delay_tree(floor_log2(eval(const2m4($1) - 1)))'
 `$0(eval(const2m4($1) - 2**floor_log2(eval(const2m4($1) - 1)) - 1))')')
 
-;define(`floor_log2', `ifelse(eval($1 <= 1),1,0,`eval($0(eval($1 >> 1)) + 1)')')
+;---------------------------------
+; Compute floor(log(n,b)) for Base-b
+; Arg1: Number to compute floor-log on
+; Arg2: Logarithm base
+; Ex: floor_log(20, 2)    expands to 4 (2**4 = 16, 2**5 = 32)
+;     floor_log(1000, 10) expands to 3 (10**3 = 1000)
 define(`floor_log', `ifelse(eval($1 < $2),1,0,`eval($0(eval($1 / $2), $2) + 1)')')
+
+;---------------------------------
+; Compute floor(log(n)) for Base-2
+; Arg1: Number to compute floor-log on
 define(`floor_log2', `floor_log($1,2)')
 
 
@@ -1434,11 +1474,11 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, _tempreg) return
 define(`expr', `pushdef(`_exstr', $1)'`_expr_start(u, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
 define(`exprs', `pushdef(`_exstr', $1)'`_expr_start(s, patsubst($1, ` +', `,'))'`popdef(`_exstr')')
 
-define(`_expr_start', `pushdef(`_exreg', $2)'
+define(`_expr_start', `pushdef(`_exreg', $2)'dnl
 `ifelse($3,:=,,`errmsg(Missing assignment operator in expression)')'dnl
 ``;' Expression:' _exstr
 `ifelse($2,$4,,`load $2, evalx($4,16,2)')'
-`ifelse($1,u,`_expr_ops(shift(shift(shift(shift($@)))))',`_exprs_ops(shift(shift(shift(shift($@)))))')'
+`ifelse($1,u,`_expr_ops(shift(shift(shift(shift($@)))))',`_exprs_ops(shift(shift(shift(shift($@)))))')'dnl
 `popdef(`_exreg')')
 
 ; Unsigned operations
@@ -1472,15 +1512,16 @@ define(`_expr2_start', `_expect16($2)'`pushdef(`_exreg',`_rmsb($2),_rlsb($2)')'
 `ifelse($3,:=,,`errmsg(Missing assignment operator in expression)')'dnl
 ``;' Expression 16x8:' _exstr
 `ifelse($2,$4,,`ifelse(_is16($4),1,`load16(_exreg, _decode16($4))', isnum($4),1,`load16(_exreg, $4)',dnl
-                      `ifelse($1,u,`load regupper(_exreg), 00
+`ifelse($1,u,`load regupper(_exreg), 00
 load reglower(_exreg), $4',`signex(_tempreg, $4)
-                       load16(_exreg, _tempreg, $4)')'dnl
+load16(_exreg, _tempreg, $4)')'dnl
 )')'
 `ifelse($1,u,`_expr2_ops(shift(shift(shift(shift($@)))))',`_expr2s_ops(shift(shift(shift(shift($@)))))')'
 `popdef(`_exreg')')
 
 ; Unsigned operations
-define(`_expr2_ops', `ifelse(`$1',,,`_expr2_binary($1, evalx($2))
+define(`_expr2_ops', `ifelse(`$1',,,`
+_expr2_binary($1, evalx($2)) dnl
 $0(shift(shift($@)))')')
 
 define(`_expr2_binary', `ifelse($1,+,`ifelse(isnum($2),1,`add16(_exreg, $2)',dnl
@@ -1497,7 +1538,8 @@ index($2, `spi['),0,`store16(_exreg, _decode16(regexp($2, `spi\[\(.*\)\]',`\1'))
 `errmsg(`Invalid operation: $1')'   )')
 
 ; Signed operations
-define(`_expr2s_ops', `ifelse(`$1',,,`_expr2s_binary($1, evalx($2))
+define(`_expr2s_ops', `ifelse(`$1',,,`
+_expr2s_binary($1, evalx($2)) dnl
 $0(shift(shift($@)))')')
 
 define(`_expr2s_binary', `ifelse($1,+,`ifelse(isnum($2),1,`add16(_exreg, $2)',dnl
@@ -1879,6 +1921,17 @@ define(`_load16k', `load $1, eval(constupper($3), 16, 2)  ; $3
 load $2, eval(constlower($3), 16, 2)')
 
 ;---------------------------------
+; Load a 16-bit address from a label
+; Arg1, Arg2: MSB, LSB destination
+; Arg3: address label
+; Ex: my_func: return
+;     loadaddr(s1,s0, my_func)
+changequote(<!,!>)
+define(<!loadaddr!>, <!changequote(<!,!>)<!!>load $1, $3'upper
+load $2, $3'lower<!!>changequote!>)
+changequote
+
+;---------------------------------
 ; 16-bit addition and subtraction
 ; Arg1, Arg2: MSB1, LSB1
 ; 3 arguments: add from constant
@@ -2227,6 +2280,10 @@ define(`EVALB', `evalb($@)')
 define(`EVALC', `evalc($@)')
 define(`EVALX', `evalx($@)')
 define(`PBHEX', `pbhex($@)')
+define(`ASCIIORD', `asciiord($@)')
+define(`ESTR', `estr($@)')
+define(`CSTR', `cstr($@)')
+define(`QSTR', `qstr($@)')
 define(`WORDS_LE', `words_le($@)')
 define(`WORDS_BE', `words_be($@)')
 define(`USE_TEMPREG', `use_tempreg($@)')
