@@ -1,0 +1,16 @@
+body {
+    font-size: 17px;
+    background-color: white;
+    color: #000;
+    margin: 0;
+    padding: 0;
+}
+
+div.document {
+    width: 1200px;
+    margin: 30px auto 0 auto;
+}
+
+pre, tt, code {
+    font-size: 0.7em;
+}
