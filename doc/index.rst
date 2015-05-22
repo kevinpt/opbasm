@@ -12,7 +12,7 @@ Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaz
 
 **Special features of Opbasm:**
 
- * Optional `m4 preprocessor macros <http://code.google.com/p/opbasm/wiki/m4>`_ are available when the m4 program is installed. An extensive set of built-in macros provide more advanced features than the base language. For example, converting temperature scales becomes as easy as this:
+ * Optional :doc:`m4 preprocessor macros <rst/m4>` are available when the m4 program is installed. An extensive set of built-in macros provide more advanced features than the base language. For example, converting temperature scales becomes as easy as this:
 
   .. parsed-literal::
 
@@ -25,12 +25,12 @@ Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaz
       return
 
 
- * `Static code analysis <http://code.google.com/p/opbasm/#Static_code_analysis>`_ to identify dead code and optionally remove it. This permits the development of code libraries that can be included without wasting memory on unused functions.
+ * `Static code analysis`_ to identify dead code and optionally remove it. This permits the development of code libraries that can be included without wasting memory on unused functions.
 
- * Code block annotations with `user defined PRAGMA meta-comments <http://code.google.com/p/opbasm/#User_defined_PRAGMAs>`_.
+ * Code block annotations with `user defined PRAGMA meta-comments`_.
 
 
-Support for the full PicoBlaze-6 syntax is provided as well as `enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code <http://code.google.com/p/opbasm/#PicoBlaze_-3_enhancements>`_. The original templating system for ROM components is supported as well as a more flexible `generic ROM component <https://code.google.com/p/opbasm/#Generic_ROM_component>`_ that can read *.mem* and *.hex* files directly during synthesis and simulation. A utility script is included that permits `updating the ROM contents of a bitstream file <http://code.google.com/p/opbasm/#Updating_bit_files>`_ without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
+Support for the full PicoBlaze-6 syntax is provided as well as `enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code`_. The original templating system for ROM components is supported as well as a more flexible `generic ROM component`_ that can read *.mem* and *.hex* files directly during synthesis and simulation. A utility script is included that permits `updating the ROM contents of a bitstream file`_ without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
 
 Files generated on non-Windows platforms will not have DOS line endings and PicoBlaze-3 files are not restricted to 8.3 file names. Opbasm also runs significantly faster than the native implementation:
 
@@ -83,7 +83,9 @@ If you can't use the installer script, it is possible to run *opbasm.py* directl
 
   > python opbasm.py ...
 
-The m4 preprocessor is optional. It is usually already installed on Linux. The m4 documentation provides `guidance on installing m4 under Windows <m4#Installing_m4_on_Windows>`_.
+The m4 preprocessor is optional. It is usually already installed on Linux. The m4 documentation provides :ref:`guidance on installing m4 under Windows <guidance on installing m4 under Windows>`.
+
+.. _enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code:
 
 PicoBlaze-3 enhancements
 ------------------------
@@ -104,7 +106,7 @@ For PicoBlaze-3 you *CANNOT* use the following:
   * STRING and TABLE directives
   * PicoBlaze-6 instructions (``CALL@, COMPARECY, HWBUILD, JUMP@, LOAD&RETURN, OUTPUTK, REGBANK, STAR, TESTCY``)
 
-Note that the included m4 macros have `alternative string operations <m4#String_and_table_operations>`_ that do work on PicoBlaze-3.
+Note that the included m4 macros have :ref:`alternative string operations <string and table ops>` that do work on PicoBlaze-3.
 
 Refer to the file "all_kcpsm6_syntax.psm" distributed with KCPSM6 for a detailed
 explanation of the new PicoBlaze-6 syntax.
@@ -118,7 +120,7 @@ The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory.
 m4 preprocessor
 ---------------
 
-Opbasm uses the m4 preprocessor to provide enhanced syntax to PicoBlaze developers. A useful package of predefined macros is included automatically when m4 is run. You can activate m4 by naming source files with the ".psm4", or ".m4" extensions or by passing the *--m4* option. See the more detailed `m4 documentation <m4>`_ for more information on using the preprocessor macros.
+Opbasm uses the m4 preprocessor to provide enhanced syntax to PicoBlaze developers. A useful package of predefined macros is included automatically when m4 is run. You can activate m4 by naming source files with the ".psm4", or ".m4" extensions or by passing the *--m4* option. See the more detailed :doc:`m4 documentation <rst/m4>` for more information on using the preprocessor macros.
 
 Static code analysis
 --------------------
@@ -253,12 +255,13 @@ As an alternative to the templating system, a generic, synthesizable VHDL ROM is
 
 XST doesn't infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The "``ROM_form_S6_4K_<date>.vhd``" template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.
 
-A dual-ported ``picoblaze_dp_rom`` component is also included in this package. It provides a second read/write port that can be connected to internal logic to facilitate use of packed ROM data stored with ``INST`` directives or to use a portion of the BRAM as general purpose RAM. The `insttable_* m4 macros <m4#String_and_table_operations>`_ are included to simplify the creation of ``INST`` directives containing packed byte data.
+A dual-ported ``picoblaze_dp_rom`` component is also included in this package. It provides a second read/write port that can be connected to internal logic to facilitate use of packed ROM data stored with ``INST`` directives or to use a portion of the BRAM as general purpose RAM. The :ref:`insttable m4 macros <string and table ops>` are included to simplify the creation of ``INST`` directives containing packed byte data.
 
 It is not necessary to have an HDL template file present if you are using the generic ROM.
 
-User defined PRAGMAs
---------------------
+
+User defined PRAGMA meta-comments
+---------------------------------
 
 To facilitate post processing of assembled output, Opbasm includes a facility to annotate blocks of code using PRAGMA meta-comments. It uses a flexible syntax that provides considerable freedom in how you annotate your code.
 
@@ -312,6 +315,8 @@ One potential use for the flexible formatting is to include a signature with a f
   ...
 
 This function signature will then appear in the log where it can be post-processed by another tool to track register usage for inputs and return values.
+
+.. _updating the ROM contents of a bitstream file:
 
 Updating bit files
 ------------------
