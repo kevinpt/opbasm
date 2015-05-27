@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.2.8'
+__version__ = '1.2.9'
 
 
 class FatalError(Exception):
@@ -1249,7 +1249,7 @@ class Assembler(object):
           else:
             raise FatalError(s, _('Invalid register:'), s.arg1)
 
-          # PB6 has an undocumented STAR sX, kk variant so we will accept a constant
+          # PB6 has the STAR sX, kk variant so we will accept a constant
           # as the second argument as well as a register.
           # http://forums.xilinx.com/t5/PicoBlaze/obscure-undocumented-property-of-REGBANK-instruction/m-p/489774#M2375
 
@@ -1679,7 +1679,7 @@ def code_stats(assembled_code):
   return stats
 
 def instruction_usage(assembled_code, asm):
-  '''Analyze assembled code to determine instruction histogram'''
+  '''Analyse assembled code to determine instruction histogram'''
   stats = dict((k, 0) for k in asm.op_info['opcodes'].iterkeys())
   del stats['inst'] # Not a real opcode
 
@@ -2130,15 +2130,13 @@ def main():
       printq(_('  Reading source:'), fname)
 
     # Assemble program
-    printq(_('\n  Assembling code... '), end='')
+    printq(_('\n  Assembling code... '))
     sys.stdout.flush()
 
     assembled_code = asm.assemble(bounds_check=not options.remove_dead_code)
 
   except FatalError, e:
     asm_error(*e.args, exit=1, statement=e.statement)
-
-  printq(success(_('SUCCESS')))
 
   dead_instructions = None
   entry_points = None
@@ -2181,6 +2179,22 @@ def main():
 
     printq(success(_('COMPLETE')))
 
+    
+  # Verify that no instructions have been assigned to the same address
+  instructions = [s for s in assembled_code if s.is_instruction()]
+  prev_addresses = {}
+  valid_asm = True
+  for i in instructions:
+    if i.address in prev_addresses:
+      asm_error('Duplicate address {:03X} \n   First: {}\n  Second: {}\n'.format(i.address, \
+        prev_addresses[i.address].error_line, i.error_line))
+      valid_asm = False
+      break
+    else:
+      prev_addresses[i.address] = i
+
+  if valid_asm: printq('  ' + success(_('SUCCESS') + '\n'))
+      
   # Print summary
   stats = code_stats(assembled_code)
   stats['dead_inst'] = dead_instructions
@@ -2255,7 +2269,7 @@ def main():
 
   printq('')
 
-  sys.exit(0)
+  sys.exit(0 if valid_asm else 1)
 
 
 if __name__ == '__main__':
