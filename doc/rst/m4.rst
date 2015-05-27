@@ -77,7 +77,7 @@ There are a few options for installing m4 on Windows: MinGW, GnuWin32, and Cygwi
 MinGW
 ~~~~~
 
-Download the `get-mingw-setup <http://sourceforge.net/projects/mingw/files/Installer/>`_ graphical installer. Run it and select the "msys-base" package and either "msys-m4" binary package (under All packages|MSYS|MSYS Base System) or "mingw-developer-toolkit". Add "C:\MinGW\msys\1.0\bin" to your system PATH environment variable.
+Download the `get-mingw-setup <http://sourceforge.net/projects/mingw/files/Installer/>`_ graphical installer. Run it and select the "msys-base" package and either "msys-m4" binary package (under All packages|MSYS|MSYS Base System) or "mingw-developer-toolkit". Add "C:\\MinGW\\msys\\1.0\\bin" to your system PATH environment variable.
 
 GnuWin32
 ~~~~~~~~
