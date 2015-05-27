@@ -67,7 +67,7 @@ This will download and install the latest release, upgrading if you already have
 
   > easy_install pip
 
-If you manually downloaded a source package or created a clone with Mercurial you can install Opbasm with the following command run from the base Opbasm directory:
+If you manually downloaded a source package or created a clone with Git you can install Opbasm with the following command run from the base Opbasm directory:
 
 .. parsed-literal::
 
@@ -135,7 +135,7 @@ The static analysis can't follow the computed destination of ``CALL@`` and ``JUM
 
 .. figure:: images/static_analysis.png
   
-  **Static analysis example**
+  *Static analysis example*
 
 As an aid to the user, the static analyzer will automatically keep any code that is called or jumped to from a user annotated "keep" block. These blocks are identified with the name "keep_auto" in the log file. In addition, "keep_auto" is automatically applied to blocks of ``LOAD&RETURN`` instructions that are associated with a label in use. The result is that only unreferenced strings and tables will be marked as dead and potentially removed. "keep_auto" is also automatically applied to any ``INST`` directives.
 

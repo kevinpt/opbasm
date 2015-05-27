@@ -106,7 +106,12 @@ html_theme = 'alabaster'
 # documentation.
 html_theme_options = {
   'description': 'Advanced PicoBlaze Assembler',
-  'show_powered_by': False
+  'show_powered_by': False,
+  'logo_text_align': 'center',
+  'font_family': 'Verdana, Geneva, sans-serif',
+  'github_user': 'kevin.thibedeau',
+  'github_repo': 'opbasm',
+  'github_button': True
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -121,7 +126,7 @@ html_theme_path = [alabaster.get_path()]
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-#html_logo = None
+html_logo = 'images/opbasm_logo.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
