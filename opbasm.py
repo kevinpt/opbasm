@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.2.9'
+__version__ = '1.2.10'
 
 
 class FatalError(Exception):
@@ -537,6 +537,7 @@ class Assembler(object):
 
     self.constants = self._init_constants()
     self.labels = {}
+    self.removed_labels = set()
 
     self.registers = None
     self.init_registers()
@@ -1122,7 +1123,13 @@ class Assembler(object):
             s.immediate = self.get_constant(s.arg2)
 
             if s.immediate is None:
-              raise FatalError(s, _('Invalid operand:'), s.arg2)
+              if s.arg2.endswith("'upper") or s.arg2.endswith("'lower"):
+                if s.arg2.split("'")[0] in self.removed_labels:
+                  raise FatalError(s, _('Label has been removed: {}\n       Add ";PRAGMA keep [on,off]" to preserve this label').format(s.arg2))
+                else:
+                  raise FatalError(s, _('Unknown label:'), s.arg2)
+              else:
+                raise FatalError(s, _('Invalid operand:'), s.arg2)
             if not (0 <= s.immediate < 256):
               raise FatalError(s, _('Immediate value out of range:'), s.immediate)
 
@@ -2166,6 +2173,7 @@ def main():
           if s.label in asm.labels:
             #print('### Deleting label:', s.label)
             del asm.labels[s.label]
+            asm.removed_labels.add(s.label)
           s.label = None
 
     # Reinitialize registers to default names
@@ -2186,7 +2194,7 @@ def main():
   valid_asm = True
   for i in instructions:
     if i.address in prev_addresses:
-      asm_error('Duplicate address {:03X} \n   First: {}\n  Second: {}\n'.format(i.address, \
+      asm_error(_('Two instructions are assigned to address {:03X}\n   First: {}\n  Second: {}\n').format(i.address, \
         prev_addresses[i.address].error_line, i.error_line))
       valid_asm = False
       break
