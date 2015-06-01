@@ -1206,7 +1206,8 @@ class Assembler(object):
           if port is None:
             raise FatalError(s, _('Invalid operand:'), s.arg2)
           if not 0 <= port < 16:
-            raise FatalError(s, _('Invalid port for OUTPUTK:'), s.arg2)
+            port_name = '{:02X}'.format(port) if port == convert_literal(s.arg2) else '{} ({:02X})'.format(s.arg2, port)
+            raise FatalError(s, _('Invalid port for OUTPUTK <value>, <port>:  {}\n       Port must range from 0 to F').format(port_name))
 
           elems = []
           if s.arg1.endswith('$'):
@@ -1315,16 +1316,39 @@ class Assembler(object):
     # Pass 4: Find continuous blocks of labeled load&return instructions
     if self.use_pb6 and self.use_static_analysis:
       cur_label = None
+      prev_jump = None
       for s in instructions:
-        if s.label is not None: cur_label = s.label
+        if s.label is not None:
+          cur_label = s.label
+          prev_jump = None
+        
+        unconditional_jump = s.command == 'jump' and s.arg2 is None
 
-        if s.command == 'load&return':
-          # Mark l&r for preservation if its associated label is referenced by
-          # other code
-          if cur_label is not None and self.labels[cur_label].in_use and 'keep' not in s.tags:
-            s.tags['keep_auto'] = (True,)
+        # Mark l&r for preservation if its associated label is referenced by other code
+        # Mark two or more consecutive unconditional jumps for preservation as part of a jump table
+        if s.command == 'load&return' or (unconditional_jump and prev_jump):
+          if cur_label is not None and self.labels[cur_label].in_use:
+            if 'keep' not in s.tags:
+              s.tags['keep_auto'] = (True,)
+              
+              # Mark this as the (possible) end of a jump table and flag it for preservation
+              if unconditional_jump: # and s.arg1 in self.labels:
+                s.tags['jump_table_end'] = (True,)
+                s.tags['keep'] = (True,) # For jump table instructions we need to tag with 'keep'
+                del s.tags['keep_auto']
 
-        elif s.is_instruction(): cur_label = None
+                # Mark previous jump as part of a jump table and flag it for preservation
+                if 'jump_table_end' in prev_jump.tags: del prev_jump.tags['jump_table_end']
+                prev_jump.tags['jump_table'] = (True,)
+                prev_jump.tags['keep'] = (True,) # For jump table instructions we need to tag with 'keep'
+
+        elif s.is_instruction() and not unconditional_jump: cur_label = None
+        
+        # Remember previous jump instruction to identify jump tables
+        if unconditional_jump:
+          prev_jump = s
+        elif s.is_instruction():
+          prev_jump = None
 
     # Apply keep_auto to INST directives
     if self.use_static_analysis:
@@ -1338,7 +1362,6 @@ class Assembler(object):
       self.default_jump = 0
     else:
       self.default_jump = self.op_info['opcodes']['jump'] + self.default_jump
-
 
     return instructions
 
@@ -1543,7 +1566,7 @@ def find_reachability(addresses, itable, follow_keeps=False):
             find_reachability((s.immediate,), itable, follow_keeps)
 
           # Stop on unconditional jump
-          if s.command == 'jump' and s.arg2 is None: # Only 1 argument -> unconditional
+          if s.command == 'jump' and s.arg2 is None and 'jump_table' not in s.tags: # Only 1 argument -> unconditional
             break
 
       # Continue with next instruction if it exists
