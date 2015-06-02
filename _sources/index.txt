@@ -45,7 +45,7 @@ Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The
 Download
 --------
 
-You can access the Opbasm Mercurial repository from `Google Code <http://code.google.com/p/opbasm/source/checkout>`_. `Packaged source code <https://drive.google.com/folderview?id=0B5jin2146-EXd0hBTlAzem1ybmM&usp=sharing>`_ is also available for download. You can install direct from PyPI with the "pip" command if you have it available.
+You can access the Opbasm Git repository from `Github <https://github.com/kevinpt/opbasm>`_. `Packaged source code <https://drive.google.com/folderview?id=0B5jin2146-EXd0hBTlAzem1ybmM&usp=sharing>`_ is also available for download. You can install direct from PyPI with the "pip" command if you have it available.
 
 
 Installation
@@ -145,7 +145,7 @@ On the first assembly pass it is possible that the amount of extra code present 
 Using Opbasm
 ------------
 
-After installation you are ready to use Opbasm. The native KCPSM assemblers rely on HDL templates to carry assembled ROM data into synthesis. You can continue to use that process by using the provided Spartan-3 template or using a template from the KCPSM6 distribution. You can alternately use the `picoblaze_rom.vhdl <https://code.google.com/p/opbasm/source/browse/templates/picoblaze_rom.vhdl>`_ component which provides a generic resizable ROM that reads *.mem* and *.hex* files directly without requiring a template. See below for more information on the templating options.
+After installation you are ready to use Opbasm. The native KCPSM assemblers rely on HDL templates to carry assembled ROM data into synthesis. You can continue to use that process by using the provided Spartan-3 template or using a template from the KCPSM6 distribution. You can alternately use the `picoblaze_rom.vhdl <https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl>`_ component which provides a generic resizable ROM that reads *.mem* and *.hex* files directly without requiring a template. See below for more information on the templating options.
 
 The assembler is invoked with the *opbasm* script. It supports the following command line syntax:
 
@@ -232,7 +232,7 @@ Opbasm returns 0 on success and can be used with automated builds using make or 
 Templating
 ~~~~~~~~~~
 
-All of the official KCPSM-provided HDL templates are supported. Any custom templates you have created can be used unchanged. Because of improvements to XST's support for synthesis of BRAM generics since the last release of KCPSM3, an updated Spartan-3 template `ROM_form_S3_1K.vhdl <https://code.google.com/p/opbasm/source/browse/templates/ROM_form_S3_1K.vhdl>`_ is included that eliminates the warnings from redundant attribute declarations. Templates for PicoBlaze-6 devices can be found in the KCPSM6 distribution.
+All of the official KCPSM-provided HDL templates are supported. Any custom templates you have created can be used unchanged. Because of improvements to XST's support for synthesis of BRAM generics since the last release of KCPSM3, an updated Spartan-3 template `ROM_form_S3_1K.vhdl <https://github.com/kevinpt/opbasm/blob/master/templates/ROM_form_S3_1K.vhdl>`_ is included that eliminates the warnings from redundant attribute declarations. Templates for PicoBlaze-6 devices can be found in the KCPSM6 distribution.
 
 Because Opbasm is more flexible in the naming of modules, the original template system's assumption that the "{name}" field matches the input source file isn't necessarily valid. A new field "{source file}" is added that clearly indicates the original top level source file used to populate a template. This field is optional and only used in a comment so it is not critical to include it in your templates.
 
@@ -251,7 +251,7 @@ To save the bother of hunting down templates when you start a new project, you c
 Generic ROM component
 ~~~~~~~~~~~~~~~~~~~~~
 
-As an alternative to the templating system, a generic, synthesizable VHDL ROM is provided in the `picoblaze_rom.vhdl <https://code.google.com/p/opbasm/source/browse/templates/picoblaze_rom.vhdl>`_  file. This component uses XSTs limited support for textio during synthesis to read a *.mem* or *.hex* file directly without the use of a template file. It takes advantage of XSTs support for automatically partitioning memories that exceed the maximum size of a BRAM. This provides a simplification of the synthesis flow and you do not need to manually switch to different template files if you change the size of the ROM for PicoBlaze-6 designs. For simulation, this component has the advantage that it doesn't have to be recompiled for every change to the PicoBlaze source code in a design and is portable across Xilinx families. It automatically re-reads the latest *.mem* or *.hex* whenever the simulation is reset. A generic can be set to select the implementation as BRAM or distributed RAM.
+As an alternative to the templating system, a generic, synthesizable VHDL ROM is provided in the `picoblaze_rom.vhdl <https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl>`_  file. This component uses XSTs limited support for textio during synthesis to read a *.mem* or *.hex* file directly without the use of a template file. It takes advantage of XSTs support for automatically partitioning memories that exceed the maximum size of a BRAM. This provides a simplification of the synthesis flow and you do not need to manually switch to different template files if you change the size of the ROM for PicoBlaze-6 designs. For simulation, this component has the advantage that it doesn't have to be recompiled for every change to the PicoBlaze source code in a design and is portable across Xilinx families. It automatically re-reads the latest *.mem* or *.hex* whenever the simulation is reset. A generic can be set to select the implementation as BRAM or distributed RAM.
 
 XST doesn't infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The "``ROM_form_S6_4K_<date>.vhd``" template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.
 
