@@ -1,0 +1,1134 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>m4 support in Opbasm &mdash; Opbasm 1.3 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/opbasm.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Opbasm 1.3 documentation" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li><a href="../index.html">Opbasm 1.3 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="m4-support-in-opbasm">
+<h1>m4 support in Opbasm<a class="headerlink" href="#m4-support-in-opbasm" title="Permalink to this headline">¶</a></h1>
+<p>The m4 preprocessor adds powerful facilities for enhanced PicoBlaze assembly. m4 is typically already present on most Linux systems. Various implementations can be installed on Windows. Opbasm will automatically run m4 if a source file has the extension &#8221;.psm4&#8221; or &#8221;.m4&#8221; or on any file if the <tt class="docutils literal"><span class="pre">--m4</span></tt> option is used. The included macro package depends on some GNU extensions so GNU m4 must be used if the built-in macros are employed.</p>
+<p>Predefined macros are provided with Opbasm covering the following areas:</p>
+<blockquote>
+<div><ul class="simple">
+<li><a class="reference internal" href="#stack-operations">Stack operations</a></li>
+<li><a class="reference internal" href="#bitfield-manipulations">Bitfield manipulations</a></li>
+<li><a class="reference internal" href="#shift-and-rotate-by-multiple-bits">Shift and rotate by multiple bits</a></li>
+<li><a class="reference internal" href="#conditional-jump-call-and-return">Conditional jump, call, and return</a></li>
+<li><a class="reference internal" href="#conditional-if-then-else">Conditional if-then-else</a></li>
+<li><a class="reference internal" href="#looping">Looping</a></li>
+<li><a class="reference internal" href="#delay-generators">Delay generators</a></li>
+<li><a class="reference internal" href="#repeated-string-and-table-operations-that-work-on-picoblaze-3">Repeated string and table operations that work on PicoBlaze-3</a></li>
+<li><a class="reference internal" href="#bit-arithmetic-logical-and-shift-operators">16-bit arithmetic, logical, and shift operators</a></li>
+<li><a class="reference internal" href="#bit-i-o-operations">16-bit I/O operations</a></li>
+<li><a class="reference internal" href="#multiply-and-divide-routines">Multiply and divide routines</a></li>
+<li><a class="reference internal" href="#expressions">Expressions</a></li>
+</ul>
+</div></blockquote>
+<p>Using these macros you can write code in a higher-level style like the following Fibonacci generator.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">With macros:</th>
+<th class="head">After expansion:</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><div class="first last highlight-python"><div class="highlight"><pre>fibonacci:
+  ; Generate the first 10 Fibonacci numbers
+  vars(s0 is counter, s1 is two_prev := 0,
+      s2 is prev := 1, s3 is next)
+  for (counter := 0, counter &lt; 10, counter := counter + 1) {
+   if (counter &lt; 2) {
+     LOAD next, counter
+   } else {
+     ; Compute next number
+     expr(next := two_prev + prev)
+     LOAD two_prev, prev
+     LOAD prev, next
+   }
+   push(next)
+   CALL print_num   ; Output the next number
+  }
+  RETURN
+</pre></div>
+</div>
+</td>
+<td><div class="first last highlight-python"><div class="highlight"><pre>      fibonacci:
+                 ; Generate the first 10 Fibonacci numbers
+                 LOAD s1, 00          ; Var two_prev := 0
+                 LOAD s2, 01          ; Var prev := 1
+                 ; Expression: s0 := 0
+                 LOAD s0, 00
+
+    FOR_f1_0001:
+                 ; If s0 &lt; 10
+                 COMPARE s0, 0a
+                 JUMP nc, GE_f1_0004
+
+                 ; If s0 &lt; 2
+                 COMPARE s0, 02
+                 JUMP nc, GE_f1_0006
+                 LOAD s3, s0
+                 JUMP ENDIF_f1_0007
+
+     GE_f1_0006:
+                 ; Compute next number
+                 ; Expression: s3 := s1 + s2
+                 LOAD s3, s1
+                 ADD s3, s2
+                 LOAD s1, s2
+                 LOAD s2, s3
+
+  ENDIF_f1_0007:
+                 STORE s3, (sf)       ; Push
+                 SUB sf, 01
+                 CALL print_num       ; Output the next number
+
+NEXTFOR_f1_0002:
+                 ; Expression: s0 := s0 + 1
+                 ADD s0, 01
+                 JUMP FOR_f1_0001
+     GE_f1_0004:
+ENDLOOP_f1_0003:
+                 RETURN
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="installing-m4-on-windows">
+<span id="guidance-on-installing-m4-under-windows"></span><h2>Installing m4 on Windows<a class="headerlink" href="#installing-m4-on-windows" title="Permalink to this headline">¶</a></h2>
+<p>There are a few options for installing m4 on Windows: MinGW, GnuWin32, and Cygwin.</p>
+<div class="section" id="mingw">
+<h3>MinGW<a class="headerlink" href="#mingw" title="Permalink to this headline">¶</a></h3>
+<p>Download the <a class="reference external" href="http://sourceforge.net/projects/mingw/files/Installer/">get-mingw-setup</a> graphical installer. Run it and select the &#8220;msys-base&#8221; package and either &#8220;msys-m4&#8221; binary package (under All packages|MSYS|MSYS Base System) or &#8220;mingw-developer-toolkit&#8221;. Add &#8220;C:\MinGW\msys\1.0\bin&#8221; to your system PATH environment variable.</p>
+</div>
+<div class="section" id="gnuwin32">
+<h3>GnuWin32<a class="headerlink" href="#gnuwin32" title="Permalink to this headline">¶</a></h3>
+<p>To install the GnuWin32 version of m4, download the <a class="reference external" href="http://gnuwin32.sourceforge.net/packages/m4.htm">m4</a> and <a class="reference external" href="http://gnuwin32.sourceforge.net/packages/regex.htm">regex</a> packages. Unzip them and put regex2.dll into the same directory as m4.exe. Add the installation directory to your system PATH environment variable.</p>
+</div>
+<div class="section" id="cygwin">
+<h3>Cygwin<a class="headerlink" href="#cygwin" title="Permalink to this headline">¶</a></h3>
+<p>This option is best if you&#8217;ve installed Opbasm into a Cygwin environment. In the <a class="reference external" href="http://cygwin.com/install.html">Cygwin installer</a> select the m4 package (under Interpreters) for installation. Opbasm will be able to use m4 immediately within a Cygwin shell.</p>
+</div>
+</div>
+<div class="section" id="overview-of-m4">
+<h2>Overview of m4<a class="headerlink" href="#overview-of-m4" title="Permalink to this headline">¶</a></h2>
+<p>m4 performs text based string manipulation by performing expansion of previously defined macros. The preprocessor has a number of built in macros and provides a means to define your own. Macros have a name that contains letters, digits, and underscores. Any arguments are enclosed in parentheses and delimited by commas. Expansion is suppressed by enclosing text in quote characters which are <tt class="docutils literal"><span class="pre">`'</span></tt> by default. Comments start with &#8220;#&#8221; by default but have been changed to use &#8221;;&#8221; to match PicoBlaze syntax.</p>
+<p>m4 uses different syntax from PicoBlaze assembly to represent different types of literals. It is important to know what context you are operating in to determine which type of literal to put in your source.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="32%" />
+<col width="35%" />
+<col width="32%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head"><strong>Type</strong></th>
+<th class="head"><strong>PicoBlaze</strong></th>
+<th class="head"><strong>m4</strong></th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>decimal</td>
+<td>10&#8217;d</td>
+<td>10</td>
+</tr>
+<tr class="row-odd"><td>hexadecimal</td>
+<td>0a</td>
+<td>0x0a</td>
+</tr>
+<tr class="row-even"><td>binary</td>
+<td>00001010&#8217;b</td>
+<td>0b1010</td>
+</tr>
+<tr class="row-odd"><td>char</td>
+<td>&#8220;A&#8221;</td>
+<td>A or <tt class="docutils literal"><span class="pre">`A'</span></tt></td>
+</tr>
+</tbody>
+</table>
+<p>In general you use m4 syntax for literals passed as arguments to macros within parentheses. The only exception is <tt class="docutils literal"><span class="pre">pbhex()</span></tt> which takes a list of hex values in PicoBlaze format. Be careful not to use PicoBlaze hex format in other m4 contexts as it will be misinterpreted as decimal if only digits 0-9 are used.</p>
+<p>m4 includes the ability to evaluate arbitrary integer expressions using the <tt class="docutils literal"><span class="pre">eval()</span></tt> macro. Its default output is an m4 decimal integer so the similar <tt class="docutils literal"><span class="pre">evalh()</span></tt> and <tt class="docutils literal"><span class="pre">evald()</span></tt> are provided to evaluate expressions resulting in PicoBlaze hex or decimal format.</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, evald(4 * 5 + 1) ; Expands to &quot;load s0, 21&#39;d&quot;
+</pre></div>
+</div>
+<p>The expression evaluator permits the natural use of negative decimal literals:</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, evalh(-20) ; Expands to &quot;load s0, ec&quot;
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">evala()</span></tt> macro works like <tt class="docutils literal"><span class="pre">evalh()</span></tt> but expands to a 12-bit PicoBlaze address.</p>
+<div class="highlight-python"><div class="highlight"><pre>define(DATA_ORG, 0x200)
+address evala(DATA_ORG)   ; Expands to &quot;address 200&quot;
+</pre></div>
+</div>
+<p>m4 expressions support all of the C language operators as well as <tt class="docutils literal"><span class="pre">**</span></tt> for exponentiation.</p>
+<p>An <tt class="docutils literal"><span class="pre">evalx()</span></tt> macro is available which works like the builtin <tt class="docutils literal"><span class="pre">eval()</span></tt> but also accepts strings that are not valid expressions.</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, evalx(9 + 2, 16, 2)  ; Expands to &quot;load s0, 0b&quot;
+constant CNAME, 1f
+load s0, evalx(CNAME)         ; Expands to &quot;load s0, CNAME&quot;
+</pre></div>
+</div>
+<p>You can define aliases for registers without altering the original as with NAMEREG.</p>
+<div class="highlight-python"><div class="highlight"><pre>define(alt_name, s0)
+load alt_name, 01 ; Expands to &quot;load s0, 01&quot;
+add s0, 01        ; s0 register is still visible
+</pre></div>
+</div>
+<p>Special logic is implemented in a preprocessor stage so that PicoBlaze constants are visible to m4. They are automatically converted from PicoBlaze format into m4 format.</p>
+<div class="highlight-python"><div class="highlight"><pre>constant THE_ANSWER, 42&#39;d
+expr(s0 := s1 + THE_ANSWER)                            ; Same as expr(s0 := s1 + 42)
+if(s0 &gt; THE_ANSWER, `output s1, 00&#39;, `output s2, 00&#39;)  ; Left operand is treated like a constant
+</pre></div>
+</div>
+<p>You can use also use <tt class="docutils literal"><span class="pre">define()</span></tt> to establish constants that are visible to m4 and create more complex macros. <a class="reference external" href="http://mbreen.com/m4.html">Michael Breen&#8217;s notes on m4</a> provide a good introductory overview to m4. The <a class="reference external" href="https://www.gnu.org/savannah-checkouts/gnu/m4/manual/">Gnu m4 manual</a> provides more detailed documentation.</p>
+</div>
+<div class="section" id="type-conversions">
+<h2>Type conversions<a class="headerlink" href="#type-conversions" title="Permalink to this headline">¶</a></h2>
+<p>Some basic macros are provided to perform type conversions. They are useful for constructing parameters to other macros that only expect decimal values.</p>
+<p>The <tt class="docutils literal"><span class="pre">pbhex()</span></tt> macro is used to convert a list of values in PicoBlaze hex format into m4 decimals.</p>
+<div class="highlight-python"><div class="highlight"><pre>pbhex(0a, 0b, ff)  ; Expands to &quot;10, 11, 255&quot;
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">asciiord()</span></tt> macro converts a string of one or more characters to a list of decimals representing their ASCII encoding. Quotes are not strictly necessary but guard against including trailing whitespace.</p>
+<div class="highlight-python"><div class="highlight"><pre>asciiord(0)          ; Expands to &quot;48&quot;
+asciiord(`any str&#39;)  ; Expands to &quot;97, 110, 121, 32, 115, 116, 114&quot;
+</pre></div>
+</div>
+<p>If you need a NUL terminated string the <tt class="docutils literal"><span class="pre">asciiord_cstr()</span></tt> macro works the same but appends a terminating 0:</p>
+<div class="highlight-python"><div class="highlight"><pre>asciiord_cstr(`1234&#39;) ; Expands to &quot;49, 50, 51, 52, 0&quot;
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">words_le()</span></tt> and <tt class="docutils literal"><span class="pre">words_be()</span></tt> macros convert a list of 16-bit numbers into little-endian or big-endian bytes.</p>
+<div class="highlight-python"><div class="highlight"><pre>words_le(0xff01, 0xff02)  ; Expands to &quot;1, 255, 2, 255&quot;
+words_be(0xff01, 0xff02)  ; Expands to &quot;255, 1, 255, 2&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="general-purpose-macros">
+<h2>General purpose macros<a class="headerlink" href="#general-purpose-macros" title="Permalink to this headline">¶</a></h2>
+<p>A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to <cite>sE</cite> by default. You can change it to another register by calling <tt class="docutils literal"><span class="pre">use_tempreg(&lt;reg&gt;)</span></tt>. The temp register can be accessed in your own macros by using the <tt class="docutils literal"><span class="pre">&quot;_tempreg&quot;</span></tt> macro.</p>
+<div class="highlight-python"><div class="highlight"><pre>use_tempreg(sA)    ; Switch to sA for the temp register
+</pre></div>
+</div>
+<p>The following macros use the temp register:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="16%" />
+<col width="18%" />
+<col width="20%" />
+<col width="22%" />
+<col width="24%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>setcy</td>
+<td>expr2s</td>
+<td>multiply8x8</td>
+<td>multiply8x8s</td>
+<td>multiply8x8su</td>
+</tr>
+<tr class="row-even"><td>divide8x8</td>
+<td>divide8x8s</td>
+<td>divide16x8</td>
+<td>divide16x8s</td>
+<td>divide8xk</td>
+</tr>
+</tbody>
+</table>
+<p>The other <tt class="docutils literal"><span class="pre">expr()</span></tt> macros use the temp register indirectly when the mul and div operations are invoked.</p>
+<p>PicoBlaze programs commonly contain lists of constant declarations for IO port addresses. The <tt class="docutils literal"><span class="pre">iodefs(&lt;start</span> <span class="pre">port&gt;,</span> <span class="pre">[port</span> <span class="pre">names]+)</span></tt> macro simplifies their declaration by allowing contiguous sequences of ports to be named in one statement. It can also be used to define scratchpad addresses.</p>
+<div class="highlight-python"><div class="highlight"><pre>iodefs(0, P_control, P_read, P_write)
+
+Expands to:
+  constant P_control, 00
+  constant P_read, 01
+  constant P_write, 02
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">vars([&lt;reg&gt;</span> <span class="pre">is</span> <span class="pre">&lt;alias&gt;</span> <span class="pre">[:=</span> <span class="pre">&lt;init&gt;]]+)</span></tt> macro allows you to associate alias names with a register. Unlike the <tt class="docutils literal"><span class="pre">NAMEREG</span></tt> directive, the original register name is still available. An optional initial value can be provided:</p>
+<div class="highlight-python"><div class="highlight"><pre>vars(s0 is count := 0, s1 is sum)
+
+Expands to:
+  load s0, 00
+</pre></div>
+</div>
+<p>Symbols &#8220;count&#8221; and &#8220;sum&#8221; can now be used in place of s0 and s1.</p>
+</div>
+<div class="section" id="stack-operations">
+<h2>Stack operations<a class="headerlink" href="#stack-operations" title="Permalink to this headline">¶</a></h2>
+<p>A set of macros are available to simulate a stack using the scratchpad RAM. You initialize the stack and establish the stack pointer register with a call to <tt class="docutils literal"><span class="pre">use_stack()</span></tt>. After that you can call <tt class="docutils literal"><span class="pre">push()</span></tt> and <tt class="docutils literal"><span class="pre">pop()</span></tt> to manage registers on the stack. You can push and pop any number of registers at once. Pops happen in reverse order to preserve register values when passed the same list as <tt class="docutils literal"><span class="pre">push()</span></tt>. The stack grows down so the initial address should be the highest the stack will occupy.</p>
+<div class="highlight-python"><div class="highlight"><pre>namereg sF, SP      ; Protect sF for use as the stack pointer
+use_stack(SP, 0x3F) ; Start stack at end of 64-byte scratchpad
+...
+
+my_func:
+  push(s0, s1)
+  &lt;Do something that alters s0 and s1&gt;
+  pop(s0, s1)
+  return
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">getstack()</span></tt>, <tt class="docutils literal"><span class="pre">getstackat()</span></tt>, and <tt class="docutils literal"><span class="pre">dropstack()</span></tt> macros can be used to retrieve and drop values from a stack frame. This provides a facility for passing function arguments on the stack and is particularly useful for writing functions that take a variable number of arguments. Use the <tt class="docutils literal"><span class="pre">dropstackreg()</span></tt> macro to drop a variable number of arguments stored in a register.</p>
+<div class="highlight-python"><div class="highlight"><pre>  load s0, BE
+  push(s0)    ; First argument
+  load s0, EF
+  push(s0)    ; Second argument
+  call my_func2
+
+my_func2:
+  getstack(s3, s4) ; Retrieve first and second argument
+  &lt;Do your business&gt;
+  dropstack(2)         ; Remove arguments from the stack
+  return
+</pre></div>
+</div>
+<p>You can use the <tt class="docutils literal"><span class="pre">getstackat()</span></tt> macro to retrieve values from the stack one at a time in any order.</p>
+<div class="highlight-python"><div class="highlight"><pre>my_func3:
+  getstackat(s4, 1) ; Retrieve second argument (SP + 1)
+  getstackat(s3, 2) ; Retrieve first argument  (SP + 2)
+  &lt;Do your business&gt;
+  dropstack(2)    ; Remove arguments from the stack
+  return
+</pre></div>
+</div>
+<p>You may wish to allocate temporary space on the stack for local variables in a function. Use the <tt class="docutils literal"><span class="pre">addstack()</span></tt> and <tt class="docutils literal"><span class="pre">addstackreg()</span></tt> macros to accomplish this. <tt class="docutils literal"><span class="pre">putstack()</span></tt> and <tt class="docutils literal"><span class="pre">putstackat()</span></tt> are used to store register values on the stack.</p>
+<div class="highlight-python"><div class="highlight"><pre>my_func4:
+  addstack(4) ; Add 4 bytes to the stack to work with
+  putstack(s0, s1, s2, s3)
+  getstackat(s4, 2)
+  dropstack(4) ; Remove local frame
+</pre></div>
+</div>
+</div>
+<div class="section" id="bitfield-operations">
+<span id="bitfield-manipulations"></span><h2>Bitfield operations<a class="headerlink" href="#bitfield-operations" title="Permalink to this headline">¶</a></h2>
+<p>A set of macros are available to manipulate bitfields without manually constructing hex masks.</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, f0
+setbit(s0, 0)                ; s0 = f1
+setbit(s0, 2)                ; s0 = f5
+clearbit(s0, 7)              ; s0 = 75
+
+setmask(s0, mask(0,1,2,3))   ; s0 = 7f
+clearmask(s0, mask(4,5,6,7)) ; s0 = 0f
+
+testbit(s0, 0)               ; Test if bit-0 is set or clear
+jump nz, somewhere
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">maskh()</span></tt> macro works like <tt class="docutils literal"><span class="pre">mask()</span></tt> but produces a result in PicoBlaze hex format so it can be used as a direct argument to any instruction that takes a constant.</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, maskh(0,1,2,6,7)  ; Expands to &quot;load s0, c7&quot;
+</pre></div>
+</div>
+</div>
+<div class="section" id="shift-and-rotate">
+<span id="shift-and-rotate-by-multiple-bits"></span><h2>Shift and rotate<a class="headerlink" href="#shift-and-rotate" title="Permalink to this headline">¶</a></h2>
+<p>Shifts and rotates are inconvenient in PicoBlaze assembly because they must be performed one bit at a time. Macros are provided that generate shifts and rotates by any number of bits more easily.</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, 01
+sl0(s0, 4)  ; Shift left by 4 bits  s0 = 00010000&#39;b
+sr1(s0, 3)  ; Shift right by 3 bits with 1&#39;s inserted  s0 = 11100010&#39;b
+</pre></div>
+</div>
+<p>All 10 of the PicoBlaze shift and an rotate instructions have macro equivalents. The original instructions can still be used as usual.</p>
+</div>
+<div class="section" id="conditional-jump-call-and-return">
+<span id="id9"></span><h2>Conditional jump call and return<a class="headerlink" href="#conditional-jump-call-and-return" title="Permalink to this headline">¶</a></h2>
+<p>PicoBlaze assembly depends on using the carry and zero flags directly to handle conditional jump and call instructions. It can be difficult to remember how the carry flag is interpreted so a set of macros are provided to perform more natural conditional instructions.</p>
+<div class="highlight-python"><div class="highlight"><pre>compare s0, s1
+jne(not_equal)           ; Jump if s0 != s1
+jeq(equal)               ; Jump if s0 == s1
+jge(greater_or_equal)    ; Jump if s0 &gt;= s1
+jlt(less_than)           ; Jump if s0 &lt; s1
+
+callne(not_equal)        ; Call if s0 != s1
+calleq(equal)            ; Call if s0 == s1
+callge(greater_or_equal) ; Call if s0 &gt;= s1
+calllt(less_than)        ; Call if s0 &lt; s1
+
+retne                    ; Return if s0 != s1
+reteq                    ; Return if s0 == s1
+retge                    ; Return if s0 &gt;= s1
+retlt                    ; Return if s0 &lt; s1
+</pre></div>
+</div>
+</div>
+<div class="section" id="conditional-if-then-else">
+<h2>Conditional if-then-else<a class="headerlink" href="#conditional-if-then-else" title="Permalink to this headline">¶</a></h2>
+<p>A high level <tt class="docutils literal"><span class="pre">if()</span></tt> macro is present that provides evaluation of infix Boolean expressions. It takes the form of <tt class="docutils literal"><span class="pre">if(&lt;expr&gt;,&lt;true</span> <span class="pre">block&gt;,[&lt;expr&gt;,&lt;true</span> <span class="pre">block</span> <span class="pre">2&gt;...|&lt;else</span> <span class="pre">block&gt;])</span></tt>. The expression syntax uses conventional C operators ==, !=, &lt;, ,&gt;=, &gt;, &lt;=, and &amp;. Additional expressions after the first true block produce else-if evaluation similar to m4&#8217;s <tt class="docutils literal"><span class="pre">ifelse()</span></tt> macro. It is important to guard code blocks with m4 quotes to avoid errors caused by m4 splitting strings with internal commas. The <tt class="docutils literal"><span class="pre">if()</span></tt> macro implements a <tt class="docutils literal"><span class="pre">COMPARE</span></tt> instruction and generates the appropriate branch logic to test the flags. Unique generated labels are inserted into the code to manage the sequencing of the code blocks.</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, 05
+if(s0 &lt; 10,
+  `load s1, &quot;T&quot;
+  output s1, 00&#39;,
+; else-if
+s0 &lt; 8,
+  `load s1, &quot;t&quot;
+  output s1, 01&#39;,
+;else
+  `load s1 &quot;F&quot;
+  output s1, 02&#39;
+)
+</pre></div>
+</div>
+<p>In addition, the &amp; operator can be used to generate a <tt class="docutils literal"><span class="pre">TEST</span></tt> instruction instead of <tt class="docutils literal"><span class="pre">COMPARE</span></tt>. The true block is executed if the test result is non-zero:</p>
+<div class="highlight-python"><div class="highlight"><pre>; Check if MSB is set
+if(s0 &amp; 0x80, `load s1, 00&#39;)
+</pre></div>
+</div>
+<p>You can invoke signed comparison using the <tt class="docutils literal"><span class="pre">comapres()</span></tt> macro by wrapping the expression in <tt class="docutils literal"><span class="pre">signed()</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0 evalh(-10) ; -10 = 0xF6 which evaluates as &gt; 5 in unsigned comparison
+if(signed(s0 &lt; 5),`load s1, 00&#39;) ; evaluate as &lt; 5 using signed comparison
+</pre></div>
+</div>
+<p>Macros can be used within the code blocks including nested <tt class="docutils literal"><span class="pre">if()</span></tt> macros:</p>
+<div class="highlight-python"><div class="highlight"><pre>if(s0 &lt; s1,
+   `&lt;something&gt;&#39;,
+; else
+  `if(s2 &gt;= s3,`&lt;something else&gt;&#39;)&#39;
+)
+</pre></div>
+</div>
+<div class="section" id="c-style-syntax">
+<h3>C-style syntax<a class="headerlink" href="#c-style-syntax" title="Permalink to this headline">¶</a></h3>
+<p>The m4 syntax for the <tt class="docutils literal"><span class="pre">if()</span></tt> macro is a little untidy but an alternate C-style syntax can be used. It is implemented using an initial preprocessing step where pattern matching converts C-style control flow statements into m4 syntax. Instead of m4 quotes, code blocks are surrounded by mandatory curly braces. Unlike m4 macros, whitespace is permitted between the <tt class="docutils literal"><span class="pre">if</span></tt> keyword and its comparison expression.</p>
+<div class="highlight-python"><div class="highlight"><pre>if (s0 &lt; s1) {
+  load s0, &quot;T&quot;
+} else if (s2 == s3) {
+  load s0, &quot;t&quot;
+} else {
+  load s0, &quot;F&quot;
+}
+</pre></div>
+</div>
+<p>A set of lower level if-then-else macros are provided to expose the internal workings of <tt class="docutils literal"><span class="pre">if()</span></tt>. The macros are <tt class="docutils literal"><span class="pre">ifeq()</span></tt>, <tt class="docutils literal"><span class="pre">ifne()</span></tt>, <tt class="docutils literal"><span class="pre">ifge()</span></tt>, and <tt class="docutils literal"><span class="pre">iflt()</span></tt>. Unlike <tt class="docutils literal"><span class="pre">if()</span></tt>, no <tt class="docutils literal"><span class="pre">COMPARE</span></tt> or <tt class="docutils literal"><span class="pre">TEST</span></tt> instruction is generated from an expression. You have to prepare the flags on your own. The first argument is the code to execute for the true condition. An optional second argument is used for the else clause.</p>
+<div class="highlight-python"><div class="highlight"><pre>compare s0, s1
+ifeq(
+  `load s4, 20
+   output s4, PORT&#39;,
+; else
+  `load s4, 30
+   output s4, PORT2&#39;)
+</pre></div>
+</div>
+<p>This expands to the following:</p>
+<div class="highlight-python"><div class="highlight"><pre>compare s0, s1
+jump nz, NEQ_f1_0001
+load s4, 20
+   output s4, PORT
+jump ENDIF_f1_0002
+NEQ_f1_0001:
+; else
+  load s4, 30
+   output s4, PORT2
+ENDIF_f1_0002:
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="looping">
+<h2>Looping<a class="headerlink" href="#looping" title="Permalink to this headline">¶</a></h2>
+<p>Similarly to <tt class="docutils literal"><span class="pre">if()</span></tt> there are a set of high level looping macros <tt class="docutils literal"><span class="pre">for()</span></tt>, <tt class="docutils literal"><span class="pre">while()</span></tt>, and <tt class="docutils literal"><span class="pre">dowhile()</span></tt>. They implement the corresponding looping constructs using the syntax <tt class="docutils literal"><span class="pre">for(&lt;init&gt;,&lt;expr&gt;,&lt;update&gt;,&lt;loop</span> <span class="pre">body&gt;)</span></tt> and <tt class="docutils literal"><span class="pre">[do]while(&lt;expr&gt;,&lt;loop</span> <span class="pre">body&gt;)</span></tt>. Signed comparison is supported just as with <tt class="docutils literal"><span class="pre">if()</span></tt> using the <tt class="docutils literal"><span class="pre">signed()</span></tt> macro as a modifier. The for loop macro uses the <tt class="docutils literal"><span class="pre">expr()</span></tt> macro syntax for the <em>init</em> and <em>update</em> fields.</p>
+<div class="highlight-python"><div class="highlight"><pre>for(s0 := -10, signed(s0 &lt; 10), s0 := s0 + 1,
+  `output s1, P_FOO&#39;
+)
+</pre></div>
+</div>
+<div class="highlight-python"><div class="highlight"><pre>; Output s1 to port 00 10 times
+load s0, 00
+while(s0 &lt; 10,
+  `output s1, P_FOO
+   add s0, 01&#39;
+)
+</pre></div>
+</div>
+<div class="section" id="id30">
+<h3>C-style syntax<a class="headerlink" href="#id30" title="Permalink to this headline">¶</a></h3>
+<p>Similarly to the <tt class="docutils literal"><span class="pre">if()</span></tt> macro, an alternate C-style syntax is available for <tt class="docutils literal"><span class="pre">for()</span></tt>, <tt class="docutils literal"><span class="pre">while()</span></tt>, and <tt class="docutils literal"><span class="pre">dowhile()</span></tt>. Note that the <tt class="docutils literal"><span class="pre">for()</span></tt> macro continues to use commas to separate the sections.</p>
+<div class="highlight-python"><div class="highlight"><pre>for (s0 := 0, s0 &lt; s1, s0 := s0 + 1) {
+  output s0, P_FOO
+}
+
+while (s0 &lt; s1) {
+  add s0, 01
+  output s0, P_FOO
+}
+
+do {
+  add s0, 01
+  output s0, P_FOO
+} while (s0 &lt; s1)
+</pre></div>
+</div>
+<p>Two macros, <tt class="docutils literal"><span class="pre">break</span></tt> and <tt class="docutils literal"><span class="pre">continue</span></tt>, are available to exit the current loop and restart a loop respectively. In a for loop the <tt class="docutils literal"><span class="pre">continue</span></tt> macro will execute the <em>update</em> field expression to prepare the next iteration.</p>
+<div class="highlight-python"><div class="highlight"><pre>; &quot;continue&quot; resumes execution here
+while (s0 &lt; s1) {
+  add s0, 01
+  if (s3 == 4) { continue }
+  if (s2 == 5) { break }
+  output s0, 00
+}
+; &quot;break&quot; resumes execution here
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="delay-generators">
+<h2>Delay generators<a class="headerlink" href="#delay-generators" title="Permalink to this headline">¶</a></h2>
+<p>A set of delay generator macros are available to implement software delays. The simplest is <tt class="docutils literal"><span class="pre">delay_cycles()</span></tt> which delays by a number of instruction cycles (each being two clock cycles). It is implemented with recursive loops and requires no registers to function.</p>
+<div class="highlight-python"><div class="highlight"><pre>delay_cycles(40)   ; Delay for 40 instructions
+</pre></div>
+</div>
+<p>The delay can be from 0 to approximately 100e9 but a practical limit would be to keep the delay less than 200 cycles to restrict the amount of generated code. You must ensure that there is enough space on the call stack to perform the recursive calls.</p>
+<p>Delays by microseconds and milliseconds are implemented with the <tt class="docutils literal"><span class="pre">delay_us()</span></tt> and <tt class="docutils literal"><span class="pre">delay_ms()</span></tt> macros. Before using these you must establish the system clock frequency with the <tt class="docutils literal"><span class="pre">use_clock()</span></tt> macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay by a certain number of instructions if needed.</p>
+<div class="highlight-python"><div class="highlight"><pre>use_clock(100)                     ; 100 MHz system clock
+
+; 10 ms delay subroutine
+delay_10ms: delay_ms(10, s4,s5, 2) ; Adjust delay by 2 instructions for call and return
+            return
+
+...
+call delay_10ms
+; Exactly 10 ms have passed here
+
+...
+delay_ms(10, s4, s5)               ; Inline delay by 10 ms
+; Exactly 10 ms have passed here
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">delay_*()</span></tt> macros take a delay value, a pair of registers and an optional adjustment as arguments. The delay value is the amount of delay in the associated units. The upper limit depends on the clock frequency. At 100 MHz the maximum delay is 214 ms. The registers are used for an internal 16-bit counter. The internal delay loop is automatically adjusted to ensure the count value fits within 16-bits. When implementing a delay as a subroutine an adjustment can be added to account for the <tt class="docutils literal"><span class="pre">CALL</span></tt> and <tt class="docutils literal"><span class="pre">RETURN</span></tt> instructions.</p>
+<p>If you need to use multiple delays it may be desirable to have a common delay routine that supports variable delay counts. This is provided by the <tt class="docutils literal"><span class="pre">var_delay_us()</span></tt> and <tt class="docutils literal"><span class="pre">var_delay_ms()</span></tt> macros. They are similar to the fixed delays but are not cycle accurate and have no provision for adjustment.</p>
+<div class="highlight-python"><div class="highlight"><pre>use_clock(50)            ; 50 MHz system clock
+
+define(MAX_DELAY, 200)   ; Maximum 200 us delay
+
+var_delay: var_delay_us(MAX_DELAY, s4,s5)
+           return
+...
+
+load16(s4,s5, var_count_us(20, MAX_DELAY))  ; 20 us delay
+call var_delay
+...
+
+load16(s4,s5, var_count_us(150, MAX_DELAY)) ; 150 us delay
+call var_delay
+</pre></div>
+</div>
+<p>The first argument to the <tt class="docutils literal"><span class="pre">var_delay_*()</span></tt> macros is the maximum delay value to support. When a delay is needed you must load the count registers with a constant computed with the <tt class="docutils literal"><span class="pre">var_count_*()</span></tt> macros.</p>
+</div>
+<div class="section" id="string-and-table-operations">
+<span id="repeated-string-and-table-operations-that-work-on-picoblaze-3"></span><span id="string-and-table-ops"></span><h2>String and table operations<a class="headerlink" href="#string-and-table-operations" title="Permalink to this headline">¶</a></h2>
+<p>PicoBlaze-3 doesn&#8217;t have the ability to handle strings as efficiently as PB6 but it is still necessary to work with them at times. Suppose that you have a subroutine &#8220;write_char&#8221; that writes characters in s0 out to a peripheral. You can write entire strings with the following:</p>
+<div class="highlight-python"><div class="highlight"><pre>callstring(write_char, s0, `My string&#39;) ; Note use of m4 quotes `&#39; to enclose the string
+</pre></div>
+</div>
+<p>This expands to the following:</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, &quot;M&quot;
+call write_char
+load s0, &quot;y&quot;
+call write_char
+load s0, &quot; &quot;
+call write_char
+...
+load s0, &quot;n&quot;
+call write_char
+load s0, &quot;g&quot;
+call write_char
+</pre></div>
+</div>
+<p>Similarly you can call with arbitrary bytes in a table. The <tt class="docutils literal"><span class="pre">pbhex()</span></tt> macro is useful here to express hex numbers with less clutter.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">calltable</span><span class="p">(</span><span class="n">write_char</span><span class="p">,</span> <span class="n">s0</span><span class="p">,</span>  <span class="n">pbhex</span><span class="p">(</span><span class="n">DE</span><span class="p">,</span> <span class="n">AD</span><span class="p">,</span> <span class="n">BE</span><span class="p">,</span> <span class="n">EF</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>There are four targets for string and table macros: &#8220;call&#8221;, &#8220;output&#8221;, &#8220;store&#8221;, and &#8220;inst&#8221;. They work similarly to the &#8220;call&#8221; macros above but generate &#8220;output&#8221;, &#8220;store&#8221;, or &#8220;inst&#8221; instructions in place of &#8220;call&#8221;.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="14%" />
+<col width="17%" />
+<col width="15%" />
+<col width="18%" />
+<col width="36%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>callstring</td>
+<td>outputstring</td>
+<td>storestring</td>
+<td>storestringat</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>calltable</td>
+<td>outputtable</td>
+<td>storetable</td>
+<td>storetableat</td>
+<td>insttable_le, insttable_be</td>
+</tr>
+</tbody>
+</table>
+<p>The <tt class="docutils literal"><span class="pre">storestringat()</span></tt> and <tt class="docutils literal"><span class="pre">storetableat()</span></tt> macros take a register as a pointer to the destination scratchpad address. The pointer register is incremented after storing each byte except for the last.</p>
+<div class="highlight-python"><div class="highlight"><pre>constant M_DATA, 10
+load s0, M_DATA
+storestringat(s0, sF, `Store this&#39;) ; sF is used as a temp register
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">insttable_le()</span></tt> and <tt class="docutils literal"><span class="pre">insttable_be()</span></tt> macros generate packed INST directives for use as static data. The former generates little-endian instructions while the latter is big-endian.</p>
+<div class="highlight-python"><div class="highlight"><pre>insttable_le(pbhex(0a, 0b, 0c))
+; Expands to:  inst 00b0a
+;              inst 0000c
+
+insttable_be(pbhex(0a, 0b, 0c))
+; Expands to:  inst 00a0b
+;              inst 00c00
+</pre></div>
+</div>
+<p>The insttable macros only accept a list of decimal values directly but the <tt class="docutils literal"><span class="pre">asciiord()</span></tt> macro can be used to convert strings to numeric data.</p>
+<div class="highlight-python"><div class="highlight"><pre>insttable_le(asciiord(`Pack strings into ROM&#39;))
+; Expands to:
+  inst 06150
+  inst 06b63
+  inst 07320
+  ...
+  inst 0206f
+  inst 04f52
+  inst 0004d
+</pre></div>
+</div>
+<p>This permits the compact storage of data bytes in the PicoBlaze ROM. If synthesized as a dual-ported block RAM, the data can be retrieved with external logic. The <tt class="docutils literal"><span class="pre">picoblaze_dp_rom</span></tt> component included with <a class="reference external" href="https://code.google.com/p/opbasm/source/browse/templates/picoblaze_rom.vhdl">picoblaze_rom.vhdl</a> provides a second read/write port for this purpose.</p>
+</div>
+<div class="section" id="bit-arithmetic">
+<h2>8-bit arithmetic<a class="headerlink" href="#bit-arithmetic" title="Permalink to this headline">¶</a></h2>
+<p>The <tt class="docutils literal"><span class="pre">not()</span></tt> and <tt class="docutils literal"><span class="pre">negate()</span></tt> macros are available to perform logical inversion and 2&#8217;s complement negation on 8-bit registers. The <tt class="docutils literal"><span class="pre">abs()</span></tt> macro produces the absolute value of signed registers.</p>
+<p>You can perform signed comparison with the <tt class="docutils literal"><span class="pre">compares()</span></tt> macro. It takes the same arguments as the native <tt class="docutils literal"><span class="pre">COMPARE</span></tt> instruction. The <tt class="docutils literal"><span class="pre">C</span></tt> flag is set in accordance with their signed relationship. However, the <tt class="docutils literal"><span class="pre">Z</span></tt> flag is not set correctly. Use the <tt class="docutils literal"><span class="pre">COMPARE</span></tt> instruction to test for equality or inequality of signed values.</p>
+<p>If you need to convert an 8-bit signed value to 16-bit, use the <tt class="docutils literal"><span class="pre">signex(&lt;MSB&gt;,</span> <span class="pre">&lt;LSB&gt;)</span></tt> macro to extend the sign bit onto the upper register. The 8-bit register to be extended is passed in as the LSB argument.</p>
+</div>
+<div class="section" id="bit-arithmetic-logical-and-shift-operators">
+<span id="id39"></span><h2>16-bit arithmetic<a class="headerlink" href="#bit-arithmetic-logical-and-shift-operators" title="Permalink to this headline">¶</a></h2>
+<p>Consider that you need to do some 16-bit arithmetic. You can define aliases for
+pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg16()</span></tt> and then pass them into the 16-bit arithmetic macros:</p>
+<div class="highlight-python"><div class="highlight"><pre>reg16(rx, s4, s3)      ; Virtual 16-bit register rx is composed of (s4, s3)
+reg16(ry, s6, s5)
+
+load16(rx, 1000)
+load16(ry, 3000 + 500) ; You can use arbitrary expressions for constants
+add16(rx, ry)          ; rx = rx + ry
+add16(rx, -100)        ; rx = rx + (-100)
+</pre></div>
+</div>
+<p>This is much less obtuse than manually calculating 16-bit constants and repeatedly implementing the operations in pieces.</p>
+<p>You can retrieve the upper and lower byte registers indirectly with the <tt class="docutils literal"><span class="pre">regupper()</span></tt> and <tt class="docutils literal"><span class="pre">reglower()</span></tt> macros. This makes it easy to reallocate the registers if needed.</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, reglower(rx) ; s0 = s3
+load s1, regupper(rx) ; s1 = s4
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">mem16()</span></tt> macro defines 16-bit constants for scratchpad and port addresses. Like <tt class="docutils literal"><span class="pre">reg16()</span></tt> it creates a new m4 macro that lets you refer to the pair of port addresses together. In addition, two constants are created with the same name suffixed with &#8220;_H&#8221; and &#8220;_L&#8221; to identify the high and low ports respectively.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">mem16</span><span class="p">(</span><span class="n">M_DATA</span><span class="p">,</span> <span class="mh">0x05</span><span class="p">,</span> <span class="mh">0x04</span><span class="p">)</span>
+<span class="n">load16</span><span class="p">(</span><span class="n">rx</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+<span class="n">store16</span><span class="p">(</span><span class="n">rx</span><span class="p">,</span> <span class="n">M_DATA</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The following 16-bit functions are available. All other than <tt class="docutils literal"><span class="pre">not16()</span></tt>, <tt class="docutils literal"><span class="pre">negate16()</span></tt>, and <tt class="docutils literal"><span class="pre">abs16()</span></tt> take a constant or a 16-bit register as their second argument.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="21%" />
+<col width="33%" />
+<col width="21%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>load16</td>
+<td>reg16</td>
+<td>mem16</td>
+<td>add16</td>
+</tr>
+<tr class="row-even"><td>sub16</td>
+<td>and16</td>
+<td>or16</td>
+<td>xor16</td>
+</tr>
+<tr class="row-odd"><td>test16</td>
+<td>not16</td>
+<td>negate16</td>
+<td>abs16</td>
+</tr>
+</tbody>
+</table>
+<p>The <tt class="docutils literal"><span class="pre">test16()</span></tt> macro is implemented differently on PicoBlaze-3 due to the lack of the <tt class="docutils literal"><span class="pre">TESTCY</span></tt> instruction. The <tt class="docutils literal"><span class="pre">Z</span></tt> flag is set when the AND of both bytes with the test word is zero but the <tt class="docutils literal"><span class="pre">C</span></tt> flag does not represent the XOR of all 16 bits.</p>
+<p>A full suite of 16-bit shifts and rotates are also available. They work the same as their 8-bit equivalents.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>sl0_16</td>
+<td>sl1_16</td>
+<td>sla_16</td>
+<td>slx_16</td>
+</tr>
+<tr class="row-even"><td>sr0_16</td>
+<td>sr1_16</td>
+<td>sra_16</td>
+<td>srx_16</td>
+</tr>
+<tr class="row-odd"><td>rl16</td>
+<td>rr16</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-python"><div class="highlight"><pre>sl0_16(rx, 4) ; Multiply by 2**4
+</pre></div>
+</div>
+</div>
+<div class="section" id="bit-io">
+<span id="bit-i-o-operations"></span><h2>16-bit IO<a class="headerlink" href="#bit-io" title="Permalink to this headline">¶</a></h2>
+<p>16-bit versions of the port and scratchpad I/O operations are available. You can use the <tt class="docutils literal"><span class="pre">mem16()</span></tt> macro to define pairs of memory and port addresses for simplification. The variants using a pointer register increment by two so that successive calls can be made to work on contiguous ranges of addresses.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="24%" />
+<col width="24%" />
+<col width="24%" />
+<col width="28%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>fetch16</td>
+<td>store16</td>
+<td>input16</td>
+<td>output16</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-python"><div class="highlight"><pre>mem16(M_ACCUM, 0x1b, 0x1a)
+reg16(rx, s4, s3)
+
+fetch16(rx, M_ACCUM)  ; Fetch direct from address
+
+load s0, M_ACCUM_L    ; Low byte constant defined by mem16()
+fetch16(rx, s0)       ; Fetch from indirect pointer
+fetch16(rx, s0)       ; Fetch next word
+</pre></div>
+</div>
+<p>Similarly for port I/O.</p>
+<div class="highlight-python"><div class="highlight"><pre>mem16(P_ACCUM, 0x1b, 0x1a)
+
+input16(rx, P_ACCUM)  ; Input direct from address
+
+load s0, P_ACCUM_L
+input16(rx, s0)       ; Input from indirect pointer
+input16(rx, s0)       ; Input next word
+</pre></div>
+</div>
+</div>
+<div class="section" id="multiply-and-divide">
+<span id="multiply-and-divide-routines"></span><h2>Multiply and divide<a class="headerlink" href="#multiply-and-divide" title="Permalink to this headline">¶</a></h2>
+<p>The general purpose PicoBlaze 8x8 multiply and divide routines are made available with arbitrary register allocations to suit your needs. A set of constant multiply and divide routines can also be generated for faster results than the general purpose functions. The following macros are available:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="30%" />
+<col width="70%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>multiply8x8</td>
+<td>8x8-bit unsigned</td>
+</tr>
+<tr class="row-even"><td>multiply8x8s</td>
+<td>8x8-bit signed</td>
+</tr>
+<tr class="row-odd"><td>multiply8x8su</td>
+<td>8-bit signed x 8-bit unsigned</td>
+</tr>
+<tr class="row-even"><td>divide8x8</td>
+<td>8/8-bit unsigned</td>
+</tr>
+<tr class="row-odd"><td>divide8x8s</td>
+<td>8/8-bit signed</td>
+</tr>
+<tr class="row-even"><td>divide16x8</td>
+<td>16/8-bit unsigned</td>
+</tr>
+<tr class="row-odd"><td>divide16x8s</td>
+<td>16/8-bit signed</td>
+</tr>
+<tr class="row-even"><td>multiply8xk</td>
+<td>8-bit x constant</td>
+</tr>
+<tr class="row-odd"><td>multiply8xk_small</td>
+<td>8-bit x constant (result less than 256)</td>
+</tr>
+<tr class="row-even"><td>divide8xk</td>
+<td>8-bit / constant</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-python"><div class="highlight"><pre>init:
+  ...
+  jump main ; Skip over our functions
+
+  ; Configure multiply and divide functions (sE is a temp register)
+  reg16(rx, s5, s4)
+  multiply8x8(mul8, s0, s1, rx)     ; rx = s0 * s1
+
+  divide8x8(div8, s0, s1, s6, s7)   ; s6 = s0 / s1  rem. s7
+
+  multiply8xk(mul8k7, s0, 7, rx)        ; rx = s0 * 7 (Multiplier can be greater than 255)
+
+  multiply8xk_small(mul8k7s, s0, 7, s1) ; s1 = s0 * 7 (Result must fit in one byte)
+
+  divide8xk(div8k, s0, 7, s1)       ; s1 = s0 / 7 (No remainder)
+
+main:
+
+  load s0, 20&#39;d
+  load s1, 3&#39;d
+  call mul8    ; rx = 20 * 3
+
+  call div8    ; s6 = 20 / 3
+
+  call mul8k7  ; rx = 20 * 7
+
+  call mul8k7s ; s1 = 20 * 7
+
+  call div8k   ; s1 = 20 / 7
+</pre></div>
+</div>
+</div>
+<div class="section" id="expressions">
+<h2>Expressions<a class="headerlink" href="#expressions" title="Permalink to this headline">¶</a></h2>
+<p>A family of expression evaluator macros are provided that can implement arithmetic and other operations using pseudo-infix notation. The basic principle is borrowed from the PL360 high level assembler. You can write an assignment expression of the form <tt class="docutils literal"><span class="pre">expr(&lt;target</span> <span class="pre">register&gt;</span> <span class="pre">:=</span> <span class="pre">&lt;val&gt;</span> <span class="pre">op</span> <span class="pre">&lt;val&gt;</span> <span class="pre">[op</span> <span class="pre">&lt;val&gt;]*)</span></tt>. Spaces are required between all symbols.</p>
+<p><tt class="docutils literal"><span class="pre">val</span></tt> is one of:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="100%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>register</td>
+</tr>
+<tr class="row-even"><td>literal expression (with no internal spaces)</td>
+</tr>
+<tr class="row-odd"><td>&#8220;<cite>sp[&lt;addr&gt;]</cite>&#8221; reverse assignment to scratchpad address</td>
+</tr>
+<tr class="row-even"><td>&#8220;<cite>spi[&lt;reg&gt;]</cite>&#8221; reverse assignment to indirect scratchpad address in register</td>
+</tr>
+</tbody>
+</table>
+<p><tt class="docutils literal"><span class="pre">op</span></tt> is one of:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="23%" />
+<col width="77%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>+, -, <cite>*</cite>, /</td>
+<td>arithmetic: add, subtract, multiply, divide</td>
+</tr>
+<tr class="row-even"><td>&amp;, <cite>|</cite>, ^</td>
+<td>bitwise operations: and, or, xor</td>
+</tr>
+<tr class="row-odd"><td>&lt;&lt;, &gt;&gt;</td>
+<td>shifts: left and right</td>
+</tr>
+<tr class="row-even"><td>=:</td>
+<td>reverse assignment</td>
+</tr>
+</tbody>
+</table>
+<p>Operations are evaluated from left to right with <em>no precedence</em>. The target register is used as the left operand of all operations. It is updated with the result after each operation.</p>
+<div class="highlight-python"><div class="highlight"><pre>expr(s0 := s1 + s2 =: s3 &gt;&gt; 2)
+</pre></div>
+</div>
+<p>Arithmetic is performed on <tt class="docutils literal"><span class="pre">s0</span></tt> at each stage. The reverse assignment to <cite>s3`</cite> captures the intermediate result of <tt class="docutils literal"><span class="pre">s1</span> <span class="pre">+</span> <span class="pre">s2</span></tt> and then continues with the right shift applied to <tt class="docutils literal"><span class="pre">s0</span></tt>. This expands to:</p>
+<div class="highlight-python"><div class="highlight"><pre>; Expression: s0 := s1 + s2 =: s3 &gt;&gt; 2
+LOAD s0, s1
+ADD s0, s2
+LOAD s3, s0
+SR0 s0
+SR0 s0
+</pre></div>
+</div>
+<p>If you want to use the existing value of a register use it as the first operand after the assignment:</p>
+<div class="highlight-python"><div class="highlight"><pre>load s0, 03
+expr(s0 := s0 + 100)
+</pre></div>
+</div>
+<p>Here are all of the expression macros available:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="7%" />
+<col width="21%" />
+<col width="37%" />
+<col width="34%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Macro</th>
+<th class="head">Target x Operand</th>
+<th class="head">Supported operators</th>
+<th class="head">Notes</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>expr</td>
+<td>8x8</td>
+<td>+, -, <cite>*</cite>, /, &amp;, <cite>|</cite>, ^, &lt;&lt;, &gt;&gt;, =:</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>exprs</td>
+<td>8x8</td>
+<td>+, -, <cite>*</cite>, /, &amp;, <cite>|</cite>, ^, &lt;&lt;, &gt;&gt;, =:</td>
+<td>signed <cite>*</cite>, /, and &gt;&gt;</td>
+</tr>
+<tr class="row-even"><td>expr2</td>
+<td>16x8 <cite>*</cite></td>
+<td>+, -, <cite>*</cite>, /, &lt;&lt;, &gt;&gt;, =:</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>expr2s</td>
+<td>16x8 <cite>*</cite></td>
+<td>+, -, <cite>*</cite>, /, &lt;&lt;, &gt;&gt;, =:</td>
+<td>signed for all except &lt;&lt;</td>
+</tr>
+<tr class="row-even"><td>expr16</td>
+<td>16x16</td>
+<td>+, -, &amp;, <cite>|</cite>, ^, &lt;&lt;, &gt;&gt;, =:</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>expr16s</td>
+<td>16x16</td>
+<td>+, -, &amp;, <cite>|</cite>, ^, &lt;&lt;, &gt;&gt;, =:</td>
+<td>signed &gt;&gt;</td>
+</tr>
+</tbody>
+</table>
+<p><cite>*</cite> <em>The expr2 macros support 16-bit literals as operands of + and -. The first register after the assignment can be 16-bits.</em></p>
+<p>16-bit registers must be comma separated register pairs in <tt class="docutils literal"><span class="pre">MSB,LSB</span></tt> order or named 16-bit registers created with <tt class="docutils literal"><span class="pre">reg16()</span></tt>.</p>
+<p>For multiplication and division support you must initialize the internal functions with one of the following:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="11%" />
+<col width="60%" />
+<col width="28%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Macro</th>
+<th class="head">Multiply</th>
+<th class="head">Divide</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>expr</td>
+<td>use_expr_mul</td>
+<td>use_expr_div</td>
+</tr>
+<tr class="row-odd"><td>exprs</td>
+<td>use_expr_muls</td>
+<td>use_expr_divs</td>
+</tr>
+<tr class="row-even"><td>expr2</td>
+<td>use_expr_mul</td>
+<td>use_expr_div16</td>
+</tr>
+<tr class="row-odd"><td>expr2s</td>
+<td>use_expr_muls and use_expr_mulsu</td>
+<td>use_expr_div16s</td>
+</tr>
+</tbody>
+</table>
+<p>As an expedient you can invoke &#8220;use_expr_all&#8221; to include all of them and then eliminate any unused mul or div routines with the <tt class="docutils literal"><span class="pre">--remove-dead-code</span></tt> option to Opbasm.</p>
+<p>These macros need to be called before any call to <tt class="docutils literal"><span class="pre">expr*()</span></tt> that uses multiplication or division. It is best to place them at the start of the program and jump over them to reach the startup code. The stack must be configured (<tt class="docutils literal"><span class="pre">use_stack(...)</span></tt>) before calling these macros because additional modified registers must be saved and restored.</p>
+<p>By default these macros configure the mul and div functions to use the <tt class="docutils literal"><span class="pre">s8,s9</span></tt> or <tt class="docutils literal"><span class="pre">s7,s8,</span> <span class="pre">and</span> <span class="pre">s9</span></tt> registers for input and output. You can modify the register allocation by passing arguments to the <tt class="docutils literal"><span class="pre">use_*</span></tt> macros. The registers <tt class="docutils literal"><span class="pre">sA</span></tt>, <tt class="docutils literal"><span class="pre">sB</span></tt>, and sometimes <tt class="docutils literal"><span class="pre">sC</span></tt> are temporarily altered and restored. The common temp register (default <tt class="docutils literal"><span class="pre">sE</span></tt>) is destructively modified. You can change the tempreg with the <tt class="docutils literal"><span class="pre">use_tempreg()</span></tt> macro. The MSB of multiplication is ignored by subsequent operations. Division by 0 is not detected.</p>
+<p>An example of signed expressions applied to converting temperatures:</p>
+<div class="highlight-python"><div class="highlight"><pre>use_stack(sF, 0x3F)
+jump start
+
+use_expr_all ; Invoke all of the mul and div routines
+
+; Setup register aliases
+reg16(rx, s0,s1)
+reg16(ry, s2,s3)
+vars(s4 is celsius, s5 is fahrenheit)
+
+; Convert temperature
+c_to_f:
+  load reglower(rx), celsius     ; Load 8-bit Celsius temperature
+  signex(rx)                     ; Sign extend to 16-bits
+  expr2s(rx := rx * 9 / 5 + 32)  ; Perform 16x8-bit signed arithmetic to get Fahrenheit
+  return
+
+c_to_f_fast: ; Saves approx. 130 instructions compared to c_to_f with multiply
+  load reglower(ry), celsius     ; Load 8-bit Celsius temperature
+  signex(ry)                     ; Sign extend to 16-bits
+  expr16s(rx := ry &lt;&lt; 3 + ry)    ; Multiply by 9 with shift and add
+  expr2s(rx := rx / 5 + 32)      ; Perform 16x8-bit signed arithmetic to get Fahrenheit
+  return
+
+f_to_c:
+  load reglower(rx), fahrenheit  ; Load 8-bit Fahrenheit temperature
+  signex(rx)                     ; Sign extend to 16-bits
+  expr2s(rx := rx - 32 * 5 / 9 ) ; Perform 16x8-bit signed arithmetic to get Celsius
+  return
+
+start:
+  ...
+</pre></div>
+</div>
+</div>
+<div class="section" id="miscellaneous">
+<h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h2>
+<p>A few miscellaneous utility macros are included:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="13%" />
+<col width="42%" />
+<col width="45%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>nop</td>
+<td>No-operation</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-even"><td>clearcy</td>
+<td>Clear the carry flag</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>setcy</td>
+<td>Set the carry flag</td>
+<td><tt class="docutils literal"><span class="pre">setcy</span> <span class="pre">or</span> <span class="pre">setcy(&lt;tmpreg&gt;)</span></tt></td>
+</tr>
+<tr class="row-even"><td>isnum</td>
+<td>Test if a string is a number</td>
+<td>&nbsp;</td>
+</tr>
+<tr class="row-odd"><td>load_out</td>
+<td>Load and output value</td>
+<td><tt class="docutils literal"><span class="pre">load_out(s0,</span> <span class="pre">0x01,</span> <span class="pre">P_uart)</span></tt></td>
+</tr>
+<tr class="row-even"><td>load_st</td>
+<td>Load and store value</td>
+<td><tt class="docutils literal"><span class="pre">load_st(s0,</span> <span class="pre">0x01,</span> <span class="pre">M_var)</span></tt></td>
+</tr>
+<tr class="row-odd"><td>reverse</td>
+<td>Reverse arguments</td>
+<td><tt class="docutils literal"><span class="pre">reverse(1,2,3)</span></tt></td>
+</tr>
+<tr class="row-even"><td>swap</td>
+<td>Swap registers</td>
+<td><tt class="docutils literal"><span class="pre">swap(s0,</span> <span class="pre">s1)</span></tt></td>
+</tr>
+<tr class="row-odd"><td>randlabel</td>
+<td>Random label name</td>
+<td><tt class="docutils literal"><span class="pre">randlabel(PREFIX_)</span></tt></td>
+</tr>
+<tr class="row-even"><td>uniqlabel</td>
+<td>Unique label name</td>
+<td><tt class="docutils literal"><span class="pre">uniqlabel(PREFIX_)</span></tt></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="manually-running-m4">
+<h2>Manually running m4<a class="headerlink" href="#manually-running-m4" title="Permalink to this headline">¶</a></h2>
+<p>Some users may be unable to use Opbasm due to formal release procedures requiring a &#8220;golden&#8221; assembler. The m4 macro package can still be used with other PicoBlaze assemblers by manually running code through m4:</p>
+<div class="highlight-python"><div class="highlight"><pre>&gt; m4 picoblaze.m4 [input source] &gt; expanded_macros.gen.psm
+</pre></div>
+</div>
+<p>The picoblaze.m4 file is located in the opbasm_lib directory of the source distribution.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/opbasm_logo.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">Opbasm</a></h1>
+
+
+
+<p class="blurb">Advanced PicoBlaze Assembler</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=kevin.thibedeau&repo=opbasm&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, Kevin Thibedeau.
+      
+      |
+      <a href="../_sources/rst/m4.txt"
+          rel="nofollow">Page source</a></li>
+    </div>
+
+    
+
+    
+  </body>
+</html>

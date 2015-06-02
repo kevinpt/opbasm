@@ -1,0 +1,924 @@
+====================
+m4 support in Opbasm
+====================
+
+The m4 preprocessor adds powerful facilities for enhanced PicoBlaze assembly. m4 is typically already present on most Linux systems. Various implementations can be installed on Windows. Opbasm will automatically run m4 if a source file has the extension ".psm4" or ".m4" or on any file if the ``--m4`` option is used. The included macro package depends on some GNU extensions so GNU m4 must be used if the built-in macros are employed.
+
+Predefined macros are provided with Opbasm covering the following areas:
+
+ * `Stack operations`_
+ * `Bitfield manipulations`_
+ * `Shift and rotate by multiple bits`_
+ * `Conditional jump, call, and return`_
+ * `Conditional if-then-else`_
+ * `Looping`_
+ * `Delay generators`_
+ * `Repeated string and table operations that work on PicoBlaze-3`_
+ * `16-bit arithmetic, logical, and shift operators`_
+ * `16-bit I/O operations`_
+ * `Multiply and divide routines`_
+ * `Expressions`_
+
+Using these macros you can write code in a higher-level style like the following Fibonacci generator.
+
++----------------------------------------------------------------+----------------------------------------------------------------+
+|  With macros:                                                  | After expansion:                                               |
++================================================================+================================================================+
+|.. parsed-literal::                                             |.. parsed-literal::                                             |
+|                                                                |                                                                |
+|  fibonacci:                                                    |       fibonacci:                                               |
+|    ; Generate the first 10 Fibonacci numbers                   |                  ; Generate the first 10 Fibonacci numbers     |
+|    vars(s0 is counter, s1 is two_prev := 0,                    |                  LOAD s1, 00          ; Var two_prev := 0      |
+|        s2 is prev := 1, s3 is next)                            |                  LOAD s2, 01          ; Var prev := 1          |
+|    for (counter := 0, counter < 10, counter := counter + 1) {  |                  ; Expression: s0 := 0                         |
+|     if (counter < 2) {                                         |                  LOAD s0, 00                                   |
+|       LOAD next, counter                                       |                                                                |
+|     } else {                                                   |     FOR_f1_0001:                                               |
+|       ; Compute next number                                    |                  ; If s0 < 10                                  |
+|       expr(next := two_prev + prev)                            |                  COMPARE s0, 0a                                |
+|       LOAD two_prev, prev                                      |                  JUMP nc, GE_f1_0004                           |
+|       LOAD prev, next                                          |                                                                |
+|     }                                                          |                  ; If s0 < 2                                   |
+|     push(next)                                                 |                  COMPARE s0, 02                                |
+|     CALL print_num   ; Output the next number                  |                  JUMP nc, GE_f1_0006                           |
+|    }                                                           |                  LOAD s3, s0                                   |
+|    RETURN                                                      |                  JUMP ENDIF_f1_0007                            |
+|                                                                |                                                                |
+|                                                                |      GE_f1_0006:                                               |
+|                                                                |                  ; Compute next number                         |
+|                                                                |                  ; Expression: s3 := s1 + s2                   |
+|                                                                |                  LOAD s3, s1                                   |
+|                                                                |                  ADD s3, s2                                    |
+|                                                                |                  LOAD s1, s2                                   |
+|                                                                |                  LOAD s2, s3                                   |
+|                                                                |                                                                |
+|                                                                |   ENDIF_f1_0007:                                               |
+|                                                                |                  STORE s3, (sf)       ; Push                   |
+|                                                                |                  SUB sf, 01                                    |
+|                                                                |                  CALL print_num       ; Output the next number |
+|                                                                |                                                                |
+|                                                                | NEXTFOR_f1_0002:                                               |
+|                                                                |                  ; Expression: s0 := s0 + 1                    |
+|                                                                |                  ADD s0, 01                                    |
+|                                                                |                  JUMP FOR_f1_0001                              |
+|                                                                |      GE_f1_0004:                                               |
+|                                                                | ENDLOOP_f1_0003:                                               |
+|                                                                |                  RETURN                                        |
+|                                                                |                                                                |
++----------------------------------------------------------------+----------------------------------------------------------------+
+
+.. _guidance on installing m4 under Windows:
+
+Installing m4 on Windows
+------------------------
+
+There are a few options for installing m4 on Windows: MinGW, GnuWin32, and Cygwin.
+
+MinGW
+~~~~~
+
+Download the `get-mingw-setup <http://sourceforge.net/projects/mingw/files/Installer/>`_ graphical installer. Run it and select the "msys-base" package and either "msys-m4" binary package (under All packages|MSYS|MSYS Base System) or "mingw-developer-toolkit". Add "C:\\MinGW\\msys\\1.0\\bin" to your system PATH environment variable.
+
+GnuWin32
+~~~~~~~~
+
+To install the GnuWin32 version of m4, download the `m4 <http://gnuwin32.sourceforge.net/packages/m4.htm>`_ and `regex <http://gnuwin32.sourceforge.net/packages/regex.htm>`_ packages. Unzip them and put regex2.dll into the same directory as m4.exe. Add the installation directory to your system PATH environment variable.
+
+Cygwin
+~~~~~~
+
+This option is best if you've installed Opbasm into a Cygwin environment. In the `Cygwin installer <http://cygwin.com/install.html>`_ select the m4 package (under Interpreters) for installation. Opbasm will be able to use m4 immediately within a Cygwin shell.
+
+Overview of m4
+--------------
+
+m4 performs text based string manipulation by performing expansion of previously defined macros. The preprocessor has a number of built in macros and provides a means to define your own. Macros have a name that contains letters, digits, and underscores. Any arguments are enclosed in parentheses and delimited by commas. Expansion is suppressed by enclosing text in quote characters which are ```'`` by default. Comments start with "#" by default but have been changed to use ";" to match PicoBlaze syntax.
+
+m4 uses different syntax from PicoBlaze assembly to represent different types of literals. It is important to know what context you are operating in to determine which type of literal to put in your source.
+
+============  =============  ============
+**Type**      **PicoBlaze**  **m4**
+============  =============  ============
+decimal       10'd           10 
+hexadecimal   0a             0x0a
+binary        00001010'b     0b1010
+char          "A"            A or ```A'``
+============  =============  ============
+
+In general you use m4 syntax for literals passed as arguments to macros within parentheses. The only exception is ``pbhex()`` which takes a list of hex values in PicoBlaze format. Be careful not to use PicoBlaze hex format in other m4 contexts as it will be misinterpreted as decimal if only digits 0-9 are used.
+
+m4 includes the ability to evaluate arbitrary integer expressions using the ``eval()`` macro. Its default output is an m4 decimal integer so the similar ``evalh()`` and ``evald()`` are provided to evaluate expressions resulting in PicoBlaze hex or decimal format.
+
+.. parsed-literal::
+
+  load s0, evald(4 * 5 + 1) ; Expands to "load s0, 21'd"
+
+The expression evaluator permits the natural use of negative decimal literals:
+
+.. parsed-literal::
+
+  load s0, evalh(-20) ; Expands to "load s0, ec"
+
+
+The ``evala()`` macro works like ``evalh()`` but expands to a 12-bit PicoBlaze address.
+
+.. parsed-literal::
+
+  define(DATA_ORG, 0x200)
+  address evala(DATA_ORG)   ; Expands to "address 200"
+
+m4 expressions support all of the C language operators as well as ``**`` for exponentiation.
+
+An ``evalx()`` macro is available which works like the builtin ``eval()`` but also accepts strings that are not valid expressions.
+
+.. parsed-literal::
+
+  load s0, evalx(9 + 2, 16, 2)  ; Expands to "load s0, 0b"
+  constant CNAME, 1f
+  load s0, evalx(CNAME)         ; Expands to "load s0, CNAME"
+
+You can define aliases for registers without altering the original as with NAMEREG.
+
+.. parsed-literal::
+
+  define(alt_name, s0)
+  load alt_name, 01 ; Expands to "load s0, 01"
+  add s0, 01        ; s0 register is still visible
+
+Special logic is implemented in a preprocessor stage so that PicoBlaze constants are visible to m4. They are automatically converted from PicoBlaze format into m4 format.
+
+.. parsed-literal::
+
+  constant THE_ANSWER, 42'd
+  expr(s0 := s1 + THE_ANSWER)                            ; Same as expr(s0 := s1 + 42)
+  if(s0 > THE_ANSWER, `output s1, 00', `output s2, 00')  ; Left operand is treated like a constant
+
+You can use also use ``define()`` to establish constants that are visible to m4 and create more complex macros. `Michael Breen's notes on m4 <http://mbreen.com/m4.html>`_ provide a good introductory overview to m4. The `Gnu m4 manual <https://www.gnu.org/savannah-checkouts/gnu/m4/manual/>`_ provides more detailed documentation.
+
+Type conversions
+----------------
+
+Some basic macros are provided to perform type conversions. They are useful for constructing parameters to other macros that only expect decimal values.
+
+The ``pbhex()`` macro is used to convert a list of values in PicoBlaze hex format into m4 decimals.
+
+.. parsed-literal::
+
+  pbhex(0a, 0b, ff)  ; Expands to "10, 11, 255"
+
+The ``asciiord()`` macro converts a string of one or more characters to a list of decimals representing their ASCII encoding. Quotes are not strictly necessary but guard against including trailing whitespace.
+
+.. parsed-literal::
+
+  asciiord(0)          ; Expands to "48"
+  asciiord(`any str')  ; Expands to "97, 110, 121, 32, 115, 116, 114"
+
+If you need a NUL terminated string the ``asciiord_cstr()`` macro works the same but appends a terminating 0:
+
+.. parsed-literal::
+
+  asciiord_cstr(`1234') ; Expands to "49, 50, 51, 52, 0"
+
+The ``words_le()`` and ``words_be()`` macros convert a list of 16-bit numbers into little-endian or big-endian bytes.
+
+.. parsed-literal::
+
+  words_le(0xff01, 0xff02)  ; Expands to "1, 255, 2, 255"
+  words_be(0xff01, 0xff02)  ; Expands to "255, 1, 255, 2"
+
+General purpose macros
+----------------------
+
+A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to `sE` by default. You can change it to another register by calling ``use_tempreg(<reg>)``. The temp register can be accessed in your own macros by using the ``"_tempreg"`` macro.
+
+.. parsed-literal::
+
+  use_tempreg(sA)    ; Switch to sA for the temp register
+
+The following macros use the temp register:
+
+=========  ==========  ===========  ============  =============
+setcy      expr2s      multiply8x8  multiply8x8s  multiply8x8su 
+divide8x8  divide8x8s  divide16x8   divide16x8s   divide8xk    
+=========  ==========  ===========  ============  ============= 
+
+The other ``expr()`` macros use the temp register indirectly when the mul and div operations are invoked.
+
+
+PicoBlaze programs commonly contain lists of constant declarations for IO port addresses. The ``iodefs(<start port>, [port names]+)`` macro simplifies their declaration by allowing contiguous sequences of ports to be named in one statement. It can also be used to define scratchpad addresses.
+
+.. parsed-literal::
+
+  iodefs(0, P_control, P_read, P_write)
+
+  Expands to:
+    constant P_control, 00
+    constant P_read, 01
+    constant P_write, 02
+
+The ``vars([<reg> is <alias> [:= <init>]]+)`` macro allows you to associate alias names with a register. Unlike the ``NAMEREG`` directive, the original register name is still available. An optional initial value can be provided:
+
+.. parsed-literal::
+
+  vars(s0 is count := 0, s1 is sum)
+
+  Expands to:
+    load s0, 00
+
+Symbols "count" and "sum" can now be used in place of s0 and s1.
+
+
+Stack operations
+----------------
+
+A set of macros are available to simulate a stack using the scratchpad RAM. You initialize the stack and establish the stack pointer register with a call to ``use_stack()``. After that you can call ``push()`` and ``pop()`` to manage registers on the stack. You can push and pop any number of registers at once. Pops happen in reverse order to preserve register values when passed the same list as ``push()``. The stack grows down so the initial address should be the highest the stack will occupy.
+
+.. parsed-literal::
+
+  namereg sF, SP      ; Protect sF for use as the stack pointer
+  use_stack(SP, 0x3F) ; Start stack at end of 64-byte scratchpad
+  ...
+
+  my_func:
+    push(s0, s1)
+    <Do something that alters s0 and s1>
+    pop(s0, s1)
+    return
+
+The ``getstack()``, ``getstackat()``, and ``dropstack()`` macros can be used to retrieve and drop values from a stack frame. This provides a facility for passing function arguments on the stack and is particularly useful for writing functions that take a variable number of arguments. Use the ``dropstackreg()`` macro to drop a variable number of arguments stored in a register.
+
+.. parsed-literal::
+
+    load s0, BE
+    push(s0)    ; First argument
+    load s0, EF
+    push(s0)    ; Second argument
+    call my_func2
+
+  my_func2:
+    getstack(s3, s4) ; Retrieve first and second argument
+    <Do your business>
+    dropstack(2)         ; Remove arguments from the stack
+    return
+
+You can use the ``getstackat()`` macro to retrieve values from the stack one at a time in any order.
+
+.. parsed-literal::
+
+  my_func3:
+    getstackat(s4, 1) ; Retrieve second argument (SP + 1)
+    getstackat(s3, 2) ; Retrieve first argument  (SP + 2)
+    <Do your business>
+    dropstack(2)    ; Remove arguments from the stack
+    return
+
+You may wish to allocate temporary space on the stack for local variables in a function. Use the ``addstack()`` and ``addstackreg()`` macros to accomplish this. ``putstack()`` and ``putstackat()`` are used to store register values on the stack.
+
+.. parsed-literal::
+
+  my_func4:
+    addstack(4) ; Add 4 bytes to the stack to work with
+    putstack(s0, s1, s2, s3)
+    getstackat(s4, 2)
+    dropstack(4) ; Remove local frame
+
+    
+.. _Bitfield manipulations:
+    
+Bitfield operations
+-------------------
+
+A set of macros are available to manipulate bitfields without manually constructing hex masks.
+
+.. parsed-literal::
+
+  load s0, f0
+  setbit(s0, 0)                ; s0 = f1
+  setbit(s0, 2)                ; s0 = f5
+  clearbit(s0, 7)              ; s0 = 75
+
+  setmask(s0, mask(0,1,2,3))   ; s0 = 7f
+  clearmask(s0, mask(4,5,6,7)) ; s0 = 0f
+
+  testbit(s0, 0)               ; Test if bit-0 is set or clear
+  jump nz, somewhere
+
+The ``maskh()`` macro works like ``mask()`` but produces a result in PicoBlaze hex format so it can be used as a direct argument to any instruction that takes a constant.
+
+.. parsed-literal::
+
+  load s0, maskh(0,1,2,6,7)  ; Expands to "load s0, c7"
+
+.. _Shift and rotate by multiple bits:
+  
+Shift and rotate
+----------------
+
+Shifts and rotates are inconvenient in PicoBlaze assembly because they must be performed one bit at a time. Macros are provided that generate shifts and rotates by any number of bits more easily.
+
+.. parsed-literal::
+
+  load s0, 01
+  sl0(s0, 4)  ; Shift left by 4 bits  s0 = 00010000'b
+  sr1(s0, 3)  ; Shift right by 3 bits with 1's inserted  s0 = 11100010'b
+
+All 10 of the PicoBlaze shift and an rotate instructions have macro equivalents. The original instructions can still be used as usual.
+
+.. _Conditional jump, call, and return:
+
+Conditional jump call and return
+--------------------------------
+
+PicoBlaze assembly depends on using the carry and zero flags directly to handle conditional jump and call instructions. It can be difficult to remember how the carry flag is interpreted so a set of macros are provided to perform more natural conditional instructions.
+
+.. parsed-literal::
+
+  compare s0, s1
+  jne(not_equal)           ; Jump if s0 != s1
+  jeq(equal)               ; Jump if s0 == s1
+  jge(greater_or_equal)    ; Jump if s0 >= s1
+  jlt(less_than)           ; Jump if s0 < s1
+
+  callne(not_equal)        ; Call if s0 != s1
+  calleq(equal)            ; Call if s0 == s1
+  callge(greater_or_equal) ; Call if s0 >= s1
+  calllt(less_than)        ; Call if s0 < s1
+
+  retne                    ; Return if s0 != s1
+  reteq                    ; Return if s0 == s1
+  retge                    ; Return if s0 >= s1
+  retlt                    ; Return if s0 < s1
+
+Conditional if-then-else
+------------------------
+
+A high level ``if()`` macro is present that provides evaluation of infix Boolean expressions. It takes the form of ``if(<expr>,<true block>,[<expr>,<true block 2>...|<else block>])``. The expression syntax uses conventional C operators ==, !=, <, ,>=, >, <=, and &. Additional expressions after the first true block produce else-if evaluation similar to m4's ``ifelse()`` macro. It is important to guard code blocks with m4 quotes to avoid errors caused by m4 splitting strings with internal commas. The ``if()`` macro implements a ``COMPARE`` instruction and generates the appropriate branch logic to test the flags. Unique generated labels are inserted into the code to manage the sequencing of the code blocks.
+
+.. parsed-literal::
+
+  load s0, 05
+  if(s0 < 10,
+    `load s1, "T"
+    output s1, 00',
+  ; else-if
+  s0 < 8,
+    `load s1, "t"
+    output s1, 01',
+  ;else
+    `load s1 "F"
+    output s1, 02'
+  )
+
+In addition, the & operator can be used to generate a ``TEST`` instruction instead of ``COMPARE``. The true block is executed if the test result is non-zero:
+
+.. parsed-literal::
+
+  ; Check if MSB is set
+  if(s0 & 0x80, `load s1, 00')
+
+You can invoke signed comparison using the ``comapres()`` macro by wrapping the expression in ``signed()``:
+
+.. parsed-literal::
+
+  load s0 evalh(-10) ; -10 = 0xF6 which evaluates as > 5 in unsigned comparison
+  if(signed(s0 < 5),`load s1, 00') ; evaluate as < 5 using signed comparison 
+
+Macros can be used within the code blocks including nested ``if()`` macros:
+
+.. parsed-literal::
+
+  if(s0 < s1,
+     `<something>',
+  ; else
+    `if(s2 >= s3,`<something else>')'
+  )
+
+C-style syntax
+~~~~~~~~~~~~~~
+
+The m4 syntax for the ``if()`` macro is a little untidy but an alternate C-style syntax can be used. It is implemented using an initial preprocessing step where pattern matching converts C-style control flow statements into m4 syntax. Instead of m4 quotes, code blocks are surrounded by mandatory curly braces. Unlike m4 macros, whitespace is permitted between the ``if`` keyword and its comparison expression.
+
+.. parsed-literal::
+
+  if (s0 < s1) {
+    load s0, "T"
+  } else if (s2 == s3) {
+    load s0, "t"
+  } else {
+    load s0, "F"
+  }
+
+A set of lower level if-then-else macros are provided to expose the internal workings of ``if()``. The macros are ``ifeq()``, ``ifne()``, ``ifge()``, and ``iflt()``. Unlike ``if()``, no ``COMPARE`` or ``TEST`` instruction is generated from an expression. You have to prepare the flags on your own. The first argument is the code to execute for the true condition. An optional second argument is used for the else clause.
+
+.. parsed-literal::
+
+  compare s0, s1
+  ifeq(
+    `load s4, 20
+     output s4, PORT',
+  ; else
+    `load s4, 30
+     output s4, PORT2')
+
+This expands to the following:
+
+.. parsed-literal::
+
+  compare s0, s1
+  jump nz, NEQ_f1_0001
+  load s4, 20
+     output s4, PORT
+  jump ENDIF_f1_0002
+  NEQ_f1_0001:
+  ; else
+    load s4, 30
+     output s4, PORT2
+  ENDIF_f1_0002:
+
+Looping
+-------
+
+Similarly to ``if()`` there are a set of high level looping macros ``for()``, ``while()``, and ``dowhile()``. They implement the corresponding looping constructs using the syntax ``for(<init>,<expr>,<update>,<loop body>)`` and ``[do]while(<expr>,<loop body>)``. Signed comparison is supported just as with ``if()`` using the ``signed()`` macro as a modifier. The for loop macro uses the ``expr()`` macro syntax for the *init* and *update* fields.
+
+.. parsed-literal::
+
+  for(s0 := -10, signed(s0 < 10), s0 := s0 + 1,
+    `output s1, P_FOO'
+  )
+
+.. parsed-literal::
+
+  ; Output s1 to port 00 10 times
+  load s0, 00
+  while(s0 < 10,
+    `output s1, P_FOO
+     add s0, 01'
+  )
+
+C-style syntax
+~~~~~~~~~~~~~~~
+
+Similarly to the ``if()`` macro, an alternate C-style syntax is available for ``for()``, ``while()``, and ``dowhile()``. Note that the ``for()`` macro continues to use commas to separate the sections.
+
+.. parsed-literal::
+
+  for (s0 := 0, s0 < s1, s0 := s0 + 1) {
+    output s0, P_FOO
+  }
+
+  while (s0 < s1) {
+    add s0, 01
+    output s0, P_FOO
+  }
+
+  do {
+    add s0, 01
+    output s0, P_FOO
+  } while (s0 < s1)
+
+Two macros, ``break`` and ``continue``, are available to exit the current loop and restart a loop respectively. In a for loop the ``continue`` macro will execute the *update* field expression to prepare the next iteration.
+
+.. parsed-literal::
+
+  ; "continue" resumes execution here
+  while (s0 < s1) {
+    add s0, 01
+    if (s3 == 4) { continue }
+    if (s2 == 5) { break }
+    output s0, 00
+  }
+  ; "break" resumes execution here
+
+Delay generators
+----------------
+
+A set of delay generator macros are available to implement software delays. The simplest is ``delay_cycles()`` which delays by a number of instruction cycles (each being two clock cycles). It is implemented with recursive loops and requires no registers to function.
+
+.. parsed-literal::
+
+  delay_cycles(40)   ; Delay for 40 instructions
+
+The delay can be from 0 to approximately 100e9 but a practical limit would be to keep the delay less than 200 cycles to restrict the amount of generated code. You must ensure that there is enough space on the call stack to perform the recursive calls.
+
+Delays by microseconds and milliseconds are implemented with the ``delay_us()`` and ``delay_ms()`` macros. Before using these you must establish the system clock frequency with the ``use_clock()`` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay by a certain number of instructions if needed.
+
+.. parsed-literal::
+
+  use_clock(100)                     ; 100 MHz system clock
+
+  ; 10 ms delay subroutine
+  delay_10ms: delay_ms(10, s4,s5, 2) ; Adjust delay by 2 instructions for call and return
+              return
+
+  ...
+  call delay_10ms
+  ; Exactly 10 ms have passed here
+
+  ...
+  delay_ms(10, s4, s5)               ; Inline delay by 10 ms
+  ; Exactly 10 ms have passed here
+
+The ``delay_*()`` macros take a delay value, a pair of registers and an optional adjustment as arguments. The delay value is the amount of delay in the associated units. The upper limit depends on the clock frequency. At 100 MHz the maximum delay is 214 ms. The registers are used for an internal 16-bit counter. The internal delay loop is automatically adjusted to ensure the count value fits within 16-bits. When implementing a delay as a subroutine an adjustment can be added to account for the ``CALL`` and ``RETURN`` instructions.
+
+If you need to use multiple delays it may be desirable to have a common delay routine that supports variable delay counts. This is provided by the ``var_delay_us()`` and ``var_delay_ms()`` macros. They are similar to the fixed delays but are not cycle accurate and have no provision for adjustment.
+
+.. parsed-literal::
+
+  use_clock(50)            ; 50 MHz system clock
+
+  define(MAX_DELAY, 200)   ; Maximum 200 us delay
+
+  var_delay: var_delay_us(MAX_DELAY, s4,s5)
+             return
+  ...
+
+  load16(s4,s5, var_count_us(20, MAX_DELAY))  ; 20 us delay
+  call var_delay
+  ...
+
+  load16(s4,s5, var_count_us(150, MAX_DELAY)) ; 150 us delay
+  call var_delay
+
+The first argument to the ``var_delay_*()`` macros is the maximum delay value to support. When a delay is needed you must load the count registers with a constant computed with the ``var_count_*()`` macros. 
+
+.. _string and table ops:
+.. _Repeated string and table operations that work on PicoBlaze-3:
+
+String and table operations
+---------------------------
+
+PicoBlaze-3 doesn't have the ability to handle strings as efficiently as PB6 but it is still necessary to work with them at times. Suppose that you have a subroutine "write_char" that writes characters in s0 out to a peripheral. You can write entire strings with the following:
+
+.. parsed-literal::
+
+  callstring(write_char, s0, `My string') ; Note use of m4 quotes `' to enclose the string
+
+This expands to the following:
+
+.. parsed-literal::
+
+  load s0, "M"
+  call write_char
+  load s0, "y"
+  call write_char
+  load s0, " "
+  call write_char
+  ...
+  load s0, "n"
+  call write_char
+  load s0, "g"
+  call write_char
+
+Similarly you can call with arbitrary bytes in a table. The ``pbhex()`` macro is useful here to express hex numbers with less clutter.
+
+.. parsed-literal::
+
+  calltable(write_char, s0,  pbhex(DE, AD, BE, EF))
+
+There are four targets for string and table macros: "call", "output", "store", and "inst". They work similarly to the "call" macros above but generate "output", "store", or "inst" instructions in place of "call".
+
+==========  ============  ===========  =============  ==========================
+callstring  outputstring  storestring  storestringat 
+calltable   outputtable   storetable   storetableat   insttable_le, insttable_be 
+==========  ============  ===========  =============  ==========================
+
+The ``storestringat()`` and ``storetableat()`` macros take a register as a pointer to the destination scratchpad address. The pointer register is incremented after storing each byte except for the last.
+
+.. parsed-literal::
+
+  constant M_DATA, 10
+  load s0, M_DATA
+  storestringat(s0, sF, `Store this') ; sF is used as a temp register
+
+The ``insttable_le()`` and ``insttable_be()`` macros generate packed INST directives for use as static data. The former generates little-endian instructions while the latter is big-endian.
+
+.. parsed-literal::
+
+  insttable_le(pbhex(0a, 0b, 0c))
+  ; Expands to:  inst 00b0a
+  ;              inst 0000c
+
+  insttable_be(pbhex(0a, 0b, 0c))
+  ; Expands to:  inst 00a0b
+  ;              inst 00c00
+
+The insttable macros only accept a list of decimal values directly but the ``asciiord()`` macro can be used to convert strings to numeric data.
+
+.. parsed-literal::
+
+  insttable_le(asciiord(`Pack strings into ROM'))
+  ; Expands to:
+    inst 06150
+    inst 06b63
+    inst 07320
+    ...
+    inst 0206f
+    inst 04f52
+    inst 0004d
+
+This permits the compact storage of data bytes in the PicoBlaze ROM. If synthesized as a dual-ported block RAM, the data can be retrieved with external logic. The ``picoblaze_dp_rom`` component included with `picoblaze_rom.vhdl <https://code.google.com/p/opbasm/source/browse/templates/picoblaze_rom.vhdl>`_ provides a second read/write port for this purpose.
+
+
+8-bit arithmetic
+----------------
+
+The ``not()`` and ``negate()`` macros are available to perform logical inversion and 2's complement negation on 8-bit registers. The ``abs()`` macro produces the absolute value of signed registers.
+
+You can perform signed comparison with the ``compares()`` macro. It takes the same arguments as the native ``COMPARE`` instruction. The ``C`` flag is set in accordance with their signed relationship. However, the ``Z`` flag is not set correctly. Use the ``COMPARE`` instruction to test for equality or inequality of signed values.
+
+If you need to convert an 8-bit signed value to 16-bit, use the ``signex(<MSB>, <LSB>)`` macro to extend the sign bit onto the upper register. The 8-bit register to be extended is passed in as the LSB argument.
+
+.. _16-bit arithmetic, logical, and shift operators:
+
+16-bit arithmetic
+-----------------
+
+Consider that you need to do some 16-bit arithmetic. You can define aliases for
+pairs of 8-bit registers with ``reg16()`` and then pass them into the 16-bit arithmetic macros:
+
+.. parsed-literal::
+
+  reg16(rx, s4, s3)      ; Virtual 16-bit register rx is composed of (s4, s3)
+  reg16(ry, s6, s5)
+
+  load16(rx, 1000)
+  load16(ry, 3000 + 500) ; You can use arbitrary expressions for constants
+  add16(rx, ry)          ; rx = rx + ry
+  add16(rx, -100)        ; rx = rx + (-100)
+
+This is much less obtuse than manually calculating 16-bit constants and repeatedly implementing the operations in pieces.
+
+You can retrieve the upper and lower byte registers indirectly with the ``regupper()`` and ``reglower()`` macros. This makes it easy to reallocate the registers if needed.
+
+.. parsed-literal::
+
+  load s0, reglower(rx) ; s0 = s3
+  load s1, regupper(rx) ; s1 = s4
+
+The ``mem16()`` macro defines 16-bit constants for scratchpad and port addresses. Like ``reg16()`` it creates a new m4 macro that lets you refer to the pair of port addresses together. In addition, two constants are created with the same name suffixed with "_H" and "_L" to identify the high and low ports respectively.
+
+.. parsed-literal::
+
+  mem16(M_DATA, 0x05, 0x04)
+  load16(rx, 1000)
+  store16(rx, M_DATA)
+
+The following 16-bit functions are available. All other than ``not16()``, ``negate16()``, and ``abs16()`` take a constant or a 16-bit register as their second argument.
+
+======  =====  ========  =====
+load16  reg16  mem16     add16   
+sub16   and16  or16      xor16   
+test16  not16  negate16  abs16
+======  =====  ========  =====  
+
+The ``test16()`` macro is implemented differently on PicoBlaze-3 due to the lack of the ``TESTCY`` instruction. The ``Z`` flag is set when the AND of both bytes with the test word is zero but the ``C`` flag does not represent the XOR of all 16 bits.
+
+A full suite of 16-bit shifts and rotates are also available. They work the same as their 8-bit equivalents.
+
+======  ======  ======  ======
+sl0_16  sl1_16  sla_16  slx_16 
+sr0_16  sr1_16  sra_16  srx_16 
+rl16    rr16   
+======  ======  ======  ======
+
+.. parsed-literal::
+
+  sl0_16(rx, 4) ; Multiply by 2**4
+
+.. _16-bit I/O operations:  
+  
+16-bit IO
+---------
+
+16-bit versions of the port and scratchpad I/O operations are available. You can use the ``mem16()`` macro to define pairs of memory and port addresses for simplification. The variants using a pointer register increment by two so that successive calls can be made to work on contiguous ranges of addresses.
+
+=======  =======  =======  ========
+fetch16  store16  input16  output16
+=======  =======  =======  ======== 
+
+.. parsed-literal::
+
+  mem16(M_ACCUM, 0x1b, 0x1a)
+  reg16(rx, s4, s3)
+
+  fetch16(rx, M_ACCUM)  ; Fetch direct from address
+
+  load s0, M_ACCUM_L    ; Low byte constant defined by mem16()
+  fetch16(rx, s0)       ; Fetch from indirect pointer
+  fetch16(rx, s0)       ; Fetch next word
+
+Similarly for port I/O.
+
+.. parsed-literal::
+
+  mem16(P_ACCUM, 0x1b, 0x1a)
+
+  input16(rx, P_ACCUM)  ; Input direct from address
+
+  load s0, P_ACCUM_L
+  input16(rx, s0)       ; Input from indirect pointer
+  input16(rx, s0)       ; Input next word
+
+.. _Multiply and divide routines:
+  
+Multiply and divide
+-------------------
+
+The general purpose PicoBlaze 8x8 multiply and divide routines are made available with arbitrary register allocations to suit your needs. A set of constant multiply and divide routines can also be generated for faster results than the general purpose functions. The following macros are available:
+
+================= =======================================
+multiply8x8       8x8-bit unsigned 
+multiply8x8s      8x8-bit signed 
+multiply8x8su     8-bit signed x 8-bit unsigned 
+divide8x8         8/8-bit unsigned 
+divide8x8s        8/8-bit signed 
+divide16x8        16/8-bit unsigned 
+divide16x8s       16/8-bit signed 
+multiply8xk       8-bit x constant 
+multiply8xk_small 8-bit x constant (result less than 256) 
+divide8xk         8-bit / constant 
+================= =======================================
+
+
+.. parsed-literal::
+
+  init:
+    ...
+    jump main ; Skip over our functions
+
+    ; Configure multiply and divide functions (sE is a temp register)
+    reg16(rx, s5, s4)
+    multiply8x8(mul8, s0, s1, rx)     ; rx = s0 * s1
+
+    divide8x8(div8, s0, s1, s6, s7)   ; s6 = s0 / s1  rem. s7
+
+    multiply8xk(mul8k7, s0, 7, rx)        ; rx = s0 * 7 (Multiplier can be greater than 255)
+
+    multiply8xk_small(mul8k7s, s0, 7, s1) ; s1 = s0 * 7 (Result must fit in one byte)
+
+    divide8xk(div8k, s0, 7, s1)       ; s1 = s0 / 7 (No remainder)
+
+  main:
+
+    load s0, 20'd
+    load s1, 3'd
+    call mul8    ; rx = 20 * 3
+
+    call div8    ; s6 = 20 / 3
+
+    call mul8k7  ; rx = 20 * 7
+
+    call mul8k7s ; s1 = 20 * 7
+
+    call div8k   ; s1 = 20 / 7
+
+Expressions
+-----------
+
+A family of expression evaluator macros are provided that can implement arithmetic and other operations using pseudo-infix notation. The basic principle is borrowed from the PL360 high level assembler. You can write an assignment expression of the form ``expr(<target register> := <val> op <val> [op <val>]*)``. Spaces are required between all symbols.
+
+``val`` is one of:
+
++----------------------------------------------------------------------------+
+|register                                                                    |
++----------------------------------------------------------------------------+
+|literal expression (with no internal spaces)                                |
++----------------------------------------------------------------------------+
+|"`sp[<addr>]`" reverse assignment to scratchpad address                     |
++----------------------------------------------------------------------------+
+|"`spi[<reg>]`" reverse assignment to indirect scratchpad address in register|
++----------------------------------------------------------------------------+
+
+``op`` is one of:
+
+=============  ===========================================
+ +, -, `*`, /  arithmetic: add, subtract, multiply, divide 
+ &, `|`, ^     bitwise operations: and, or, xor 
+ <<, >>        shifts: left and right 
+ =:            reverse assignment 
+=============  ===========================================
+ 
+Operations are evaluated from left to right with *no precedence*. The target register is used as the left operand of all operations. It is updated with the result after each operation.
+
+.. parsed-literal::
+
+  expr(s0 := s1 + s2 =: s3 >> 2)
+
+Arithmetic is performed on ``s0`` at each stage. The reverse assignment to `s3`` captures the intermediate result of ``s1 + s2`` and then continues with the right shift applied to ``s0``. This expands to:
+
+.. parsed-literal::
+
+  ; Expression: s0 := s1 + s2 =: s3 >> 2
+  LOAD s0, s1
+  ADD s0, s2
+  LOAD s3, s0
+  SR0 s0
+  SR0 s0
+
+
+If you want to use the existing value of a register use it as the first operand after the assignment:
+
+.. parsed-literal::
+
+  load s0, 03
+  expr(s0 := s0 + 100)
+
+Here are all of the expression macros available:
+
+=======  ====================  ===================================  ================================
+Macro    Target x Operand      Supported operators                  Notes
+=======  ====================  ===================================  ================================
+expr     8x8                   +, -, `*`, /, &, `|`, ^, <<, >>, =: 
+exprs    8x8                   +, -, `*`, /, &, `|`, ^, <<, >>, =:  signed `*`, /, and >>  
+expr2    16x8 `*`              +, -, `*`, /, <<, >>, =: 
+expr2s   16x8 `*`              +, -, `*`, /, <<, >>, =:             signed for all except << 
+expr16   16x16                 +, -, &, `|`, ^, <<, >>, =: 
+expr16s  16x16                 +, -, &, `|`, ^, <<, >>, =:          signed >> 
+=======  ====================  ===================================  ================================
+
+`*` *The expr2 macros support 16-bit literals as operands of + and -. The first register after the assignment can be 16-bits.*
+
+16-bit registers must be comma separated register pairs in ``MSB,LSB`` order or named 16-bit registers created with ``reg16()``.
+
+For multiplication and division support you must initialize the internal functions with one of the following:
+
+======  ================================  ===============
+Macro   Multiply                          Divide
+======  ================================  ===============
+expr    use_expr_mul                      use_expr_div 
+exprs   use_expr_muls                     use_expr_divs 
+expr2   use_expr_mul                      use_expr_div16 
+expr2s  use_expr_muls and use_expr_mulsu  use_expr_div16s 
+======  ================================  ===============
+
+As an expedient you can invoke "use_expr_all" to include all of them and then eliminate any unused mul or div routines with the ``--remove-dead-code`` option to Opbasm.
+
+These macros need to be called before any call to ``expr*()`` that uses multiplication or division. It is best to place them at the start of the program and jump over them to reach the startup code. The stack must be configured (``use_stack(...)``) before calling these macros because additional modified registers must be saved and restored.
+
+By default these macros configure the mul and div functions to use the ``s8,s9`` or ``s7,s8, and s9`` registers for input and output. You can modify the register allocation by passing arguments to the ``use_*`` macros. The registers ``sA``, ``sB``, and sometimes ``sC`` are temporarily altered and restored. The common temp register (default ``sE``) is destructively modified. You can change the tempreg with the ``use_tempreg()`` macro. The MSB of multiplication is ignored by subsequent operations. Division by 0 is not detected.
+
+An example of signed expressions applied to converting temperatures:
+
+.. parsed-literal::
+
+  use_stack(sF, 0x3F)
+  jump start
+
+  use_expr_all ; Invoke all of the mul and div routines
+
+  ; Setup register aliases
+  reg16(rx, s0,s1)
+  reg16(ry, s2,s3)
+  vars(s4 is celsius, s5 is fahrenheit)
+
+  ; Convert temperature
+  c_to_f:
+    load reglower(rx), celsius     ; Load 8-bit Celsius temperature
+    signex(rx)                     ; Sign extend to 16-bits
+    expr2s(rx := rx * 9 / 5 + 32)  ; Perform 16x8-bit signed arithmetic to get Fahrenheit
+    return
+
+  c_to_f_fast: ; Saves approx. 130 instructions compared to c_to_f with multiply
+    load reglower(ry), celsius     ; Load 8-bit Celsius temperature
+    signex(ry)                     ; Sign extend to 16-bits
+    expr16s(rx := ry << 3 + ry)    ; Multiply by 9 with shift and add
+    expr2s(rx := rx / 5 + 32)      ; Perform 16x8-bit signed arithmetic to get Fahrenheit
+    return
+
+  f_to_c:
+    load reglower(rx), fahrenheit  ; Load 8-bit Fahrenheit temperature
+    signex(rx)                     ; Sign extend to 16-bits
+    expr2s(rx := rx - 32 * 5 / 9 ) ; Perform 16x8-bit signed arithmetic to get Celsius
+    return
+
+  start:
+    ...
+
+Miscellaneous
+-------------
+
+A few miscellaneous utility macros are included:
+
+=========  ============================  ==============================  
+nop        No-operation              
+clearcy    Clear the carry flag      
+setcy      Set the carry flag            ``setcy or setcy(<tmpreg>)``
+isnum      Test if a string is a number 
+load_out   Load and output value         ``load_out(s0, 0x01, P_uart)`` 
+load_st    Load and store value          ``load_st(s0, 0x01, M_var)``   
+reverse    Reverse arguments             ``reverse(1,2,3)``             
+swap       Swap registers                ``swap(s0, s1)``               
+randlabel  Random label name             ``randlabel(PREFIX_)``        
+uniqlabel  Unique label name             ``uniqlabel(PREFIX_)``
+=========  ============================  ==============================  
+
+Manually running m4
+-------------------
+
+Some users may be unable to use Opbasm due to formal release procedures requiring a "golden" assembler. The m4 macro package can still be used with other PicoBlaze assemblers by manually running code through m4:
+
+.. parsed-literal::
+
+  > m4 picoblaze.m4 [input source] > expanded_macros.gen.psm
+
+The picoblaze.m4 file is located in the opbasm_lib directory of the source distribution.
