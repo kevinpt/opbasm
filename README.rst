@@ -7,7 +7,7 @@ Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaz
 
 **Special features of Opbasm:**
 
- * Optional :doc:`m4 preprocessor macros <rst/m4>` are available when the m4 program is installed. An extensive set of built-in macros provide more advanced features than the base language. For example, converting temperature scales becomes as easy as this:
+ * Optional `m4 preprocessor macros <http://kevinpt.github.io/opbasm/rst/m4.html>`_ are available when the m4 program is installed. An extensive set of built-in macros provide more advanced features than the base language. For example, converting temperature scales becomes as easy as this:
 
   .. parsed-literal::
 
@@ -16,16 +16,17 @@ Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaz
     c_to_f:
       load reglower(rx), s0         ; Load 8-bit Celsius temperature
       signex(rx)                    ; Sign extend to 16-bits
-      expr2s(rx := rx * 9 / 5 + 32) ; Perform 16x8-bit signed arithmetic to get Fahrenheit
+      expr2s(rx := rx * 9 / 5 + 32) ; Perform 16x8-bit signed arithmetic to
+                                    ; get Fahrenheit
       return
 
 
- * `Static code analysis`_ to identify dead code and optionally remove it. This permits the development of code libraries that can be included without wasting memory on unused functions.
+ * `Static code analysis <http://kevinpt.github.io/opbasm/#static-code-analysis>`_ to identify dead code and optionally remove it. This permits the development of code libraries that can be included without wasting memory on unused functions.
 
- * Code block annotations with `user defined PRAGMA meta-comments`_.
+ * Code block annotations with `user defined PRAGMA meta-comments <http://kevinpt.github.io/opbasm/#user-defined-pragma-meta-comments>`_.
 
 
-Support for the full PicoBlaze-6 syntax is provided as well as `enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code`_. The original templating system for ROM components is supported as well as a more flexible `generic ROM component`_ that can read *.mem* and *.hex* files directly during synthesis and simulation. A utility script is included that permits `updating the ROM contents of a bitstream file`_ without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
+Support for the full PicoBlaze-6 syntax is provided as well as `enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code <http://kevinpt.github.io/opbasm/#enabling-most-of-the-new-pb6-syntax-enhancements-in-picoblaze-3-code>`_. The original templating system for ROM components is supported as well as a more flexible `generic ROM component <http://kevinpt.github.io/opbasm/#generic-rom-component>`_ that can read *.mem* and *.hex* files directly during synthesis and simulation. A utility script is included that permits `updating the ROM contents of a bitstream file <http://kevinpt.github.io/opbasm/#updating-the-rom-contents-of-a-bitstream-file>`_ without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
 
 Files generated on non-Windows platforms will not have DOS line endings and PicoBlaze-3 files are not restricted to 8.3 file names. Opbasm also runs significantly faster than the native implementation:
 
