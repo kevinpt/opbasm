@@ -1,3 +1,5 @@
+.. image:: http://kevinpt.github.io/opbasm/_static/opbasm_logo.png
+
 ========================
 Open PicoBlaze Assembler
 ========================
