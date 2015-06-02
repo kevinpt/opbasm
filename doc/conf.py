@@ -109,7 +109,7 @@ html_theme_options = {
   'show_powered_by': False,
   'logo_text_align': 'center',
   'font_family': 'Verdana, Geneva, sans-serif',
-  'github_user': 'kevin.thibedeau',
+  'github_user': 'kevinpt',
   'github_repo': 'opbasm',
   'github_button': True
 }
@@ -156,6 +156,8 @@ html_sidebars = {
     '**': [
         'about.html',
         'relations.html',
+        'localtoc.html',
+        'projects.html',
         'searchbox.html'
     ]
 }
