@@ -22,6 +22,7 @@ v1.x / 2015-??-??
   * Added qstr() macro to wrap macros in double quotes.
   * Added DATE_STAMP and TIME_STAMP macros for use within m4.
   * Add -D option to allow definition of m4 macros from the command line
+  * Add automatic keep pragma to jump tables (2 or more consecutive unconditional jumps)
   
   Bug fixes
   ---------
