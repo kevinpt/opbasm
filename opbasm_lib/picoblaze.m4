@@ -7,7 +7,7 @@ changecom(;)
 ; These can be used manually with any Picoblaze assembler by running the following:
 ;   m4 picoblaze.m4 [input source] > expanded_macros.gen.psm
 
-; Copyright © 2014 Kevin Thibedeau
+; Copyright © 2014, 2015 Kevin Thibedeau
 ; (kevin 'period' thibedeau 'at' gmail 'punto' com)
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a
@@ -68,6 +68,12 @@ define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($
 ; Arg1-Argn: Hex values to convert
 ; Ex: pbhex(01, 02, 03, 0a, ff)  ; Expands to 1, 2, 3, 10, 255
 define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x$1)')')
+
+;---------------------------------
+; Convert a list of decimal values to Picoblaze hex format
+; Arg1-Argn: Decimal values to convert
+; Ex: dec2pbhex(1, 2, 100, 200)  ; Expands to 01, 02, 64, C8
+define(`dec2pbhex', `ifelse(eval($#>1),1,`eval($1 & 0xFF,16,2)'`,' `$0(shift($@))',$1,,,`eval($1 & 0xFF,16,2)')')
 
 ;---------------------------------
 ; Convert a string to a list of decimal ASCII codes
