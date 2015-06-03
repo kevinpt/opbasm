@@ -726,18 +726,18 @@ Multiply and divide
 
 The general purpose PicoBlaze 8x8 multiply and divide routines are made available with arbitrary register allocations to suit your needs. A set of constant multiply and divide routines can also be generated for faster results than the general purpose functions. The following macros are available:
 
-================= =======================================
-multiply8x8       8x8-bit unsigned 
-multiply8x8s      8x8-bit signed 
-multiply8x8su     8-bit signed x 8-bit unsigned 
-divide8x8         8/8-bit unsigned 
-divide8x8s        8/8-bit signed 
-divide16x8        16/8-bit unsigned 
-divide16x8s       16/8-bit signed 
-multiply8xk       8-bit x constant 
-multiply8xk_small 8-bit x constant (result less than 256) 
-divide8xk         8-bit / constant 
-================= =======================================
+=================  =======================================
+multiply8x8        8x8-bit unsigned 
+multiply8x8s       8x8-bit signed 
+multiply8x8su      8-bit signed x 8-bit unsigned 
+divide8x8          8/8-bit unsigned 
+divide8x8s         8/8-bit signed 
+divide16x8         16/8-bit unsigned 
+divide16x8s        16/8-bit signed 
+multiply8xk        8-bit x constant 
+multiply8xk_small  8-bit x constant (result less than 256) 
+divide8xk          8-bit / constant 
+=================  =======================================
 
 
 .. parsed-literal::
@@ -899,7 +899,9 @@ Miscellaneous
 
 A few miscellaneous utility macros are included:
 
-=========  ============================  ==============================  
+=========  ============================  ==============================
+Macro      Description                   Example
+=========  ============================  ==============================
 nop        No-operation              
 clearcy    Clear the carry flag      
 setcy      Set the carry flag            ``setcy or setcy(<tmpreg>)``
@@ -910,7 +912,7 @@ reverse    Reverse arguments             ``reverse(1,2,3)``
 swap       Swap registers                ``swap(s0, s1)``               
 randlabel  Random label name             ``randlabel(PREFIX_)``        
 uniqlabel  Unique label name             ``uniqlabel(PREFIX_)``
-=========  ============================  ==============================  
+=========  ============================  ==============================
 
 Manually running m4
 -------------------
