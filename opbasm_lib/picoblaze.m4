@@ -110,8 +110,9 @@ define(`cstr', `_esc(asciiord(`$1')), 0')
 define(`_esc', `ifelse(eval($#>1),1, `ifelse(eval($1==92),1,`_echar($2)`'ifelse(eval($#>2),1,`, $0(shift(shift($@)))')',`$1, $0(shift($@))')', `$1')')
 
 ; Convert escaped character codes into their ASCII value
-;                               \\                 \n                  \r                  \t                 \b                \a
-define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,13, eval($1==116),1,9, eval($1==98),1,8, eval($1==97),1,7, `errmsg(`Invalid escape code')')')
+;                               \\                 \n                  \r                  \t                 \b                \a             \e
+define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,13, eval($1==116),1,9, eval($1==98),1,8, eval($1==97),1,7, eval($1==101),1,27,dnl
+`errmsg(`Invalid escape code')')')
 
 ;---------------------------------
 ; Add double quotes around a string
