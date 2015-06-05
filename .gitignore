@@ -1,0 +1,4 @@
+__pycache__/
+opbasm.egg-info/
+build/
+dist/
