@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.2.10'
+__version__ = '1.2.11'
 
 
 class FatalError(Exception):
@@ -2031,6 +2031,9 @@ def find_templates(template_file):
         templates['vhdl'] = template_file
       else:
         templates['verilog'] = template_file
+    else:
+      print(_('Given template file \'{}\' does not exist.').format(template_file))
+      sys.exit(1)
 
   else: # Search for standard templates
     vhdl_templates = ('ROM_form.vhd', 'ROM_form.vhdl')
