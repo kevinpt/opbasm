@@ -2226,12 +2226,12 @@ define(`sra_16', `repeat(`_sra_16($1, $2)', eval(const2m4($3)))')
 
 define(`sl0_16', `ifelse(eval(const2m4($3) > 8),1,`load $1, $2
 load $2, 00
-repeat(`_sl0_16($1, $2)', eval(const2m4($3) - 8))',dnl
+repeat(`sl0 $1', eval(const2m4($3) - 8))',dnl
 `repeat(`_sl0_16($1, $2)', eval(const2m4($3)))')')
 
 define(`sl1_16', `ifelse(eval(const2m4($3) > 8),1,`load $1, $2
 load $2, FF
-repeat(`_sl1_16($1, $2)', eval(const2m4($3) - 8))',dnl
+repeat(`sl1 $1', eval(const2m4($3) - 8))',dnl
 `repeat(`_sl1_16($1, $2)', eval(const2m4($3)))')')
 
 define(`slx_16', `ifelse(eval(const2m4($3) > 8),1,`load $1, $2
@@ -2242,12 +2242,12 @@ repeat(`_slx_16($1, $2)', eval(const2m4($3) - 8))',dnl
 
 define(`sr0_16', `ifelse(eval(const2m4($3) > 8),1,`load $2, $1
 load $1, 00
-repeat(`_sr0_16($1, $2)', eval(const2m4($3) - 8))',dnl
+repeat(`sr0 $2', eval(const2m4($3) - 8))',dnl
 `repeat(`_sr0_16($1, $2)', eval(const2m4($3)))')')
 
 define(`sr1_16', `ifelse(eval(const2m4($3) > 8),1,`load $2, $1
 load $1, FF
-repeat(`_sr1_16($1, $2)', eval(const2m4($3) - 8))',dnl
+repeat(`sr1 $2', eval(const2m4($3) - 8))',dnl
 `repeat(`_sr1_16($1, $2)', eval(const2m4($3)))')')
 
 define(`srx_16', `ifelse(eval(const2m4($3) > 8),1,`load $2, $1
