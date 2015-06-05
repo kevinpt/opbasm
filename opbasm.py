@@ -1510,6 +1510,20 @@ def build_memmap(slist, mem_size, default_jump):
   for s in slist:
     if s.is_instruction():
       mmap[s.address] = s.machine_word()
+      
+  if 0:
+    # Compute CRC
+    # Convert to 9-bit words
+    mmap9 = []
+    for w in mmap:
+      mmap9.append( ((w >> 8) & 0x100) + (w & 0xFF) )
+      mmap9.append( ((w >> 9) & 0x100) + ((w >> 8) & 0xFF) )
+      
+    for xor in (0xFFFF, 0x0000):
+      for poly in (0x8005, 0x1021, 0x8007):
+        for reflect in (True, False):
+          crc = gen_crc(16, 9, poly, 0x0000, xor, reflect, reflect, mmap9)
+          print('### CRC: {:04X} {:04X} {:5s} = {:04X}'.format(xor, poly, str(reflect), crc))
   return mmap
 
 
@@ -1775,6 +1789,11 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
     for s in assembled_code:
       printf(s.format(show_addr=True, show_dead=show_dead, colorize=colorize))
 
+    if asm.default_jump is None or asm.default_jump == 0:
+      printf(_('\nAll unused memory locations contain zero (equivalent to "LOAD s0, s0")'))
+    else:
+      printf(_('\nAll unused memory locations contain a DEFAULT_JUMP to {:03X}').format(asm.default_jump & 0xFFF))
+
     printf('\n\n' + underline(_('PSM files that have been assembled')))
     for f in asm.sources.iterkeys():
       printf('   ', os.path.abspath(f))
@@ -1917,11 +1936,7 @@ def build_default_jump_inits(default_jump):
                 r'\[17:9\]_INIT':dj_minit_9['[17:9]_INIT_00'], r'\[17:9\]_INITP':dj_minit_9['[17:9]_INITP_00'],
                 r'\[8:0\]_INIT':dj_minit_9['[8:0]_INIT_00'], r'\[8:0\]_INITP':dj_minit_9['[8:0]_INITP_00']
   }
-  # dj_inits = { 'INIT':'Q'*64, 'INITP':'R'*64,
-                # r'\[17:9\]_INIT':'S'*64, r'\[17:9\]_INITP':'T'*64,
-                # r'\[8:0\]_INIT':'U'*64, r'\[8:0\]_INITP':'V'*64
-  # }
-  
+
   return dj_inits
 
   
@@ -1964,13 +1979,46 @@ def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp, default
       hdl = re.sub(r'{{{}_..}}'.format(k), v, hdl)
 
   hdl = hdl.replace('{source file}', input_file)  # Extension not used by KCPSM3.exe
+  # We don't support {psmname} because it is followed by a hard-coded extension in the templates which may be invalid
   hdl = hdl.replace('{name}', os.path.splitext(hdl_file)[0])
   hdl = hdl.replace('{timestamp}', timestamp)
+  # {default_jump} # Used in ROM_form_7S_1K5_with_ecc
+  # {CRC_2K}       # Used in ROM_form_7S_2K_with_error_detection
 
   with io.open(hdl_file, 'w', encoding='latin1') as fh:
     fh.write(hdl)
     
   return all_inits_replaced
+
+# Compute CRC of data
+def gen_crc(size, data_size, poly, xor_in, xor_out, reflect_in, reflect_out, data):
+  crc = xor_in
+  for w in data:
+    crc = next_crc(size, data_size, crc, poly, reflect_in, w)
+  return end_crc(size, crc, reflect_out, xor_out)
+
+def next_crc(size, data_size, crc, poly, reflect_in, data):
+  sreg = crc
+  bits = '{:0{}b}'.format(data, data_size)
+  
+  if reflect_in:
+    #print('#### {} {}'.format(bits, bits[::-1]))
+    bits = bits[::-1]
+
+  for b in bits:
+    leftbit = 1 if sreg & (2**(size-1)) > 0 else 0
+    sreg = (sreg << 1) & (2**size-1)
+    if int(b) != leftbit:
+      sreg = sreg ^ poly
+
+  return sreg
+
+def end_crc(size, crc, reflect_out, xor_out):
+  if reflect_out:
+    b = '{:0{}b}'.format(crc, size)
+    crc = int(b[::-1],2)
+  
+  return (crc ^ xor_out) & (2**size-1)
 
 
 def find_templates(template_file):
@@ -2060,13 +2108,6 @@ def get_standard_templates():
 
   lib_dir = find_lib_dir()
   tpl_dir = os.path.normpath(os.path.join(lib_dir, '../templates'))
-#  # Look relative to installed library
-#  try:
-#    lib_dir = os.path.dirname(sys.modules['opbasm_lib'].__file__)
-#    tpl_dir = os.path.normpath(os.path.join(lib_dir, '../templates'))
-#  except KeyError:
-#    # Look relative to this script
-#    tpl_dir = os.path.normpath(os.path.join(os.path.realpath(__file__), '../templates'))
 
   if not os.path.exists(tpl_dir):
     print(_('  No template directory found'))
@@ -2101,8 +2142,8 @@ def main():
 
   # Notify user about weak translations
   if lang in ('fr',):
-    printq(success(_('''  Translation for English is machine generated.
-  You can improve it by editing the message catalogs.''')))
+    printq(success(_('''  Translation for <this language> is machine generated.
+  You can improve it by editing the message catalogs. See CONTRIBUTING for more info.''')))
   
   if not options.use_pb6 and not options.use_pb3: # We defaulted to PB3
     printq(warn(_('''  WARNING: PicoBlaze-6 will become the default target in version 1.4.

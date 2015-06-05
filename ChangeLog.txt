@@ -20,10 +20,12 @@ v1.x / 2015-??-??
   * Unreferenced constants, strings, and tables are reported in the log.
   * Added cstr() and estr() macros to generate numeric strings with C character escapes and an optional NUL terminator.
   * Added qstr() macro to wrap macros in double quotes.
+  * New generic string and packed string handler macros for both PB3 and PB6
+  * ANSI escape code macros for color text
   * Added DATE_STAMP and TIME_STAMP macros for use within m4.
   * Add -D option to allow definition of m4 macros from the command line
   * Add automatic keep pragma to jump tables (2 or more consecutive unconditional jumps)
-  
+    
   Bug fixes
   ---------
   * Templates with multiple implementations containing larger memories than the memory map file would
