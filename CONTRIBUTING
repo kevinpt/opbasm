@@ -11,6 +11,34 @@ I have tried to keep the core of the code in opbasm.py. It should be capable
 of running standalone without obpasm_lib being present. Any features implemented
 in external files should gracefully degrade when they are missing.
 
+Documentation
+-------------
+
+The documentation is written in restructured text (rst) using the Sphinx extensions.
+To generate new static HTML you need the Sphinx tools installed. The doc/makefile
+has an html target for making new pages:
+
+> make html
+
+This generates new files in _build/html. If you're modifying styles or other
+non-content related files you will have to manually delete _build because the
+makefile doesn't have dependencies on them.
+
+The static html is stored in a gh-pages branch of the repository. You need to create
+a fresh clone of the repo and switch to that branch
+
+> git clone <url>
+> git branch gh-pages
+
+Then you can copy the static HTML from the original repo into root of the gh-pages repo.
+If you have created this repository as opbasm-html in the same directory as the opbasm
+repo you can use the "gh-pages" make target to run the whole process.
+
+> make gh-pages
+
+Once pushed back to the github server the new HTML will be accessible from the github.io
+site.
+
 
 Translations
 ------------
