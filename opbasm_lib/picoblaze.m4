@@ -81,7 +81,7 @@ define(`dec2pbhex', `ifelse(eval($#>1),1,`eval($1 & 0xFF,16,2)'`,' `$0(shift($@)
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
 changequote(<!,!>) ; Change quotes so we can handle "`" and "'"
 
-define(<!asciiord!>,<!changequote(<!,!>)<!!>_asciiord(<!$1!>)<!!>changequote`'dnl
+define(<!asciiord!>,<!changequote(<!,!>)changecom(-~-)<!!>_asciiord(<!$1!>)<!!>changecom(;)changequote`'dnl
 !>)
 
 define(<!_asciiord!>,<!ifelse(<!$1!>,,,<!_aconv(substr(<!$1!>,0,1))<!!>ifelse(len(<!$1!>),1,,<!,!>) $0(substr(<!$1!>,1))!>)!>)
@@ -100,6 +100,8 @@ changequote
 ;   \t  HT
 ;   \b  BS
 ;   \a  BEL
+;   \e  ESC
+;   \s  semicolon ;
 ; Arg1: String to convert
 ; Ex: estr(`My string\r\n')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103, 13, 10
 ;     cstr(`My string\r\n')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103, 13, 10, 0
@@ -110,8 +112,8 @@ define(`cstr', `_esc(asciiord(`$1')), 0')
 define(`_esc', `ifelse(eval($#>1),1, `ifelse(eval($1==92),1,`_echar($2)`'ifelse(eval($#>2),1,`, $0(shift(shift($@)))')',`$1, $0(shift($@))')', `$1')')
 
 ; Convert escaped character codes into their ASCII value
-;                               \\                 \n                  \r                  \t                 \b                \a             \e
-define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,13, eval($1==116),1,9, eval($1==98),1,8, eval($1==97),1,7, eval($1==101),1,27,dnl
+;                               \\                 \n                  \r                  \t                 \b                \a             \e                \s
+define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,13, eval($1==116),1,9, eval($1==98),1,8, eval($1==97),1,7, eval($1==101),1,27, eval($1==115),1,59,dnl
 `errmsg(`Invalid escape code')')')
 
 ;---------------------------------
@@ -1154,6 +1156,23 @@ jump __packed_string_handler
 _$1_STR: insttable_be(cstr($2))')
 
 
+;---------------------------------
+; ANSI escape codes for generating color text
+; The resulting string contains backslash escapes that must be processed
+; by cstr() or estr().
+; Arg1: Optional argument of "bold" will activate bold/bright text
+; Ex: ansi_red`foobar'ansi_reset       ; red text
+      ansi_red(bold)`foobar'ansi_reset ; bold/bright red text
+
+define(`ansi_black',   `\e[30'`ifelse($1,bold,`\s1')'`m')
+define(`ansi_red',     `\e[31'`ifelse($1,bold,`\s1')'`m')
+define(`ansi_green',   `\e[32'`ifelse($1,bold,`\s1')'`m')
+define(`ansi_yellow',  `\e[33'`ifelse($1,bold,`\s1')'`m')
+define(`ansi_blue',    `\e[34'`ifelse($1,bold,`\s1')'`m')
+define(`ansi_magenta', `\e[35'`ifelse($1,bold,`\s1')'`m')
+define(`ansi_cyan',    `\e[36'`ifelse($1,bold,`\s1')'`m')
+define(`ansi_white',   `\e[37'`ifelse($1,bold,`\s1')'`m')
+define(`ansi_reset',   `\e[0m')
 
 ;=============== ARITHMETIC OPERATIONS ===============
 

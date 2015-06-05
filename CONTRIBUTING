@@ -1,0 +1,59 @@
+
+Coding style
+------------
+
+The code is written to loosely follow the PEP8 style guide. Single quoted
+strings are preferred but double quotes are fine to avoid unsightly escapes.
+All non-trivial functions and methods should have a basic docstring.
+Parameters do not have to be described.
+
+I have tried to keep the core of the code in opbasm.py. It should be capable
+of running standalone without obpasm_lib being present. Any features implemented
+in external files should gracefully degrade when they are missing.
+
+
+Translations
+------------
+
+Localized translations are implemented with the Python adaptation of GNU
+Gettext. In the code, translatable strings are wrapped in the _() function call.
+You should write strings so that they translate readily to different grammars.
+Avoid composing strings through concatenation and use .format() instead to
+permit more flexible word order among the translations.
+
+You will need the xgettext and poedit tools or similar equivalents.
+All localization work is done in the opbasm_lib/lang tree. The following
+process is needed to start a new language:
+
+1  Extract the latest strings from opbasm.py and pb_update.py into their
+   .pot template files located in opbasm_lib/lang
+   > xgettext opbasm.py -o opbasm_lib/lang/opbasm.pot
+   
+2  create a new directory in opbasm_lib/lang using the two letter ISO
+   language code in lower case. Inside this create an LC_MESSAGES
+   directory.
+
+3  Run the poedit tool and select "File|New from POT/PO file...". Select the
+   language then select "Catalog|Properties..." and verify that the encoding is
+   set to UTF-8. You're ready to proceed with creating new translations. There
+   is a special string "en" that should be translated to the new language
+   code. This is used by Opbasm to identify the currently active language.
+
+4  Save the translations to opbasm.po or pb_update.po in the LC_MESSAGES
+   directory. Then select "File|Compile to MO" and save the .mo file in the
+   same location. Poedit can also be set to automatically generate the .mo file.
+
+5  Verify the new translations work by changing the LANG environment variable
+   to the value <lang>_<COUNTRY>.utf8. i.e. de_DE.utf8 or zh_CN.utf8.
+
+6  Add all new files to the repository and push them out.
+
+
+To update an existing translation you skip step 2 and do the following for step 3:
+
+3a Load an existing .po file with "File|Open..."
+
+3b Select "Catalog|Update from POT file..." and update with the new template
+   created by xgettext.
+
+3c Translate new and modified strings shown in bold text.
