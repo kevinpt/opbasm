@@ -2387,6 +2387,67 @@ output $1, ($3)
 add $3, 01')
 
 
+
+;=============== RANDOM NUMBER GENERATORS ===============
+
+;---------------------------------
+; 8-bit pseudo-random generator
+; Based on George Marsaglia's xorshift algorithm. Generates a full cycle of 255 values.
+; Expands to 11 instructions.
+; Arg1: label to use for random function
+; Arg2: Random state variable (Initialize this with a non-zero seed)
+; The temp register is destructively modified.
+; Ex: namereg s8, RS
+;     use_random8(random, RS)
+;     ...
+;     load RS, 5A   ; Seed the PRNG (Use an external entropy source like an ADC in real life)
+;     call random
+define(`use_random8', `$1:    ; 8-bit PRNG with state in $2
+  ; Shift left 1
+  load _tempreg, $2
+  sl0 _tempreg
+  xor $2, _tempreg
+  ; Shift right 1
+  load _tempreg, $2
+  sr0 _tempreg
+  xor $2, _tempreg
+  ; Shift left 2
+  load _tempreg, $2
+  sl0 _tempreg
+  sl0 _tempreg
+  xor $2, _tempreg
+  return')
+
+;---------------------------------
+; 16-bit pseudo-random generator
+; Based on George Marsaglia's xorshift algorithm. Generates a full cycle of 65535 values.
+; Expands to 23 instructions.
+; Arg1:       label to use for random function
+; Arg2, Arg3: MSB, LSB of 16-bit random state variable (Initialize this with a non-zero seed)
+; Arg4, Arg5: MSB, LSB of a 16-bit temp register
+; Ex: reg16(RS, s0,s1)
+;     use_random16(random, RS, sA, sB)
+;     ...
+;     load16(RS, 0x1234)   ; Seed the PRNG (Use an external entropy source like an ADC in real life)
+;     call random
+define(`use_random16', `$1:    ; 16-bit PRNG with state in $2,$3
+  ; Shift left 1
+  load16($4, $5, $2, $3)
+  sl0_16($4, $5, 1)       
+  xor16($2, $3, $4, $5)
+  ; Shift right 1
+  load16($4, $5, $2, $3)
+  sr0_16($4, $5, 1)
+  xor16($2, $3, $4, $5)
+  ; Shift left 14 (copy lower to upper byte and shift left 14-8=6)
+  load $4, $3
+  load $5, 00
+  sl0($4, 6)
+  xor16($2, $3, $4, $5)
+  return')
+  
+  
+
 ;=============== UPPERCASE MACROS ===============
 
 
