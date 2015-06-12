@@ -59,7 +59,7 @@
 <li><a class="reference internal" href="#conditional-if-then-else">Conditional if-then-else</a></li>
 <li><a class="reference internal" href="#looping">Looping</a></li>
 <li><a class="reference internal" href="#delay-generators">Delay generators</a></li>
-<li><a class="reference internal" href="#repeated-string-and-table-operations-that-work-on-picoblaze-3">Repeated string and table operations that work on PicoBlaze-3</a></li>
+<li><a class="reference internal" href="#portable-string-and-table-operations">Portable string and table operations</a></li>
 <li><a class="reference internal" href="#bit-arithmetic-logical-and-shift-operators">16-bit arithmetic, logical, and shift operators</a></li>
 <li><a class="reference internal" href="#bit-i-o-operations">16-bit I/O operations</a></li>
 <li><a class="reference internal" href="#multiply-and-divide-routines">Multiply and divide routines</a></li>
@@ -559,7 +559,7 @@ call var_delay
 <p>The first argument to the <tt class="docutils literal"><span class="pre">var_delay_*()</span></tt> macros is the maximum delay value to support. When a delay is needed you must load the count registers with a constant computed with the <tt class="docutils literal"><span class="pre">var_count_*()</span></tt> macros.</p>
 </div>
 <div class="section" id="string-and-table-operations">
-<span id="repeated-string-and-table-operations-that-work-on-picoblaze-3"></span><span id="string-and-table-ops"></span><h2>String and table operations<a class="headerlink" href="#string-and-table-operations" title="Permalink to this headline">¶</a></h2>
+<span id="portable-string-and-table-operations"></span><span id="string-and-table-ops"></span><h2>String and table operations<a class="headerlink" href="#string-and-table-operations" title="Permalink to this headline">¶</a></h2>
 <p>PicoBlaze-3 doesn&#8217;t have the ability to handle strings as efficiently as PB6 but it is still necessary to work with them at times. Suppose that you have a subroutine &#8220;write_char&#8221; that writes characters in s0 out to a peripheral. You can write entire strings with the following:</p>
 <div class="highlight-python"><div class="highlight"><pre>callstring(write_char, s0, `My string&#39;) ; Note use of m4 quotes `&#39; to enclose the string
 </pre></div>
@@ -635,6 +635,180 @@ insttable_be(pbhex(0a, 0b, 0c))
 </pre></div>
 </div>
 <p>This permits the compact storage of data bytes in the PicoBlaze ROM. If synthesized as a dual-ported block RAM, the data can be retrieved with external logic. The <tt class="docutils literal"><span class="pre">picoblaze_dp_rom</span></tt> component included with <a class="reference external" href="https://code.google.com/p/opbasm/source/browse/templates/picoblaze_rom.vhdl">picoblaze_rom.vhdl</a> provides a second read/write port for this purpose.</p>
+<div class="section" id="escaped-strings">
+<h3>Escaped strings<a class="headerlink" href="#escaped-strings" title="Permalink to this headline">¶</a></h3>
+<p>The native PicoBlaze syntax does not permit the use of character escapes in strings. The macros <tt class="docutils literal"><span class="pre">estr()</span></tt> and <tt class="docutils literal"><span class="pre">cstr()</span></tt> provide a means for generating escaped strings without and with a NUL terminator respectively. They generate a list of integers representing each character in the string. The following C-style backslash escape codes are supported:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="23%" />
+<col width="77%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Escape</th>
+<th class="head">Meaning</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>\</td>
+<td>Literal &#8220;&#8221;</td>
+</tr>
+<tr class="row-odd"><td>n</td>
+<td>Newline Line Feed</td>
+</tr>
+<tr class="row-even"><td>r</td>
+<td>Carriage Return</td>
+</tr>
+<tr class="row-odd"><td>b</td>
+<td>Backspace</td>
+</tr>
+<tr class="row-even"><td>a</td>
+<td>Bell</td>
+</tr>
+<tr class="row-odd"><td>e</td>
+<td>Esc</td>
+</tr>
+<tr class="row-even"><td>s</td>
+<td>Literal semicolon</td>
+</tr>
+</tbody>
+</table>
+<p>On PicoBlaze-6 you can apply the output of these macros directly in a <tt class="docutils literal"><span class="pre">TABLE</span></tt> directive as follows:</p>
+<pre class="literal-block">
+table hello#, [dec2pbhex(cstr(`Hello\r\n'))]
+; This expands to: table hello#, [48, 65, 6c, 6c, 6f, 0d, 0a, 00]
+
+table hello2#, [dec2pbhex(estr(`Hello\r\n'))]
+; This expands to: table hello2#, [48, 65, 6c, 6c, 6f, 0d, 0a]
+</pre>
+<p>For PicoBlaze-3 you can pass the output of <tt class="docutils literal"><span class="pre">estr()</span></tt> and <tt class="docutils literal"><span class="pre">cstr()</span></tt> to the <tt class="docutils literal"><span class="pre">call/store/outputtable()</span></tt> macros or use the portable string macros described next.</p>
+<p>If you need know the length of a string constant you can use <tt class="docutils literal"><span class="pre">strlen()</span></tt> to generate that value. It takes a single string argument that can contain escaped characters. It is passed through <tt class="docutils literal"><span class="pre">estr()</span></tt> before characters are counted.</p>
+<pre class="literal-block">
+load s0, strlen(`foobar\r\n') ; Expands to 8
+</pre>
+<p>You can also pass the label to a string defined with <tt class="docutils literal"><span class="pre">string()</span></tt> or <tt class="docutils literal"><span class="pre">packed_string()</span></tt> to retrieve their length.</p>
+<pre class="literal-block">
+packed_string(my_string, `This is a string')
+load s0, strlen(my_string) ; Expands to 16
+</pre>
+<p>Note that m4 has a builtin macro <tt class="docutils literal"><span class="pre">len()</span></tt> that also returns the length of strings. However, it does not account for escape characters and will include blackslashes in its count.</p>
+</div>
+<div class="section" id="portable-strings">
+<h3>Portable strings<a class="headerlink" href="#portable-strings" title="Permalink to this headline">¶</a></h3>
+<p>A simplified system for generating efficient, portable strings is provided by the macro package. With this you can create string handling code that will expand into the most efficient form for PicoBlaze-3 or PicoBlaze-6. You must configure the portable string system with the <tt class="docutils literal"><span class="pre">use_strings()</span></tt> macro. It configures the registers and a character handling routine used when processing a string.</p>
+<ul class="simple">
+<li>Arg1: Register loaded with each character</li>
+<li>Arg2, Arg3: MSB, LSB of string address (Only used on PB6. Use dummy registers for PB3)</li>
+<li>Arg4: Label of a user provided function called to process each character</li>
+</ul>
+<p>After configuring string handling with <tt class="docutils literal"><span class="pre">use_strings()</span></tt> you must define each string using the <tt class="docutils literal"><span class="pre">string()</span></tt> macro. It takes two arguments. The first is a label to identify the string and the second is the escaped string value. Strings are reproduced by calling them with the label used in their definition. Labels should not end with a &#8220;$&#8221; like with the <tt class="docutils literal"><span class="pre">STRING</span></tt> directive.</p>
+<pre class="literal-block">
+jump main
+use_strings(s0, s5,s6, write_char)
+
+write_char: output s0, 00
+            return
+
+string(hello, `Hello world\r\n') ; Define a string called &quot;hello&quot;
+
+main:
+...
+call hello ; Call write_char on each character in the &quot;hello&quot; string
+</pre>
+<p>This expands to the following when targeting PB6:</p>
+<pre class="literal-block">
+                  JUMP main
+                  ; PB6 common string handler routine
+__string_handler: CALL&#64; (s5, s6)                 ; Read next char
+                  COMPARE s0, 00                 ; Check if NUL
+                  RETURN z
+                  CALL write_char                ; Handle the char
+                  ADD s6, 01                     ; 1
+                  ADDCY s5, 00                   ; Increment address
+                  JUMP __string_handler
+
+      write_char: OUTPUT s0, 00                  ; Our character handler
+                  RETURN
+
+                  ; &quot;Hello world\r\n&quot;
+                  TABLE hello#, [48, 65, 6c, 6c, 6f, 20, 77, 6f, 72, 6c, 64, 0d, 0a, 00]
+           hello: LOAD s5, _hello_STR'upper
+                  LOAD s6, _hello_STR'lower
+                  JUMP __string_handler
+      _hello_STR: LOAD&amp;RETURN s0, hello#         ; Define a string called `&quot;hello&quot;'
+
+            main:
+                  ...
+                  CALL hello                     ; Call write_char on each character in the &quot;hello&quot; string
+</pre>
+<p>Note that a common string processing routine <tt class="docutils literal"><span class="pre">__string_handler</span></tt> is generated and the escaped string is implemented with <tt class="docutils literal"><span class="pre">load&amp;return</span></tt> instructions.</p>
+<p>When targeting PB3 the following expansion results:</p>
+<pre class="literal-block">
+            JUMP main
+
+write_char: OUTPUT s0, 00                  ; Our character handler
+            RETURN
+
+            ; &quot;Hello world\r\n&quot;
+     hello: LOAD s0, 48
+            CALL write_char
+            LOAD s0, 65
+            CALL write_char
+            LOAD s0, 6c
+            CALL write_char
+            LOAD s0, 6c
+            CALL write_char
+            ...
+            LOAD s0, 0d
+            CALL write_char
+            LOAD s0, 0a
+            CALL write_char
+            RETURN                         ; Define a string called `&quot;hello&quot;'
+
+      main:
+            ...
+            CALL hello                     ; Call write_char on each character in the &quot;hello&quot; string
+</pre>
+<p>The PB3 version does not generate a common handler routine but instead generates code to handle each string in place using the <tt class="docutils literal"><span class="pre">calltable()</span></tt> macro.</p>
+<p>You are limited to a single user provided function for processing each character in a string. If you need to perform different operations on strings then you will have to use a register or scratchpad value to select the desired behavior before calling the string label and write a handler routine that checks what operation is needed for each character it receives.</p>
+</div>
+<div class="section" id="packed-strings">
+<h3>Packed strings<a class="headerlink" href="#packed-strings" title="Permalink to this headline">¶</a></h3>
+<p>A set of macros for handling packed strings is available for use. These work similarly to the portable string macros but rely on character data packed with <tt class="docutils literal"><span class="pre">INST</span></tt> directives. This is the most efficient way to store uncompressed strings in PicoBlaze memory. Access to the data must be implemented with external hardware that can read instruction memory through a second port. The same code is generated for both PB3 and PB6.</p>
+<p>To configure packed strings you need to call the <tt class="docutils literal"><span class="pre">use_packed_strings()</span></tt> macro. It is similar to <tt class="docutils literal"><span class="pre">use_strings()</span></tt> but you also need to provide a function that retrieves character pairs from an address in memory. Its arguments are the following:</p>
+<ul class="simple">
+<li>Arg1: Register to store even characters (0, 2, 4, ...)</li>
+<li>Arg2: Register to store odd characters  (1, 3, 5, ...)</li>
+<li>Arg3, Arg4: Registers for MSB, LSB of address to string</li>
+<li>Arg5: Label of user provided function called to process each character (Only needs to handle the even char register)</li>
+<li>Arg6: Label of user provided function called to read pairs of characters from memory</li>
+</ul>
+<p>Character pairs are stored in big-endian order. The read routine needs to place the upper byte in the even register and the lower byte in the odd register. A common handler routine <tt class="docutils literal"><span class="pre">__packed_string_handler</span></tt> is generated so you must ensure the execution path bypasses the generated code.</p>
+<p>After configuration you define strings with the <tt class="docutils literal"><span class="pre">packed_string()</span></tt> macro just as with the <tt class="docutils literal"><span class="pre">string()</span></tt> macro.</p>
+<pre class="literal-block">
+jump main
+mem16(P_ROM, 0x0b,0x0a)            ; Define 16-bit port addresses for dual-ported ROM
+use_packed_strings(s0,s1, s5,s6, write_char, read_next_chars)
+
+write_char: output s0, 00          ; Using register for even chars
+            return
+
+read_next_chars:
+            output16(s5,s6, P_ROM) ; Select next address from second port
+            nop
+            input16(s0,s1, P_ROM)  ; Read back upper and lower byte
+            return
+
+packed_string(hello, `Hello world\r\n') ; Define a packed string called &quot;hello&quot;
+
+main:
+...
+call hello ; Call write_char on each character in the &quot;hello&quot; string
+</pre>
+<p>If you have existing code using the portable string macros, you can convert it to use packed strings by redefining the <tt class="docutils literal"><span class="pre">string()</span></tt> macro:</p>
+<pre class="literal-block">
+define(`string', `packed_string($&#64;)')
+</pre>
+</div>
 </div>
 <div class="section" id="bit-arithmetic">
 <h2>8-bit arithmetic<a class="headerlink" href="#bit-arithmetic" title="Permalink to this headline">¶</a></h2>
@@ -1024,44 +1198,50 @@ start:
 <col width="42%" />
 <col width="45%" />
 </colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Macro</th>
+<th class="head">Description</th>
+<th class="head">Example</th>
+</tr>
+</thead>
 <tbody valign="top">
-<tr class="row-odd"><td>nop</td>
+<tr class="row-even"><td>nop</td>
 <td>No-operation</td>
 <td>&nbsp;</td>
 </tr>
-<tr class="row-even"><td>clearcy</td>
+<tr class="row-odd"><td>clearcy</td>
 <td>Clear the carry flag</td>
 <td>&nbsp;</td>
 </tr>
-<tr class="row-odd"><td>setcy</td>
+<tr class="row-even"><td>setcy</td>
 <td>Set the carry flag</td>
 <td><tt class="docutils literal"><span class="pre">setcy</span> <span class="pre">or</span> <span class="pre">setcy(&lt;tmpreg&gt;)</span></tt></td>
 </tr>
-<tr class="row-even"><td>isnum</td>
+<tr class="row-odd"><td>isnum</td>
 <td>Test if a string is a number</td>
 <td>&nbsp;</td>
 </tr>
-<tr class="row-odd"><td>load_out</td>
+<tr class="row-even"><td>load_out</td>
 <td>Load and output value</td>
 <td><tt class="docutils literal"><span class="pre">load_out(s0,</span> <span class="pre">0x01,</span> <span class="pre">P_uart)</span></tt></td>
 </tr>
-<tr class="row-even"><td>load_st</td>
+<tr class="row-odd"><td>load_st</td>
 <td>Load and store value</td>
 <td><tt class="docutils literal"><span class="pre">load_st(s0,</span> <span class="pre">0x01,</span> <span class="pre">M_var)</span></tt></td>
 </tr>
-<tr class="row-odd"><td>reverse</td>
+<tr class="row-even"><td>reverse</td>
 <td>Reverse arguments</td>
 <td><tt class="docutils literal"><span class="pre">reverse(1,2,3)</span></tt></td>
 </tr>
-<tr class="row-even"><td>swap</td>
+<tr class="row-odd"><td>swap</td>
 <td>Swap registers</td>
 <td><tt class="docutils literal"><span class="pre">swap(s0,</span> <span class="pre">s1)</span></tt></td>
 </tr>
-<tr class="row-odd"><td>randlabel</td>
+<tr class="row-even"><td>randlabel</td>
 <td>Random label name</td>
 <td><tt class="docutils literal"><span class="pre">randlabel(PREFIX_)</span></tt></td>
 </tr>
-<tr class="row-even"><td>uniqlabel</td>
+<tr class="row-odd"><td>uniqlabel</td>
 <td>Unique label name</td>
 <td><tt class="docutils literal"><span class="pre">uniqlabel(PREFIX_)</span></tt></td>
 </tr>
@@ -1127,7 +1307,12 @@ start:
 </ul>
 </li>
 <li><a class="reference internal" href="#delay-generators">Delay generators</a></li>
-<li><a class="reference internal" href="#string-and-table-operations">String and table operations</a></li>
+<li><a class="reference internal" href="#string-and-table-operations">String and table operations</a><ul>
+<li><a class="reference internal" href="#escaped-strings">Escaped strings</a></li>
+<li><a class="reference internal" href="#portable-strings">Portable strings</a></li>
+<li><a class="reference internal" href="#packed-strings">Packed strings</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#bit-arithmetic">8-bit arithmetic</a></li>
 <li><a class="reference internal" href="#bit-arithmetic-logical-and-shift-operators">16-bit arithmetic</a></li>
 <li><a class="reference internal" href="#bit-io">16-bit IO</a></li>
@@ -1144,7 +1329,7 @@ start:
 <a href="http://code.google.com/p/ripyl">ripyl</a><br>
 <a href="http://code.google.com/p/vertcl">vertcl</a><br>
 <a href="http://code.google.com/p/vhdl-extras">vhdl-extras</a><br>
-<a href="http://code.google.com/p/lecroy-colorizer">lecroy-colorizer</a>
+<a href="https://github.com/kevinpt/lecroy-colorizer">lecroy-colorizer</a>
 </p>
 <div id="searchbox" style="display: none">
   <h3>Quick search</h3>
