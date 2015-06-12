@@ -81,10 +81,11 @@ define(`dec2pbhex', `ifelse(eval($#>1),1,`eval($1 & 0xFF,16,2)'`,' `$0(shift($@)
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
 changequote(<!,!>) ; Change quotes so we can handle "`" and "'"
 
-define(<!asciiord!>,<!changequote(<!,!>)changecom(-~-)<!!>_asciiord(<!$1!>)<!!>changecom(;)changequote`'dnl
+; NOTE: We have to insert dummy chars with patsubst() to prevent recognition of substrings that are valid macro names
+define(<!asciiord!>,<!changequote(<!,!>)changecom(-~-)<!!>_asciiord(patsubst(<!$1!>, <!.!>, <!\&~!>))<!!>changecom(;)changequote`'dnl
 !>)
 
-define(<!_asciiord!>,<!ifelse(<!$1!>,,,<!_aconv(substr(<!$1!>,0,1))<!!>ifelse(len(<!$1!>),1,,<!,!>) $0(substr(<!$1!>,1))!>)!>)
+define(<!_asciiord!>,<!ifelse(<!$1!>,,,<!_aconv(substr(<!$1!>,0,1))<!!>ifelse(len(<!$1!>),2,,<!,!>) $0(substr(<!$1!>,2))!>)!>)
 
 define(<!_aconv!>,<!ifelse(<!$1!>,<! !>,32,<!$1!>,<!;!>,59,dnl
 <!index(<!                                 !"#$%&'()*+,-./0123456789: <=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !>,<!$1!>)!>)!>)
@@ -115,6 +116,19 @@ define(`_esc', `ifelse(eval($#>1),1, `ifelse(eval($1==92),1,`_echar($2)`'ifelse(
 ;                               \\                 \n                  \r                  \t                 \b                \a             \e                \s
 define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,13, eval($1==116),1,9, eval($1==98),1,8, eval($1==97),1,7, eval($1==101),1,27, eval($1==115),1,59,dnl
 `errmsg(`Invalid escape code')')')
+
+
+;---------------------------------
+; Return the length of a string constant, a portable string or a packed string
+; The argument is passed through the estr() macro to collapse escaped characters before counting them
+; Arg1: String to count length from. This is either a constant or the label to a string
+        defined with string() or packed_string()
+; Ex: load s0, strlen(`foobar\r\n')  ; Expands to 8
+;
+;     packed_string(xyzzy, `This is a string')
+;     load s0, strlen(xyzzy) ; Expands to 16
+define(`strlen', `ifdef(`_$1_LENGTH', _$1_LENGTH, `_strlen(estr($1))')')
+define(`_strlen', $#)
 
 ;---------------------------------
 ; Add double quotes around a string
@@ -1099,7 +1113,9 @@ define(`_strings_initcheck', `_initcheck(`_string_char', `String handler is `not
 ;     main:
 ;     ...
 ;         call my_string ; Output the string
-define(`string', `ifelse($#,0, ``$0'', `_strings_initcheck' `ifdef(`PB3', `; "$2"
+define(`string', `ifelse($#,0, ``$0'', `_strings_initcheck' dnl
+`define(`_$1_LENGTH',strlen($2))'dnl
+`ifdef(`PB3', `; "$2"
 $1: calltable(_string_char_handler, _string_char, estr($2))
 return',dnl
 ` ; "$2"
@@ -1107,6 +1123,7 @@ table $1#, [dec2pbhex(cstr($2))]
 $1: loadaddr(_saddr_msb, _saddr_lsb, _$1_STR)
 jump __string_handler
 _$1_STR: load&return _string_char, $1#')')')
+
 
 
 ;---------------------------------
@@ -1117,8 +1134,7 @@ _$1_STR: load&return _string_char, $1#')')')
 ; scans for a NUL terminator on data read from an external ROM.
 ; Arg1: Register to store even characters
 ; Arg2: Register to store odd characters
-; Arg3: Register for MSB of address to string (Only used on PB6)
-; Arg4: Register for LSB of address to string (Only used on PB6)
+; Arg3, Arg4: Registers for MSB, LSB of address to string
 ; Arg5: Label of user provided function to process each character (Only needs to handle the even char register)
 ; Arg6: Label of user provided function to read pairs of characters from memory
 ; Ex: use_packed_strings(s0, s1, s5,s4, write_char, read_next_chars)
@@ -1150,7 +1166,9 @@ define(`_pstrings_initcheck', `_initcheck(`_pstring_char1', `Packed string handl
 ;     main:
 ;     ...
 ;         call my_string ; Output the string
-define(`packed_string', `_pstrings_initcheck' `; "$2"
+define(`packed_string', `_pstrings_initcheck' dnl
+`define(`_$1_LENGTH',strlen($2))'dnl
+`; "$2"
 $1: loadaddr(_psaddr_msb, _psaddr_lsb, _$1_STR)
 jump __packed_string_handler
 _$1_STR: insttable_be(cstr($2))')
@@ -2396,13 +2414,14 @@ add $3, 01')
 ; Expands to 11 instructions.
 ; Arg1: label to use for random function
 ; Arg2: Random state variable (Initialize this with a non-zero seed)
-; The temp register is destructively modified.
+; The common temp register is destructively modified.
 ; Ex: namereg s8, RS
 ;     use_random8(random, RS)
 ;     ...
 ;     load RS, 5A   ; Seed the PRNG (Use an external entropy source like an ADC in real life)
 ;     call random
-define(`use_random8', `$1:    ; 8-bit PRNG with state in $2
+define(`use_random8', `; PRAGMA function $1 [$2 return $2] begin
+  $1:    ; 8-bit PRNG with state in $2
   ; Shift left 1
   load _tempreg, $2
   sl0 _tempreg
@@ -2416,7 +2435,8 @@ define(`use_random8', `$1:    ; 8-bit PRNG with state in $2
   sl0 _tempreg
   sl0 _tempreg
   xor $2, _tempreg
-  return')
+  return
+  ;PRAGMA function end')
 
 ;---------------------------------
 ; 16-bit pseudo-random generator
@@ -2430,7 +2450,8 @@ define(`use_random8', `$1:    ; 8-bit PRNG with state in $2
 ;     ...
 ;     load16(RS, 0x1234)   ; Seed the PRNG (Use an external entropy source like an ADC in real life)
 ;     call random
-define(`use_random16', `$1:    ; 16-bit PRNG with state in $2,$3
+define(`use_random16', `; PRAGMA function $1 [$2, $3 return $2, $3] begin
+  $1:    ; 16-bit PRNG with state in $2,$3
   ; Shift left 1
   load16($4, $5, $2, $3)
   sl0_16($4, $5, 1)       
@@ -2444,7 +2465,8 @@ define(`use_random16', `$1:    ; 16-bit PRNG with state in $2,$3
   load $5, 00
   sl0($4, 6)
   xor16($2, $3, $4, $5)
-  return')
+  return
+  ; PRAGMA function end')
   
   
 
