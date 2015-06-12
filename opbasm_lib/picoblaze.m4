@@ -2467,7 +2467,22 @@ define(`use_random16', `; PRAGMA function $1 [$2, $3 return $2, $3] begin
   xor16($2, $3, $4, $5)
   return
   ; PRAGMA function end')
-  
+
+
+;---------------------------------
+; Generate a 16-bit checksum constant from a string using the BSD algorithm.
+; This does not dynamically compute a hash from variable data. It can be used to seed a PRNG
+; from a build time string like a timestamp.
+; Arg1: String to compute hash over
+; Ex:   strhash(`Hello world')  ; Expands to 27566
+;
+;       reg16(RS, s0, s1)
+;       load16(RS, strhash(DATE_STAMP TIME_STAMP)) ; Seed the PRNG with the build time
+;       call random16
+define(`strhash', `_strhash(asciiord($1))')
+
+define(`_strhash', `ifelse(`$1',,0,`pushdef(`_SH_CS',$0(shift($@)))'`eval(((_SH_CS >> 1) + ((_SH_CS & 0x01) << 15) + $1) & 0xFFFF)')'`popdef(`_SH_CS')')
+
   
 
 ;=============== UPPERCASE MACROS ===============
