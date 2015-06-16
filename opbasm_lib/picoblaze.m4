@@ -46,7 +46,7 @@ define(`evala', `eval(($1) & 0xFFF, 16, 3)  ; $1')
 define(`evalb', `eval((const2m4($1)) & 0xFF, 2, 8)''b  `;' $1)
 
 ; Evaluate expression with constant expansion
-define(`evalc', `eval(const2m4($1), $2, $3)')
+define(`evalc', `eval(const2m4($1), ifelse($2,,10,$2), ifelse($3,,0,$3))')
 
 
 ; Only evaluate valid expressions, otherwise reproduce the original text in the
