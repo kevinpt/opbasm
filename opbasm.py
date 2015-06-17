@@ -82,7 +82,7 @@ import gettext
 
 
 # Fix broken UTF-8 support on Windows console
-if sys.platform == "win32" and sys.stdout.encoding == 'cp65001':
+if sys.platform == 'win32' and sys.stdout.encoding == 'cp65001':
   try:
     from opbasm_lib.win_console import *
     fix_broken_win_console()
@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.2.11'
+__version__ = '1.2.12'
 
 
 class FatalError(Exception):
@@ -496,7 +496,6 @@ class Symbol(object):
 
 def parse_lines(lines, op_info, source_file, index):
   '''Parse a list of text lines into Statement objects'''
-  #parser = PicoBlaze_parser(op_info)
 
   statements = []
   for i, l in enumerate(lines):
@@ -520,6 +519,26 @@ def parse_lines(lines, op_info, source_file, index):
   return statements
 
 
+def find_m4():
+  m4_cmd = ''
+  if sys.platform == 'win32': # Use included m4 binary in opbasm_lib on Windows (except within Cygwin)
+    m4_cmd = os.path.join(find_lib_dir(), 'm4', 'm4.exe')
+  
+  if not os.path.exists(m4_cmd): # Use system path to find m4
+    m4_cmd = 'm4'
+
+  return m4_cmd
+
+
+def find_standard_m4_macros():
+  macro_file = os.path.join(find_lib_dir(), 'picoblaze.m4')
+  if not os.path.exists(macro_file):
+    print(_('  No m4 macro directory found'), macro_file)
+    sys.exit(1)
+
+  return macro_file
+
+  
 class Assembler(object):
   '''Main object for running assembler and tracking symbol information'''
   def __init__(self, top_source_file, timestamp, options, upper_env_names):
@@ -602,6 +621,7 @@ class Assembler(object):
       s.in_use = True
 
     return strings
+    
 
   def preprocess_with_m4(self, source_file):
     '''Determine if file should be preprocessed for m4 macros and generate
@@ -638,14 +658,24 @@ class Assembler(object):
     # Build argument string for defines fed into m4
     m4_def_args = ' '.join('-D{}={}'.format(k,v) if v else '-D{}'.format(k) for k,v in m4_defines.iteritems())
 
-    cmd = 'm4 {} {} {} -'.format(m4_options, m4_def_args, macro_defs)
+    m4_cmd = find_m4()
+    cmd = '{} {} {} {} -'.format(m4_cmd, m4_options, m4_def_args, macro_defs)
     p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     m4_result, m4_err = p.communicate(input=pure_m4.encode('utf-8'))
     if p.returncode:
       asm_error(_('m4 failure on file'), source_file, exit=1)
+      
+    # On Windows the pipe output is raw bytes containing '\r\n' for line terminators.
+    # We need to manually convert these back to \n to prevent the \r from being preserved
+    # and ending up with files containing \r\r\n which then results in unwanted empty lines
+    # When Python reads back the file with expanded macros.
+    if sys.platform == 'win32':
+      m4_result = m4_result.decode('utf-8').replace('\r\n', '\n')
+    else:
+      m4_result = m4_result.decode('utf-8')
 
     # Use synclines to build index tracking how original source lines were expanded
-    self.index_expanded_line_numbers(m4_result.decode('utf-8'), pp_source_file, source_file)
+    self.index_expanded_line_numbers(m4_result, pp_source_file, source_file)
       
     return pp_source_file
 
@@ -2087,17 +2117,6 @@ def template_data_size(template_file):
   else:
     return 18
         
-
-def find_standard_m4_macros():
-  lib_dir = find_lib_dir()
-
-  macro_file = os.path.join(lib_dir, 'picoblaze.m4')
-  if not os.path.exists(macro_file):
-    print(_('  No m4 macro directory found'), macro_file)
-    sys.exit(1)
-
-  return macro_file
-
 
 
 import shutil

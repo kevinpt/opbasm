@@ -1,11 +1,11 @@
 divert(-1)
 changecom(;)
-; m4 macros for enhanced Picoblaze assembly
+; m4 macros for enhanced PicoBlaze assembly
 ; These are included as part of Opbasm and available automatically when processing
 ; files with .psm4 or .m4 extenstions or when the --m4 option is provided
 ;
-; These can be used manually with any Picoblaze assembler by running the following:
-;   m4 picoblaze.m4 [input source] > expanded_macros.gen.psm
+; These can be used manually with any PicoBlaze assembler by running the following:
+;   m4 PicoBlaze.m4 [input source] > expanded_macros.gen.psm
 
 ; Copyright © 2014, 2015 Kevin Thibedeau
 ; (kevin 'period' thibedeau 'at' gmail 'punto' com)
@@ -64,13 +64,13 @@ define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($
 ;=============== TYPE CONVERSION ===============
 
 ;---------------------------------
-; Convert a list of values in Picoblaze hex format to decimal
+; Convert a list of values in PicoBlaze hex format to decimal
 ; Arg1-Argn: Hex values to convert
 ; Ex: pbhex(01, 02, 03, 0a, ff)  ; Expands to 1, 2, 3, 10, 255
 define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x$1)')')
 
 ;---------------------------------
-; Convert a list of decimal values to Picoblaze hex format
+; Convert a list of decimal values to PicoBlaze hex format
 ; Arg1-Argn: Decimal values to convert
 ; Ex: dec2pbhex(1, 2, 100, 200)  ; Expands to 01, 02, 64, C8
 define(`dec2pbhex', `ifelse(eval($#>1),1,`eval($1 & 0xFF,16,2)'`,' `$0(shift($@))',$1,,,`eval($1 & 0xFF,16,2)')')
@@ -153,7 +153,7 @@ define(`_split_be', `eval((($1) & 0xFF00) >> 8), eval(($1) & 0xFF)')
 
 
 ;---------------------------------
-; Convert Picoblaze literals into m4 syntax
+; Convert PicoBlaze literals into m4 syntax
 ; Arg1: String to convert
 ; Result is an integer in m4 syntax
 ; Handles "c" -> ascii ord.,  nn'd -> decimal,  nn -> hex,  nn'b -> bin
@@ -491,9 +491,9 @@ define(`clearbit', `and $1,  eval((~(2**($2))) & 0xFF, 16, 2)  ; Clear bit $2')
 define(`mask', `ifelse($1,,0,`eval(2**($1) + $0(shift($@)))')')
 
 ;---------------------------------
-; Alternate mask that can be used as a direct argument to a Picoblaze instruction
+; Alternate mask that can be used as a direct argument to a PicoBlaze instruction
 ; Arg1: Bit numbers to set in mask (0-7) 
-; Result is a mask in Picoblaze hex format
+; Result is a mask in PicoBlaze hex format
 ; Ex: test s0, maskh(3,4,5) ; Test if bits 3, 4, and 5 are clear
 ;     jump z, is_clear
 define(`maskh', `eval(mask($@), 16, 2)')
@@ -630,7 +630,7 @@ define(`_rcurly', `}')
 define(`_rparen', `)')
 
 ; The preprocessor converts constant directives into const() macros so that
-; the m4 code is aware of constants declared in picoblaze syntax
+; the m4 code is aware of constants declared in PicoBlaze syntax
 changequote(<!,!>)
 define(<!const!>, <!changequote(<!,!>)<!!>pushdef(<!_cname_$1!>,<!$2!>)!><!constant $1, translit($2,!,')<!!>changequote`'dnl
 !>)
@@ -924,7 +924,7 @@ define(`addstackreg', `_stack_initcheck' `sub _stackptr, $1  ; Add local stack v
 ;=============== STRING AND TABLE OPERATIONS ===============
 
 ;---------------------------------
-; Repeated string function call operation (useful for Picoblaze-3)
+; Repeated string function call operation (useful for PicoBlaze-3)
 ; Arg1: Subroutine to call for each character
 ; Arg2: Register used to hold characters (typically an argument to the subroutine)
 ; Arg3: String to split into characters
@@ -2176,7 +2176,7 @@ xor $1, eval(constupper($3), 16, 2)')
 ;   Arg3: Decimal constant or expression
 ; 4 arguments: test with register
 ;   Arg3, Arg4: MSB2, LSB2
-; NOTE: On Picoblaze-3 only the Z flag is set properly
+; NOTE: On PicoBlaze-3 only the Z flag is set properly
 ifdef(`PB3', `define(`test16', `ifelse($#,4,`_test16pb3($@)',`_test16kpb3($@)')')',
 `define(`test16', `ifelse($#,4,`_test16($@)',`_test16k($@)')')')
 
@@ -2202,7 +2202,7 @@ _tnz:'`popdef(`_tnz')')
 ; 16-bit comparison
 ; Arg1, Arg2: MSB1, LSB1
 ; Arg3, Arg4: MSB2, LSB2
-; Note: On Picoblaze-3 only the Z flag is correct
+; Note: On PicoBlaze-3 only the Z flag is correct
 ifdef(`PB3', `define(`compare16', `if($1 == $3, `compare $2, $4')')',
 `define(`compare16', `compare $2, $4
 comparecy $1, $3')')

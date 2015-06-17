@@ -22,6 +22,8 @@ v1.x / 2015-??-??
   * Added qstr() macro to wrap macros in double quotes.
   * New generic string and packed string handler macros for both PB3 and PB6
   * ANSI escape code macros for color text
+  * PRNG macros for 8 and 16-bit random numbers
+  * String hashing macro (Useful for building static PRNG seeds)
   * Added DATE_STAMP and TIME_STAMP macros for use within m4.
   * Add -D option to allow definition of m4 macros from the command line
   * Add automatic keep pragma to jump tables (2 or more consecutive unconditional jumps)

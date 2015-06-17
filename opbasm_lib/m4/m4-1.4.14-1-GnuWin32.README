@@ -1,0 +1,58 @@
+* m4-1.4.14 for Windows *
+=========================
+
+What is it?
+-----------
+m4: macro processor
+
+Description
+-----------
+An implementation of the traditional UNIX macro processor in that it copies its input to the output, expanding macros as it goes. Macros are either built-in or user-defined and can take any number of arguments. M4 also has built-in functions for including named files, running UNIX commands, doing integer arithmetic, manipulating text in various ways, and recursions. It can also be used as either a front-end to a compiler or as a macro processor in its own right. It is often used to generate HTML as it can give a consistent look to pages. If GNU `m4' is meant to serve GNU `autoconf', beware that `m4' should be fully installed *prior to* configuring `autoconf' itself.
+	 
+Homepage
+--------
+http://www.gnu.org/software/m4
+Sources: http://ftp.gnu.org/gnu/m4/m4-1.4.14.tar.gz 
+	 
+System
+------
+- Win32, i.e. MS-Windows NT / 2000 / XP / 2003 / Vista / 2008 / 7 
+
+Notes
+-----
+- Bugs and questions on this MS-Windows port: gnuwin32@users.sourceforge.net
+
+Package Availability
+--------------------
+- in: http://gnuwin32.sourceforge.net
+
+Binaries
+--------
+- 
+
+Developer files
+---------------
+- 
+Installation
+------------
+
+
+Documentation
+-------------
+- 
+
+Sources
+-------
+- m4-1.4.14-src.zip
+
+Compilation
+-----------
+The package has been compiled with GNU auto-tools, GNU make, and Mingw
+(GCC for MS-Windows). Any differences from the original sources are given
+in m4-1.4.14-1-GnuWin32.diffs in m4-1.4.14-1-src.zip. Libraries needed
+for compilation can be found at the lines starting with 'LIBS = ' in the
+Makefiles. Usually, these are standard libraries provided with Mingw, or
+libraries from the package itself; 'gw32c' refers to the libgw32c package,
+which provides MS-Windows substitutes or stubs for functions normally found in
+Unix. For more information, see: http://gnuwin32.sourceforge.net/compile.html
+and http://gnuwin32.sourceforge.net/packages/libgw32c.htm.
