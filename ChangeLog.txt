@@ -11,19 +11,20 @@ v1.x / 2015-??-??
   * Added multilingual support with German and French translations
   * More efficient 16-bit shifts and rotates when the shift is greater than 8.
   * Improved reporting of error line numbers when macros have been expanded in the original source.
-    You will now see a mostly accurate indication of the original source line as well as the line numbers
-	in the expanded source code. They are still off when errors occur inside nested macros and when C-style
-	syntax is used with a line break before the "{".
+    You will now see a mostly accurate indication of the original source line as well as the line
+    numbers in the expanded source code. They are still off when errors occur inside nested macros
+    and when C-style syntax is used with a line break before the "{".
   * Error messages now include the original source file. This works even when m4's include() macro is
     used instead of the PB INCLUDE directive.
   * Removed the Pyparsing based parser. There are now no required external library dependencies.
   * Unreferenced constants, strings, and tables are reported in the log.
-  * Added cstr() and estr() macros to generate numeric strings with C character escapes and an optional NUL terminator.
+  * Added cstr() and estr() macros to generate numeric strings with C character escapes and an
+    optional NUL terminator.
   * Added qstr() macro to wrap macros in double quotes.
   * New generic string and packed string handler macros for both PB3 and PB6
   * ANSI escape code macros for color text
   * PRNG macros for 8 and 16-bit random numbers
-  * String hashing macro (Useful for building static PRNG seeds)
+  * Simple string hashing macro (Useful for building static PRNG seeds)
   * Added DATE_STAMP and TIME_STAMP macros for use within m4.
   * Add -D option to allow definition of m4 macros from the command line
   * Add automatic keep pragma to jump tables (2 or more consecutive unconditional jumps)
