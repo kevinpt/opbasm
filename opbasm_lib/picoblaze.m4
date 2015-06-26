@@ -75,18 +75,35 @@ define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x
 ; Ex: dec2pbhex(1, 2, 100, 200)  ; Expands to 01, 02, 64, C8
 define(`dec2pbhex', `ifelse(eval($#>1),1,`eval($1 & 0xFF,16,2)'`,' `$0(shift($@))',$1,,,`eval($1 & 0xFF,16,2)')')
 
+
 ;---------------------------------
 ; Convert a string to a list of decimal ASCII codes
 ; Arg1: String to convert
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
 changequote(<!,!>) ; Change quotes so we can handle "`" and "'"
 
-; NOTE: We have to insert dummy chars with patsubst() to prevent recognition of substrings that are valid macro names
-define(<!asciiord!>,<!changequote(<!,!>)changecom(-~-)<!!>_asciiord(patsubst(<!$1!>, <!.!>, <!\&~!>))<!!>changecom(;)changequote`'dnl
+; NOTE: We have to escape the string argument to avoid unwanted substitutions
+define(<!asciiord!>,<!changequote(<!,!>)changecom(-~-)<!!>_asciiord(_esc_words($1))<!!>changecom(;)changequote`'dnl
 !>)
 
-define(<!_asciiord!>,<!ifelse(<!$1!>,,,<!_aconv(substr(<!$1!>,0,1))<!!>ifelse(len(<!$1!>),2,,<!,!>) $0(substr(<!$1!>,2))!>)!>)
+; We will use "^" as an escape char so we need to replace literal "^"s with "^1"
+define(<!_esc_caret!>, <!patsubst(<!$@!>,<!\^!>,<!^1!>)!>)
 
+; Escape commas in a string with "^2". This eliminates further problems with a string being split into separate args
+define(<!_esc_comma!>, <!patsubst(_esc_caret(<!$@!>), <!,!>,<!^2!>)!>)
+
+; We have to insert dummy chars to prevent recognition of substrings that are valid macro names
+; At this point we will have a string of regular chars followed by "~"s and escaped commas and carets
+define(<!_esc_words!>, <!patsubst(patsubst(_esc_comma(<!$*!>),<![^^]!>,<!\&~!>),<!\^\([0-9]\)~!>,<!^\1!>)!>)
+
+
+; Main recursive loop to convert each character. Because of the escaping we retrieve two chars at a time.
+define(<!_asciiord!>,<!ifelse(<!$1!>,,,<!_xaconv(substr(<!$1!>,0,2))<!!>ifelse(len(<!$1!>),2,,<!,!>) $0(substr(<!$1!>,2))!>)!>)
+
+; Convert "^1" and "^2" escapes to their ASCII code or call _aconv() for everything else
+define(<!_xaconv!>,<!ifelse(<!$1!>,<!^1!>,94,<!$1!>,<!^2!>,44,_aconv(substr(<!$1!>,0,1)))!>)
+
+; Convert an ASCII character to its numeric value
 define(<!_aconv!>,<!ifelse(<!$1!>,<! !>,32,<!$1!>,<!;!>,59,dnl
 <!index(<!                                 !"#$%&'()*+,-./0123456789: <=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !>,<!$1!>)!>)!>)
 
@@ -122,7 +139,7 @@ define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,
 ; Return the length of a string constant, a portable string or a packed string
 ; The argument is passed through the estr() macro to collapse escaped characters before counting them
 ; Arg1: String to count length from. This is either a constant or the label to a string
-        defined with string() or packed_string()
+;       defined with string() or packed_string()
 ; Ex: load s0, strlen(`foobar\r\n')  ; Expands to 8
 ;
 ;     packed_string(xyzzy, `This is a string')
@@ -584,7 +601,8 @@ define(`retlt', `return c  ; if less than')
 ;---------------------------------
 ; Generic if macro
 ; Arg1: Boolean comparison expression
-;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, !=, or &
+;       Must be of the form: "reg op reg|expression" where op is <, >, <=, >=, ==, !=, or &
+;       or of the form "reg" which is treated as "reg != 0".
 ;       Signed comparison is invoked with "signed(comparison expr.)"
 ;       With signed comparison the right operand cannot be a named constant.
 ;       With the & operator a test instruction is used in place of compare. The true
@@ -600,7 +618,8 @@ define(`retlt', `return c  ; if less than')
 define(`if', `ifelse(eval($# > 3),1,`_if(_iftokens($1), `$2', `if(shift(shift($@)))')',dnl
 `_if(_iftokens($1), `$2', `$3')')')
 
-define(`_iftokens', `regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\(.+\)', `\1, \2, \3')')
+; Split comparison expression into tokens
+define(`_iftokens', `ifelse(regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\(.+\)'),-1,`$1, !=, 0',`regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\(.+\)', `\1, \2, \3')')')
 
 define(`_if', `; If $1 $2 $3'
 `ifelse(regexp($2,`^\(s<\|s>=\)$'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
@@ -1191,6 +1210,17 @@ define(`ansi_magenta', `\e[35'`ifelse($1,bold,`\s1')'`m')
 define(`ansi_cyan',    `\e[36'`ifelse($1,bold,`\s1')'`m')
 define(`ansi_white',   `\e[37'`ifelse($1,bold,`\s1')'`m')
 define(`ansi_reset',   `\e[0m')
+
+;---------------------------------
+; Wrap a string in ANSI color codes
+; The resulting string contains backslash escapes that must be processed
+; by cstr() or estr().
+; Arg1: String to modify
+; Arg2: ANSI color name (black, red, green, yellow, blue, magenta, cyan, and white)
+; Arg3: Optional argument "bold" will select bold text
+; Ex: colorize(`foobar', blue) is equivalent to ansi_blue`foobar'ansi_reset
+;     colorize(`foobar', red, bold) is equivalent to ansi_red(bold)`foobar'ansi_reset
+define(`colorize', `ifelse($3,bold,`ansi_$2(bold)',ansi_$2)$1`'ansi_reset')
 
 ;=============== ARITHMETIC OPERATIONS ===============
 

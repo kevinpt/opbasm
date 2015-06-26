@@ -1820,7 +1820,9 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
       printf(s.format(show_addr=True, show_dead=show_dead, colorize=colorize))
 
     if asm.default_jump is None or asm.default_jump == 0:
-      printf(_('\nAll unused memory locations contain zero (equivalent to "LOAD s0, s0")'))
+      # Decoding of "all zeros" instruction varies between processors
+      zero_instr = 'LOAD s0, s0' if asm.use_pb6 else 'LOAD s0, 00'
+      printf(_('\nAll unused memory locations contain zero (equivalent to "{}")'.format(zero_instr)))
     else:
       printf(_('\nAll unused memory locations contain a DEFAULT_JUMP to {:03X}').format(asm.default_jump & 0xFFF))
 
