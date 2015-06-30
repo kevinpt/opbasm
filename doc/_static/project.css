@@ -16,13 +16,22 @@ pre, tt, code {
 }
 
 div.body h1,
+div.body h2,
+div.body h3,
+div.body h4 {
+    font-family: "Kreon", "goudy old style", "minion pro", "bell mt", Georgia, "Hiragino Mincho Pro", serif;
+}
+
+div.body h1,
 div.body h2 {
     font-weight: bold;
 }
 
 div.sphinxsidebar p,
-div.sphinxsidebar h1 {
-    font-family: "goudy old style", "minion pro", "bell mt", Georgia, "Hiragino Mincho Pro", serif;
+div.sphinxsidebar h1,
+div.sphinxsidebar h2,
+div.sphinxsidebar h3 {
+    font-family: "Kreon", "goudy old style", "minion pro", "bell mt", Georgia, "Hiragino Mincho Pro", serif;
 }
 
 table.docutils {
@@ -30,6 +39,7 @@ table.docutils {
     -moz-box-shadow: 2px 2px 4px #eee;
     -webkit-box-shadow: 2px 2px 4px #eee;
     box-shadow: 2px 2px 4px #eee;
+    margin-bottom: 2em;
 }
 
 table.docutils td, table.docutils th {
