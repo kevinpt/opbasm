@@ -1809,9 +1809,10 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
     printf(_('  Scratchpad size:'), asm.scratch_size)
 
     if stats['dead_inst'] is not None:
-      printf(_('  Dead instructions {}: {}').format( \
+      printf('\n\n' + underline(_('Optimizations')))
+      printf(_('  Static analysis:\n    Dead instructions {}: {}').format( \
         _('removed') if stats['dead_removed'] else _('found'), stats['dead_inst']))
-      printf(_('  Analyzed entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
+      printf(_('    Analyzed entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
         sorted(stats['entry_points'])]))
 
 
@@ -2236,6 +2237,7 @@ def main():
   dead_instructions = None
   entry_points = None
   if options.remove_dead_code or options.report_dead_code:
+    printq(_('\n  Beginning optimizations...\n'))
     # Run static analysis
     printq(_('  Static analysis: searching for dead code... '), end='')
     entry_points = set((asm.default_jump & 0xFFF, 0))
