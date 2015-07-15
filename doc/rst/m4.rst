@@ -24,7 +24,7 @@ Using these macros you can write code in a higher-level style like the following
 +----------------------------------------------------------------+----------------------------------------------------------------+
 |  With macros:                                                  | After expansion:                                               |
 +================================================================+================================================================+
-|.. parsed-literal::                                             |.. parsed-literal::                                             |
+|.. code-block:: picoblaze                                       |.. code-block:: picoblaze                                       |
 |                                                                |                                                                |
 |  fibonacci:                                                    |       fibonacci:                                               |
 |    ; Generate the first 10 Fibonacci numbers                   |                  ; Generate the first 10 Fibonacci numbers     |
@@ -109,29 +109,29 @@ In general you use m4 syntax for literals passed as arguments to macros within p
 
 m4 includes the ability to evaluate arbitrary integer expressions using the ``eval()`` macro. Its default output is an m4 decimal integer so the similar ``evalh()`` and ``evald()`` are provided to evaluate expressions resulting in PicoBlaze hex or decimal format.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  load s0, evald(4 * 5 + 1) ; Expands to "load s0, 21'd"
+  load s0, evald(4 * 5 + 1)     ; Expands to "load s0, 21'd"
 
 The expression evaluator permits the natural use of negative decimal literals:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  load s0, evalh(-20) ; Expands to "load s0, ec"
+  load s0, evalh(-20)           ; Expands to "load s0, ec"
 
 
 The ``evala()`` macro works like ``evalh()`` but expands to a 12-bit PicoBlaze address.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   define(DATA_ORG, 0x200)
-  address evala(DATA_ORG)   ; Expands to "address 200"
+  address evala(DATA_ORG)       ; Expands to "address 200"
 
 m4 expressions support all of the C language operators as well as ``**`` for exponentiation.
 
 An ``evalx()`` macro is available which works like the builtin ``eval()`` but also accepts strings that are not valid expressions.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   load s0, evalx(9 + 2, 16, 2)  ; Expands to "load s0, 0b"
   constant CNAME, 1f
@@ -139,15 +139,15 @@ An ``evalx()`` macro is available which works like the builtin ``eval()`` but al
 
 You can define aliases for registers without altering the original as with NAMEREG.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   define(alt_name, s0)
-  load alt_name, 01 ; Expands to "load s0, 01"
-  add s0, 01        ; s0 register is still visible
+  load alt_name, 01             ; Expands to "load s0, 01"
+  add s0, 01                    ; s0 register is still visible
 
 Special logic is implemented in a preprocessor stage so that PicoBlaze constants are visible to m4. They are automatically converted from PicoBlaze format into m4 format.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   constant THE_ANSWER, 42'd
   expr(s0 := s1 + THE_ANSWER)                            ; Same as expr(s0 := s1 + 42)
@@ -162,26 +162,26 @@ Some basic macros are provided to perform type conversions. They are useful for 
 
 The ``pbhex()`` macro is used to convert a list of values in PicoBlaze hex format into m4 decimals.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  pbhex(0a, 0b, ff)  ; Expands to "10, 11, 255"
+  pbhex(0a, 0b, ff)         ; Expands to "10, 11, 255"
 
 The ``asciiord()`` macro converts a string of one or more characters to a list of decimals representing their ASCII encoding. Quotes are not strictly necessary but guard against including trailing whitespace.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  asciiord(0)          ; Expands to "48"
-  asciiord(`any str')  ; Expands to "97, 110, 121, 32, 115, 116, 114"
+  asciiord(0)               ; Expands to "48"
+  asciiord(`any str')       ; Expands to "97, 110, 121, 32, 115, 116, 114"
 
 If you need a NUL terminated string the ``asciiord_cstr()`` macro works the same but appends a terminating 0:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  asciiord_cstr(`1234') ; Expands to "49, 50, 51, 52, 0"
+  asciiord_cstr(`1234')     ; Expands to "49, 50, 51, 52, 0"
 
 The ``words_le()`` and ``words_be()`` macros convert a list of 16-bit numbers into little-endian or big-endian bytes.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   words_le(0xff01, 0xff02)  ; Expands to "1, 255, 2, 255"
   words_be(0xff01, 0xff02)  ; Expands to "255, 1, 255, 2"
@@ -191,7 +191,7 @@ General purpose macros
 
 A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to `sE` by default. You can change it to another register by calling ``use_tempreg(<reg>)``. The temp register can be accessed in your own macros by using the ``"_tempreg"`` macro.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   use_tempreg(sA)    ; Switch to sA for the temp register
 
@@ -207,22 +207,22 @@ The other ``expr()`` macros use the temp register indirectly when the mul and di
 
 PicoBlaze programs commonly contain lists of constant declarations for IO port addresses. The ``iodefs(<start port>, [port names]+)`` macro simplifies their declaration by allowing contiguous sequences of ports to be named in one statement. It can also be used to define scratchpad addresses.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   iodefs(0, P_control, P_read, P_write)
 
-  Expands to:
+  ; Expands to:
     constant P_control, 00
     constant P_read, 01
     constant P_write, 02
 
 The ``vars([<reg> is <alias> [:= <init>]]+)`` macro allows you to associate alias names with a register. Unlike the ``NAMEREG`` directive, the original register name is still available. An optional initial value can be provided:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   vars(s0 is count := 0, s1 is sum)
 
-  Expands to:
+  ; Expands to:
     load s0, 00
 
 Symbols "count" and "sum" can now be used in place of s0 and s1.
@@ -233,7 +233,7 @@ Stack operations
 
 A set of macros are available to simulate a stack using the scratchpad RAM. You initialize the stack and establish the stack pointer register with a call to ``use_stack()``. After that you can call ``push()`` and ``pop()`` to manage registers on the stack. You can push and pop any number of registers at once. Pops happen in reverse order to preserve register values when passed the same list as ``push()``. The stack grows down so the initial address should be the highest the stack will occupy.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   namereg sF, SP      ; Protect sF for use as the stack pointer
   use_stack(SP, 0x3F) ; Start stack at end of 64-byte scratchpad
@@ -247,7 +247,7 @@ A set of macros are available to simulate a stack using the scratchpad RAM. You 
 
 The ``getstack()``, ``getstackat()``, and ``dropstack()`` macros can be used to retrieve and drop values from a stack frame. This provides a facility for passing function arguments on the stack and is particularly useful for writing functions that take a variable number of arguments. Use the ``dropstackreg()`` macro to drop a variable number of arguments stored in a register.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
     load s0, BE
     push(s0)    ; First argument
@@ -256,31 +256,31 @@ The ``getstack()``, ``getstackat()``, and ``dropstack()`` macros can be used to 
     call my_func2
 
   my_func2:
-    getstack(s3, s4) ; Retrieve first and second argument
+    getstack(s3, s4)     ; Retrieve first and second argument
     <Do your business>
     dropstack(2)         ; Remove arguments from the stack
     return
 
 You can use the ``getstackat()`` macro to retrieve values from the stack one at a time in any order.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   my_func3:
-    getstackat(s4, 1) ; Retrieve second argument (SP + 1)
-    getstackat(s3, 2) ; Retrieve first argument  (SP + 2)
+    getstackat(s4, 1)    ; Retrieve second argument (SP + 1)
+    getstackat(s3, 2)    ; Retrieve first argument  (SP + 2)
     <Do your business>
-    dropstack(2)    ; Remove arguments from the stack
+    dropstack(2)         ; Remove arguments from the stack
     return
 
 You may wish to allocate temporary space on the stack for local variables in a function. Use the ``addstack()`` and ``addstackreg()`` macros to accomplish this. ``putstack()`` and ``putstackat()`` are used to store register values on the stack.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   my_func4:
-    addstack(4) ; Add 4 bytes to the stack to work with
+    addstack(4)              ; Add 4 bytes to the stack to work with
     putstack(s0, s1, s2, s3)
     getstackat(s4, 2)
-    dropstack(4) ; Remove local frame
+    dropstack(4)             ; Remove local frame
 
     
 .. _Bitfield manipulations:
@@ -290,7 +290,7 @@ Bitfield operations
 
 A set of macros are available to manipulate bitfields without manually constructing hex masks.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   load s0, f0
   setbit(s0, 0)                ; s0 = f1
@@ -305,7 +305,7 @@ A set of macros are available to manipulate bitfields without manually construct
 
 The ``maskh()`` macro works like ``mask()`` but produces a result in PicoBlaze hex format so it can be used as a direct argument to any instruction that takes a constant.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   load s0, maskh(0,1,2,6,7)  ; Expands to "load s0, c7"
 
@@ -316,7 +316,7 @@ Shift and rotate
 
 Shifts and rotates are inconvenient in PicoBlaze assembly because they must be performed one bit at a time. Macros are provided that generate shifts and rotates by any number of bits more easily.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   load s0, 01
   sl0(s0, 4)  ; Shift left by 4 bits  s0 = 00010000'b
@@ -331,7 +331,7 @@ Conditional jump call and return
 
 PicoBlaze assembly depends on using the carry and zero flags directly to handle conditional jump and call instructions. It can be difficult to remember how the carry flag is interpreted so a set of macros are provided to perform more natural conditional instructions.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   compare s0, s1
   jne(not_equal)           ; Jump if s0 != s1
@@ -354,7 +354,7 @@ Conditional if-then-else
 
 A high level ``if()`` macro is present that provides evaluation of infix Boolean expressions. It takes the form of ``if(<expr>,<true block>,[<expr>,<true block 2>...|<else block>])``. The expression syntax uses conventional C operators ==, !=, <, ,>=, >, <=, and &. Additional expressions after the first true block produce else-if evaluation similar to m4's ``ifelse()`` macro. It is important to guard code blocks with m4 quotes to avoid errors caused by m4 splitting strings with internal commas. The ``if()`` macro implements a ``COMPARE`` instruction and generates the appropriate branch logic to test the flags. Unique generated labels are inserted into the code to manage the sequencing of the code blocks.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   load s0, 05
   if(s0 < 10,
@@ -371,21 +371,21 @@ A high level ``if()`` macro is present that provides evaluation of infix Boolean
 
 In addition, the & operator can be used to generate a ``TEST`` instruction instead of ``COMPARE``. The true block is executed if the test result is non-zero:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   ; Check if MSB is set
   if(s0 & 0x80, `load s1, 00')
 
 You can invoke signed comparison using the ``comapres()`` macro by wrapping the expression in ``signed()``:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   load s0 evalh(-10) ; -10 = 0xF6 which evaluates as > 5 in unsigned comparison
   if(signed(s0 < 5),`load s1, 00') ; evaluate as < 5 using signed comparison 
 
 Macros can be used within the code blocks including nested ``if()`` macros:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   if(s0 < s1,
      `<something>',
@@ -398,7 +398,7 @@ C-style syntax
 
 The m4 syntax for the ``if()`` macro is a little untidy but an alternate C-style syntax can be used. It is implemented using an initial preprocessing step where pattern matching converts C-style control flow statements into m4 syntax. Instead of m4 quotes, code blocks are surrounded by mandatory curly braces. Unlike m4 macros, whitespace is permitted between the ``if`` keyword and its comparison expression.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   if (s0 < s1) {
     load s0, "T"
@@ -410,7 +410,7 @@ The m4 syntax for the ``if()`` macro is a little untidy but an alternate C-style
 
 A set of lower level if-then-else macros are provided to expose the internal workings of ``if()``. The macros are ``ifeq()``, ``ifne()``, ``ifge()``, and ``iflt()``. Unlike ``if()``, no ``COMPARE`` or ``TEST`` instruction is generated from an expression. You have to prepare the flags on your own. The first argument is the code to execute for the true condition. An optional second argument is used for the else clause.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   compare s0, s1
   ifeq(
@@ -422,7 +422,7 @@ A set of lower level if-then-else macros are provided to expose the internal wor
 
 This expands to the following:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   compare s0, s1
   jump nz, NEQ_f1_0001
@@ -440,13 +440,13 @@ Looping
 
 Similarly to ``if()`` there are a set of high level looping macros ``for()``, ``while()``, and ``dowhile()``. They implement the corresponding looping constructs using the syntax ``for(<init>,<expr>,<update>,<loop body>)`` and ``[do]while(<expr>,<loop body>)``. Signed comparison is supported just as with ``if()`` using the ``signed()`` macro as a modifier. The for loop macro uses the ``expr()`` macro syntax for the *init* and *update* fields.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   for(s0 := -10, signed(s0 < 10), s0 := s0 + 1,
     `output s1, P_FOO'
   )
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   ; Output s1 to port 00 10 times
   load s0, 00
@@ -460,7 +460,7 @@ C-style syntax
 
 Similarly to the ``if()`` macro, an alternate C-style syntax is available for ``for()``, ``while()``, and ``dowhile()``. Note that the ``for()`` macro continues to use commas to separate the sections.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   for (s0 := 0, s0 < s1, s0 := s0 + 1) {
     output s0, P_FOO
@@ -478,7 +478,7 @@ Similarly to the ``if()`` macro, an alternate C-style syntax is available for ``
 
 Two macros, ``break`` and ``continue``, are available to exit the current loop and restart a loop respectively. In a for loop the ``continue`` macro will execute the *update* field expression to prepare the next iteration.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   ; "continue" resumes execution here
   while (s0 < s1) {
@@ -494,15 +494,36 @@ Delay generators
 
 A set of delay generator macros are available to implement software delays. The simplest is ``delay_cycles()`` which delays by a number of instruction cycles (each being two clock cycles). It is implemented with recursive loops and requires no registers to function.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  delay_cycles(40)   ; Delay for 40 instructions
+  delay_cycles(40)   ; Delay for 40 instructions (80 clock periods)
 
-The delay can be from 0 to approximately 100e9 but a practical limit would be to keep the delay less than 200 cycles to restrict the amount of generated code. You must ensure that there is enough space on the call stack to perform the recursive calls.
+This expands to the following recursive code implemented in 13 instructions:
+  
+.. code-block:: picoblaze
+  
+                      CALL DTREE_f1_0001_4           ; Delay for 33 cycles
+                      JUMP DTREE_f1_0001_end
+     DTREE_f1_0001_4: CALL DTREE_f1_0001_3
+     DTREE_f1_0001_3: CALL DTREE_f1_0001_2
+     DTREE_f1_0001_2: CALL DTREE_f1_0001_1
+     DTREE_f1_0001_1: CALL DTREE_f1_0001_0
+     DTREE_f1_0001_0: RETURN
+   DTREE_f1_0001_end:
+                      CALL DTREE_f1_0002_1           ; Delay for 5 cycles
+                      JUMP DTREE_f1_0002_end
+     DTREE_f1_0002_1: CALL DTREE_f1_0002_0
+     DTREE_f1_0002_0: RETURN
+   DTREE_f1_0002_end:
+                      LOAD sf, sf                    ; NOP
+                      LOAD sf, sf                    ; NOP
+
+
+The delay can be from 0 to approximately 100e9 but a practical limit would be to keep the delay less than 200 cycles to restrict the amount of generated code. You must ensure that there is enough space on the call stack to perform the recursive calls. In the example above the 33-cycle delay block extends five calls deep.
 
 Delays by microseconds and milliseconds are implemented with the ``delay_us()`` and ``delay_ms()`` macros. Before using these you must establish the system clock frequency with the ``use_clock()`` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay by a certain number of instructions if needed.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   use_clock(100)                     ; 100 MHz system clock
 
@@ -522,7 +543,7 @@ The ``delay_*()`` macros take a delay value, a pair of registers and an optional
 
 If you need to use multiple delays it may be desirable to have a common delay routine that supports variable delay counts. This is provided by the ``var_delay_us()`` and ``var_delay_ms()`` macros. They are similar to the fixed delays but are not cycle accurate and have no provision for adjustment.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   use_clock(50)            ; 50 MHz system clock
 
@@ -549,13 +570,13 @@ String and table operations
 
 PicoBlaze-3 doesn't have the ability to handle strings as efficiently as PB6 but it is still necessary to work with them at times. Suppose that you have a subroutine "write_char" that writes characters in s0 out to a peripheral. You can write entire strings with the following:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   callstring(write_char, s0, `My string') ; Note use of m4 quotes `' to enclose the string
 
 This expands to the following:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   load s0, "M"
   call write_char
@@ -571,7 +592,7 @@ This expands to the following:
 
 Similarly you can call with arbitrary bytes in a table. The ``pbhex()`` macro is useful here to express hex numbers with less clutter.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   calltable(write_char, s0,  pbhex(DE, AD, BE, EF))
 
@@ -584,7 +605,7 @@ calltable   outputtable   storetable   storetableat   insttable_le, insttable_be
 
 The ``storestringat()`` and ``storetableat()`` macros take a register as a pointer to the destination scratchpad address. The pointer register is incremented after storing each byte except for the last.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   constant M_DATA, 10
   load s0, M_DATA
@@ -592,7 +613,7 @@ The ``storestringat()`` and ``storetableat()`` macros take a register as a point
 
 The ``insttable_le()`` and ``insttable_be()`` macros generate packed INST directives for use as static data. The former generates little-endian instructions while the latter is big-endian.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   insttable_le(pbhex(0a, 0b, 0c))
   ; Expands to:  inst 00b0a
@@ -604,7 +625,7 @@ The ``insttable_le()`` and ``insttable_be()`` macros generate packed INST direct
 
 The insttable macros only accept a list of decimal values directly but the ``asciiord()`` macro can be used to convert strings to numeric data.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   insttable_le(asciiord(`Pack strings into ROM'))
   ; Expands to:
@@ -627,38 +648,38 @@ The native PicoBlaze syntax does not permit the use of character escapes in stri
 ======  ====================
 Escape  Meaning
 ======  ====================
-\\      Literal "\"
-\n      Newline \ Line Feed
-\r      Carriage Return
-\b      Backspace
-\a      Bell
-\e      Esc
-\s      Literal semicolon
+`\\\\`  Literal "\\"
+\\n     Newline \\ Line Feed
+\\r     Carriage Return
+\\b     Backspace
+\\a     Bell
+\\e     Esc
+\\s     Literal semicolon
 ======  ====================
 
 On PicoBlaze-6 you can apply the output of these macros directly in a ``TABLE`` directive as follows:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  table hello#, [dec2pbhex(cstr(\`Hello\\r\\n'))]
+  table hello#, [dec2pbhex(cstr(`Hello\r\n'))]
   ; This expands to: table hello#, [48, 65, 6c, 6c, 6f, 0d, 0a, 00]
   
-  table hello2#, [dec2pbhex(estr(\`Hello\\r\\n'))]
+  table hello2#, [dec2pbhex(estr(`Hello\r\n'))]
   ; This expands to: table hello2#, [48, 65, 6c, 6c, 6f, 0d, 0a]
 
 For PicoBlaze-3 you can pass the output of ``estr()`` and ``cstr()`` to the ``call/store/outputtable()`` macros or use the portable string macros described next.
 
 If you need know the length of a string constant you can use ``strlen()`` to generate that value. It takes a single string argument that can contain escaped characters. It is passed through ``estr()`` before characters are counted.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  load s0, strlen(\`foobar\\r\\n') ; Expands to 8
+  load s0, strlen(`foobar\r\n') ; Expands to 8
   
 You can also pass the label to a string defined with ``string()`` or ``packed_string()`` to retrieve their length.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  packed_string(my_string, \`This is a string')
+  packed_string(my_string, `This is a string')
   load s0, strlen(my_string) ; Expands to 16
 
 Note that m4 has a builtin macro ``len()`` that also returns the length of strings. However, it does not account for escape characters and will include blackslashes in its count.
@@ -674,7 +695,7 @@ A simplified system for generating efficient, portable strings is provided by th
 
 After configuring string handling with ``use_strings()`` you must define each string using the ``string()`` macro. It takes two arguments. The first is a label to identify the string and the second is the escaped string value. Strings are reproduced by calling them with the label used in their definition. Labels should not end with a "$" like with the ``STRING`` directive.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   jump main
   use_strings(s0, s5,s6, write_char)
@@ -682,7 +703,7 @@ After configuring string handling with ``use_strings()`` you must define each st
   write_char: output s0, 00
               return
   
-  string(hello, \`Hello world\\r\\n') ; Define a string called "hello"
+  string(hello, `Hello world\r\n') ; Define a string called "hello"
 
   main:
   ...
@@ -690,7 +711,7 @@ After configuring string handling with ``use_strings()`` you must define each st
 
 This expands to the following when targeting PB6:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
                       JUMP main
                       ; PB6 common string handler routine
@@ -705,12 +726,12 @@ This expands to the following when targeting PB6:
           write_char: OUTPUT s0, 00                  ; Our character handler
                       RETURN
 
-                      ; "Hello world\\r\\n"
+                      ; "Hello world\r\n"
                       TABLE hello#, [48, 65, 6c, 6c, 6f, 20, 77, 6f, 72, 6c, 64, 0d, 0a, 00]
                hello: LOAD s5, _hello_STR'upper
                       LOAD s6, _hello_STR'lower
                       JUMP __string_handler
-          _hello_STR: LOAD&RETURN s0, hello#         ; Define a string called \`"hello"'
+          _hello_STR: LOAD&RETURN s0, hello#         ; Define a string called `"hello"'
 
                 main:
                       ...
@@ -721,14 +742,14 @@ Note that a common string processing routine ``__string_handler`` is generated a
 
 When targeting PB3 the following expansion results:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
                       JUMP main
 
           write_char: OUTPUT s0, 00                  ; Our character handler
                       RETURN
 
-                      ; "Hello world\\r\\n"
+                      ; "Hello world\r\n"
                hello: LOAD s0, 48
                       CALL write_char
                       LOAD s0, 65
@@ -742,7 +763,7 @@ When targeting PB3 the following expansion results:
                       CALL write_char
                       LOAD s0, 0a
                       CALL write_char
-                      RETURN                         ; Define a string called \`"hello"'
+                      RETURN                         ; Define a string called `"hello"'
 
                 main:
                       ...
@@ -770,7 +791,7 @@ Character pairs are stored in big-endian order. The read routine needs to place 
 
 After configuration you define strings with the ``packed_string()`` macro just as with the ``string()`` macro.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   jump main
   mem16(P_ROM, 0x0b,0x0a)            ; Define 16-bit port addresses for dual-ported ROM
@@ -785,7 +806,7 @@ After configuration you define strings with the ``packed_string()`` macro just a
               input16(s0,s1, P_ROM)  ; Read back upper and lower byte
               return
 
-  packed_string(hello, \`Hello world\\r\\n') ; Define a packed string called "hello"
+  packed_string(hello, `Hello world\r\n') ; Define a packed string called "hello"
 
   main:
   ...
@@ -793,9 +814,9 @@ After configuration you define strings with the ``packed_string()`` macro just a
 
 If you have existing code using the portable string macros, you can convert it to use packed strings by redefining the ``string()`` macro:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
-  define(\`string', \`packed_string($@)')
+  define(`string', `packed_string($@)')
 
 8-bit arithmetic
 ----------------
@@ -814,7 +835,7 @@ If you need to convert an 8-bit signed value to 16-bit, use the ``signex(<MSB>, 
 Consider that you need to do some 16-bit arithmetic. You can define aliases for
 pairs of 8-bit registers with ``reg16()`` and then pass them into the 16-bit arithmetic macros:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   reg16(rx, s4, s3)      ; Virtual 16-bit register rx is composed of (s4, s3)
   reg16(ry, s6, s5)
@@ -828,14 +849,14 @@ This is much less obtuse than manually calculating 16-bit constants and repeated
 
 You can retrieve the upper and lower byte registers indirectly with the ``regupper()`` and ``reglower()`` macros. This makes it easy to reallocate the registers if needed.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   load s0, reglower(rx) ; s0 = s3
   load s1, regupper(rx) ; s1 = s4
 
 The ``mem16()`` macro defines 16-bit constants for scratchpad and port addresses. Like ``reg16()`` it creates a new m4 macro that lets you refer to the pair of port addresses together. In addition, two constants are created with the same name suffixed with "_H" and "_L" to identify the high and low ports respectively.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   mem16(M_DATA, 0x05, 0x04)
   load16(rx, 1000)
@@ -859,7 +880,7 @@ sr0_16  sr1_16  sra_16  srx_16
 rl16    rr16   
 ======  ======  ======  ======
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   sl0_16(rx, 4) ; Multiply by 2**4
 
@@ -874,7 +895,7 @@ rl16    rr16
 fetch16  store16  input16  output16
 =======  =======  =======  ======== 
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   mem16(M_ACCUM, 0x1b, 0x1a)
   reg16(rx, s4, s3)
@@ -887,7 +908,7 @@ fetch16  store16  input16  output16
 
 Similarly for port I/O.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   mem16(P_ACCUM, 0x1b, 0x1a)
 
@@ -918,7 +939,7 @@ divide8xk          8-bit / constant
 =================  =======================================
 
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   init:
     ...
@@ -978,13 +999,13 @@ A family of expression evaluator macros are provided that can implement arithmet
  
 Operations are evaluated from left to right with *no precedence*. The target register is used as the left operand of all operations. It is updated with the result after each operation.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   expr(s0 := s1 + s2 =: s3 >> 2)
 
 Arithmetic is performed on ``s0`` at each stage. The reverse assignment to `s3`` captures the intermediate result of ``s1 + s2`` and then continues with the right shift applied to ``s0``. This expands to:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   ; Expression: s0 := s1 + s2 =: s3 >> 2
   LOAD s0, s1
@@ -996,7 +1017,7 @@ Arithmetic is performed on ``s0`` at each stage. The reverse assignment to `s3``
 
 If you want to use the existing value of a register use it as the first operand after the assignment:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   load s0, 03
   expr(s0 := s0 + 100)
@@ -1037,7 +1058,7 @@ By default these macros configure the mul and div functions to use the ``s8,s9``
 
 An example of signed expressions applied to converting temperatures:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   use_stack(sF, 0x3F)
   jump start
@@ -1097,7 +1118,7 @@ Manually running m4
 
 Some users may be unable to use Opbasm due to formal release procedures requiring a "golden" assembler. The m4 macro package can still be used with other PicoBlaze assemblers by manually running code through m4:
 
-.. parsed-literal::
+.. code-block:: sh
 
   > m4 picoblaze.m4 [input source] > expanded_macros.gen.psm
 

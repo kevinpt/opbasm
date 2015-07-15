@@ -20,15 +20,14 @@ resorting to DOS or Windows emulation to run the native KCPSM assemblers.
    advanced features than the base language. For example, converting
    temperature scales becomes as easy as this:
 
-  .. parsed-literal::
+  .. code-block::
 
-    reg16(rx, s4,s5)                ; Create a virtual 16-bit register pair
+    reg16(rx, s4,s5)                ; Create a virtual 16-bit register pair named rx
 
     c_to_f:
-      load reglower(rx), s0         ; Load 8-bit Celsius temperature
+      load reglower(rx), s0         ; Load 8-bit Celsius temperature into low byte
       signex(rx)                    ; Sign extend to 16-bits
-      expr2s(rx := rx * 9 / 5 + 32) ; Perform 16x8-bit signed arithmetic to
-                                    ; get Fahrenheit
+      expr2s(rx := rx * 9 / 5 + 32) ; Perform 16x8-bit signed arithmetic to get Fahrenheit
       return
 
 

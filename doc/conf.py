@@ -86,7 +86,8 @@ exclude_patterns = ['_build']
 #show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+#pygments_style = 'sphinx'
+pygments_style = 'colorful'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -273,3 +274,9 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+
+def setup(sphinx):
+    sys.path.insert(0, os.path.abspath('./util'))
+    from PicoBlazeLexer import PicoBlazeLexer
+    sphinx.add_lexer("picoblaze", PicoBlazeLexer())
