@@ -300,21 +300,37 @@ define(`argc',`$#')
 ; Ex: use_clock(50) ; 50 MHz clock
 define(`use_clock', `define(`_cfreq', $1)')
 
-define(`_delay_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. Use `use_clock()' before any delay operation')')
+define(`_delay_clk_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. Use `use_clock()' before any delay operation')')
+
+;---------------------------------
+; Define delay loop register
+; ** Only invoke once. Must be executed before any delay macros **
+; This register must be different from the registers used in the delay_us() and delay_ms() macros.
+; Arg1: register to use for inner loop counter
+; Ex: use_delay_reg(sA)
+define(`use_delay_reg', `define(`_dreg', $1)')
+
+define(`_delay_reg_initcheck', `_initcheck(`_dreg', `Delay register is `not' initialized. Call `use_delay_reg()' first')')
 
 
 ;---------------------------------
 ; Delay for a number of instruction cycles
 ; Arg1: Number of instructions to delay
+; This can generate two types of delay loops. The default is a recursive
+; delay implemented without any registers. For delays of 511 cycles or less
+; a more efficient loop can be generated if a loop count register is defined
+; first by calling the use_delay_reg() macro.
+; Ex: delay_cycles(10) ; Delay for 10 instructions (20 clock cycles)
+define(`delay_cycles', `ifelse(eval(ifdef(`_dreg',1,0) && const2m4($1) <= 511),1,`_alt_delay_cycles($1)',`_delay_cycles($1)')')
+
 ; This delay generator constructs a minimal delay using a combination of
 ; delay trees and NOPs. The result uses fewer instructions that a plain chain
 ; of NOPs. Note that the delay trees use recursion on the stack to maintain delay state.
 ; There is a slight risk of overflowing the stack if this routine is invoked for long delays
 ; when already in a deeply nested call frame.
 ; The maximum delay is appx. 100e9 cycles (1000sec at 100MHz)
-; Ex: delay_cycles(10) ; Delay for 10 instructions (20 clock cycles)
 ; Yo, dawg! I hard you like recursion so I put some recursion in your recursive loops
-define(`delay_cycles', `ifelse(eval(const2m4($1) < 5),1,`repeat(`nop', const2m4($1))',`_delay_tree(floor_log2(eval(const2m4($1) - 1)))'
+define(`_delay_cycles', `ifelse(eval(const2m4($1) < 5),1,`repeat(`nop', const2m4($1))',`_delay_tree(floor_log2(eval(const2m4($1) - 1)))'
 `$0(eval(const2m4($1) - 2**floor_log2(eval(const2m4($1) - 1)) - 1))')')
 
 ;---------------------------------
@@ -343,6 +359,16 @@ _dt`'_end:'`popdef(`_dt')')
 define(`_delay_tree_gen', `_dt`'_$1: call _dt`'_`'decr($1)'
 `ifelse(eval($1 > 1),1,`$0(decr($1))')')
 
+; This delay generator constructs a more efficient counter-based loop when the use_delay_reg() macro
+; has been called. The delay must be 511 cycles or less.
+define(`_alt_delay_cycles', `_delay_reg_initcheck' `ifelse(eval(const2m4($1) < 4),1,`repeat(`nop', const2m4($1))',dnl
+eval(const2m4($1) > 511),1,`errmsg(`Delay is too large (max 511)')',`pushdef(`_dl', uniqlabel(DLOOP_))'dnl
+`load _dreg, evalh((const2m4($1) - 1) / 2)
+_dl:
+sub _dreg, 01
+jump nz, _dl
+repeat(`nop', eval(const2m4($1) - 1 - ((const2m4($1)-1)/2)*2))
+')')
 
 ;---------------------------------
 ; Delay by milliseconds
@@ -378,7 +404,8 @@ _delay_us(eval(const2m4($1)*1000),$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
 define(`delay_us', ``; Delay for' const2m4($1) us at _cfreq MHz
 _delay_us(const2m4($1),$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
 
-define(`_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
+define(`_delay_us', `_delay_clk_initcheck' `ifelse($2,_dreg,`errmsg(`Register "$2" is in use `for' inner delay loop')',dnl
+$3,_dreg,`errmsg(`Register "$3" is in use `for' inner delay loop')')' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
 ifelse(eval(_dval_us($1,$4) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
 load16($2,$3, _dval_us($1,$4))
 _dly: `; Total loop delay:' eval(3 + _dnop_us($1,$4)) instructions
@@ -451,7 +478,8 @@ _var_delay_us(eval(const2m4($1)*1000),$2,$3)')
 define(`var_delay_us', ``; Variable delay for max' const2m4($1) us at _cfreq MHz
 _var_delay_us(const2m4($1),$2,$3)')
 
-define(`_var_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(VDELAY_))'`dnl
+define(`_var_delay_us', `_delay_clk_initcheck' `ifelse($2,_dreg,`errmsg(`Register "$2" is in use `for' inner delay loop')',dnl
+$3,_dreg,`errmsg(`Register "$3" is in use `for' inner delay loop')')' `pushdef(`_dly', uniqlabel(VDELAY_))'`dnl
 ifelse(eval(_dval_pre($1,0) >= 2**16),1,`errmsg(`Max delay value is too large')')dnl
 _dly: `; Total loop delay:' eval(3 + _dnop_us($1,0)) instructions
 delay_cycles(_dnop_us($1,0))
