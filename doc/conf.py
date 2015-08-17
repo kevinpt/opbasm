@@ -16,6 +16,7 @@ import sys
 import os
 import alabaster
 
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -87,7 +88,7 @@ exclude_patterns = ['_build']
 
 # The name of the Pygments (syntax highlighting) style to use.
 #pygments_style = 'sphinx'
-pygments_style = 'colorful'
+pygments_style = 'PicoBlazeLexer.OptimumTint'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -156,6 +157,15 @@ html_static_path = ['_static']
 html_sidebars = {
     '**': [
         'about.html',
+        'relations.html',
+        'localtoc.html',
+        'projects.html',
+        'searchbox.html'
+    ],
+    
+    'index': [
+        'about.html',
+        'download.html',
         'relations.html',
         'localtoc.html',
         'projects.html',
@@ -279,4 +289,5 @@ texinfo_documents = [
 def setup(sphinx):
     sys.path.insert(0, os.path.abspath('./util'))
     from PicoBlazeLexer import PicoBlazeLexer
+    
     sphinx.add_lexer("picoblaze", PicoBlazeLexer())

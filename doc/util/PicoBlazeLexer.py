@@ -1,5 +1,6 @@
 from pygments.lexer import RegexLexer
 from pygments.token import *
+from pygments.style import Style
 import re
 
 class PicoBlazeLexer(RegexLexer):
@@ -45,7 +46,7 @@ class PicoBlazeLexer(RegexLexer):
             (r'pbhex\(', Name.Builtin, 'pbhex'),
             (r'\w+\(', Name.Builtin, 'macro'),
             (r',', Punctuation),
-            (r'(:=|=:|<<|>>|!=|[-+*/~<>])', Operator),
+            (r'(:=|=:|<<|>>|!=|==|[-+*/~<>])', Operator),
             (r'0x[0-9a-f]+', Number.Hex),
             (r'0b[01]+', Number.Bin),
             (r'\d+', Number),
@@ -60,4 +61,31 @@ class PicoBlazeLexer(RegexLexer):
           (r'\)', Name.Builtin, '#pop')
         ]
 
+    }
+    
+    
+class OptimumTint(Style):
+    default_style = ''
+    styles = {
+        Text:            '#000',
+        Punctuation:     '#333',
+        Generic.Emph:    'italic #800',  # Non-syntactical filler text eg. <foobar>
+        Name:            '#000',
+        Name.Label:      '#080',
+        Name.Builtin:    '#60c',         # Macros
+        Keyword:         'bold #00c',
+        Comment:         '#777',
+        Comment.Special: 'italic #a00',  # Pragmas
+        Number:          'bold #088',
+        #Number.Bin:      '#088',
+        #Number.Hex:      '#088',
+        String.Char:     '#c50',
+        Operator:        '#980'
+        
+        # Comment:                '#888',
+        # Keyword:                'bold #005',
+        # Name:                   '#00f',
+        # Name.Function:          '#0f0',
+        # Name.Class:             'bold #0f0',
+        # String:                 '#f00'
     }
