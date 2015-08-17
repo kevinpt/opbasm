@@ -50,7 +50,13 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="open-picoblaze-assembler">
+  <ol class="loweralpha simple" start="7">
+<li>Opbasm documentation master file, created by
+sphinx-quickstart on Thu May 21 16:31:36 2015.
+You can adapt this file completely to your liking, but it should at least
+contain the root <cite>toctree</cite> directive.</li>
+</ol>
+<div class="section" id="open-picoblaze-assembler">
 <h1>Open PicoBlaze Assembler<a class="headerlink" href="#open-picoblaze-assembler" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 </div>
@@ -85,7 +91,7 @@
 </div>
 <div class="section" id="download">
 <h2>Download<a class="headerlink" href="#download" title="Permalink to this headline">¶</a></h2>
-<p>You can access the Opbasm Git repository from <a class="reference external" href="https://github.com/kevinpt/opbasm">Github</a>. <a class="reference external" href="https://drive.google.com/folderview?id=0B5jin2146-EXd0hBTlAzem1ybmM&amp;usp=sharing">Packaged source code</a> is also available for download. You can install direct from PyPI with the &#8220;pip&#8221; command if you have it available.</p>
+<p>You can access the Opbasm Git repository from <a class="reference external" href="https://github.com/kevinpt/opbasm">Github</a>. <a class="reference external" href="https://goo.gl/tz2vwz">Packaged source code</a> is also available for download. You can install direct from PyPI with the &#8220;pip&#8221; command if you have it available.</p>
 </div>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
@@ -309,28 +315,28 @@ ROM_form_S3_1K.vhdl,picoblaze_rom.vhdl
 <p>When run, the <em>pb_update</em> script will convert the <em>.ncd</em> netlist to the textual <em>.xdl</em> format and scan it for any block RAM instances. If one BRAM is found it is assumed to be the PicoBlaze ROM. If multiple BRAMs are in the design, a list is provided with their instance names and you are prompted to select which one(s) are part of the PicoBlaze ROM.</p>
 <p>If the ROM is divided amongst multiple BRAMs the interactive selection process lets you describe the layout of the memory array. You select the BRAM instances needed to fill out a row of memory until 18 bits for an instruction word are allocated. If the required memory depth isn&#8217;t satisfied a new row of memory is started where you continue to add BRAMs. The required depth is derived from the number of words present in the assembled <em>.mem</em> file.</p>
 <p>Once the layout is described, <em>pb_update</em> runs the <em>data2mem</em> program with the contents for each BRAM generated according to the layout. After the first run with the interactive BRAM selection, <em>pb_update</em> outputs a string describing the layout specification that can be passed with the <em>-l &#8220;&lt;specification string&gt;&#8221;</em> option to bypass the interactive mode on future runs.</p>
-<div class="highlight-sh"><div class="highlight"><pre>&gt; pb_update -m foobar.mem -n foobar.ncd
+<div class="highlight-python"><div class="highlight"><pre>&gt; pb_update -m foobar.mem -n foobar.ncd
 PicoBlaze ROM updater
 Running XDL...
-Release 14.5 - xdl P.58f <span class="o">(</span>lin64<span class="o">)</span>
-Copyright <span class="o">(</span>c<span class="o">)</span> 1995-2012 Xilinx, Inc.  All rights reserved.
+Release 14.5 - xdl P.58f (lin64)
+Copyright (c) 1995-2012 Xilinx, Inc.  All rights reserved.
 
-Loading device <span class="k">for </span>application Rf_Device from file <span class="s1">&#39;6slx4.nph&#39;</span> in environment /usr/local/packages/Xilinx/14.5/ISE_DS/ISE/.
-   <span class="s2">&quot;foobar&quot;</span> is an NCD, version 3.2, device xc6slx4, package tqg144, speed -3
-Successfully converted design <span class="s1">&#39;foobar.ncd&#39;</span> to <span class="s1">&#39;foobar.xdl&#39;</span>.
+Loading device for application Rf_Device from file &#39;6slx4.nph&#39; in environment /usr/local/packages/Xilinx/14.5/ISE_DS/ISE/.
+   &quot;foobar&quot; is an NCD, version 3.2, device xc6slx4, package tqg144, speed -3
+Successfully converted design &#39;foobar.ncd&#39; to &#39;foobar.xdl&#39;.
 Required memory depth: 4096
 
 ... &lt;interactive BRAM selection&gt;
 
 Final memory layout:
-    Row 0:     0 - 2047    <span class="o">[</span>9<span class="o">][</span>9<span class="o">]</span>
+    Row 0:     0 - 2047    [9][9]
       rom/kcpsm6_rom_lh     2048x9   17 - 9
       rom/kcpsm6_rom_ll     2048x9    8 - 0
-    Row 1:  2048 - 4095    <span class="o">[</span>9<span class="o">][</span>9<span class="o">]</span>
+    Row 1:  2048 - 4095    [9][9]
       rom/kcpsm6_rom_hh     2048x9   17 - 9
       rom/kcpsm6_rom_hl     2048x9    8 - 0
 
-Layout Spec: <span class="s2">&quot;rom/kcpsm6_rom_lh,rom/kcpsm6_rom_ll:rom/kcpsm6_rom_hh,rom/kcpsm6_rom_hl&quot;</span>
+Layout Spec: &quot;rom/kcpsm6_rom_lh,rom/kcpsm6_rom_ll:rom/kcpsm6_rom_hh,rom/kcpsm6_rom_hl&quot;
 
 Running data2mem...
   data2mem -bm r0_b17_9.bmm -bd r0_b17_9.mem -bt foobar.bit -o b r0_b17_9.bit
@@ -387,7 +393,20 @@ Generated updated bit file: new_foobar.bit
 </p>
 
 
+<div id="download_links">
+  <div class="dl-button">
+  <a href="https://goo.gl/tz2vwz"><b>Download</b></a><br>
+  </div>
 
+  <div class="js-clone-url clone-url open" data-protocol-type="http">
+    <span>Git clone URL:</span>
+    <div>
+      <input type="text" value="https://github.com/kevinpt/opbasm.git"
+             onclick="this.focus();this.select()" readonly="readonly" aria-label="Git clone URL">
+    </div>
+  </div>
+  <br>
+</div>
   <h4>Next topic</h4>
   <p class="topless"><a href="rst/m4.html"
                         title="next chapter">m4 support in Opbasm</a></p>

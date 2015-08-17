@@ -440,7 +440,7 @@
 <p>The m4 syntax for the <tt class="docutils literal"><span class="pre">if()</span></tt> macro is a little untidy but an alternate C-style syntax can be used. It is implemented using an initial preprocessing step where pattern matching converts C-style control flow statements into m4 syntax. Instead of m4 quotes, code blocks are surrounded by mandatory curly braces. Unlike m4 macros, whitespace is permitted between the <tt class="docutils literal"><span class="pre">if</span></tt> keyword and its comparison expression.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">if (</span><span class="s">s0</span> <span class="o">&lt;</span> <span class="s">s1</span><span class="nb">)</span> <span class="p">{</span>
   <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="sc">&quot;T&quot;</span>
-<span class="p">}</span> <span class="nb">else</span> <span class="nb">if (</span><span class="s">s2</span> <span class="s">==</span> <span class="s">s3</span><span class="nb">)</span> <span class="p">{</span>
+<span class="p">}</span> <span class="nb">else</span> <span class="nb">if (</span><span class="s">s2</span> <span class="o">==</span> <span class="s">s3</span><span class="nb">)</span> <span class="p">{</span>
   <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="sc">&quot;t&quot;</span>
 <span class="p">}</span> <span class="nb">else</span> <span class="p">{</span>
   <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="sc">&quot;F&quot;</span>
@@ -510,8 +510,8 @@
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; &quot;continue&quot; resumes execution here</span>
 <span class="nb">while (</span><span class="s">s0</span> <span class="o">&lt;</span> <span class="s">s1</span><span class="nb">)</span> <span class="p">{</span>
   <span class="k">add</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">01</span>
-  <span class="nb">if (</span><span class="s">s3</span> <span class="s">==</span> <span class="m">4</span><span class="nb">)</span> <span class="p">{</span> <span class="k">continue</span> }
-  <span class="nb">if (</span><span class="s">s2</span> <span class="s">==</span> <span class="m">5</span><span class="nb">)</span> <span class="p">{</span> <span class="k">break</span> }
+  <span class="nb">if (</span><span class="s">s3</span> <span class="o">==</span> <span class="m">4</span><span class="nb">)</span> <span class="p">{</span> <span class="k">continue</span> }
+  <span class="nb">if (</span><span class="s">s2</span> <span class="o">==</span> <span class="m">5</span><span class="nb">)</span> <span class="p">{</span> <span class="k">break</span> }
   <span class="k">output</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
 <span class="p">}</span>
 <span class="c">; &quot;break&quot; resumes execution here</span>

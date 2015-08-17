@@ -1,4 +1,4 @@
-.. Opbasm documentation master file, created by
+g. Opbasm documentation master file, created by
    sphinx-quickstart on Thu May 21 16:31:36 2015.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
@@ -51,7 +51,7 @@ Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The
 Download
 --------
 
-You can access the Opbasm Git repository from `Github <https://github.com/kevinpt/opbasm>`_. `Packaged source code <https://drive.google.com/folderview?id=0B5jin2146-EXd0hBTlAzem1ybmM&usp=sharing>`_ is also available for download. You can install direct from PyPI with the "pip" command if you have it available.
+You can access the Opbasm Git repository from `Github <https://github.com/kevinpt/opbasm>`_. `Packaged source code <https://goo.gl/tz2vwz>`_ is also available for download. You can install direct from PyPI with the "pip" command if you have it available.
 
 
 Installation
@@ -339,7 +339,7 @@ If the ROM is divided amongst multiple BRAMs the interactive selection process l
 
 Once the layout is described, *pb_update* runs the *data2mem* program with the contents for each BRAM generated according to the layout. After the first run with the interactive BRAM selection, *pb_update* outputs a string describing the layout specification that can be passed with the *-l "<specification string>"* option to bypass the interactive mode on future runs.
 
-.. code-block:: sh
+.. parsed-literal::
 
   > pb_update -m foobar.mem -n foobar.ncd
   PicoBlaze ROM updater
