@@ -1,4 +1,4 @@
-g. Opbasm documentation master file, created by
+.. Opbasm documentation master file, created by
    sphinx-quickstart on Thu May 21 16:31:36 2015.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
