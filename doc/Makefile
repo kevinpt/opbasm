@@ -50,7 +50,7 @@ clean:
 	rm -rf $(BUILDDIR)/*
 
 gh-pages: html
-	cp -r $(BUILDDIR)/html ../../opbasm-html
+	cp -r $(BUILDDIR)/html/* ../../opbasm-html
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html

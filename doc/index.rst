@@ -7,6 +7,12 @@
 Open PicoBlaze Assembler
 ========================
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   rst/m4
+
 Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers `provided by Xilinx <http://www.xilinx.com/products/intellectual-property/picoblaze.htm>`_. It will run readily on any platform with a functional Python interpreter. Opbasm provides a better performing solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.
 
 
@@ -14,12 +20,12 @@ Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaz
 
  * Optional :doc:`m4 preprocessor macros <rst/m4>` are available when the m4 program is installed. An extensive set of built-in macros provide more advanced features than the base language. For example, converting temperature scales becomes as easy as this:
 
-  .. parsed-literal::
+  .. code-block:: picoblaze
 
-    reg16(rx, s4,s5)                ; Create a virtual 16-bit register pair
+    reg16(rx, s4,s5)                ; Create a virtual 16-bit register pair named rx
 
     c_to_f:
-      load reglower(rx), s0         ; Load 8-bit Celsius temperature
+      load reglower(rx), s0         ; Load 8-bit Celsius temperature into low byte
       signex(rx)                    ; Sign extend to 16-bits
       expr2s(rx := rx * 9 / 5 + 32) ; Perform 16x8-bit signed arithmetic to get Fahrenheit
       return
@@ -45,7 +51,7 @@ Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The
 Download
 --------
 
-You can access the Opbasm Mercurial repository from `Google Code <http://code.google.com/p/opbasm/source/checkout>`_. `Packaged source code <https://drive.google.com/folderview?id=0B5jin2146-EXd0hBTlAzem1ybmM&usp=sharing>`_ is also available for download. You can install direct from PyPI with the "pip" command if you have it available.
+You can access the Opbasm Git repository from `Github <https://github.com/kevinpt/opbasm>`_. `Packaged source code <https://goo.gl/tz2vwz>`_ is also available for download. You can install direct from PyPI with the "pip" command if you have it available.
 
 
 Installation
@@ -57,19 +63,19 @@ If your OS has a package manager, it may be preferable to install Python setupto
 
 The easiest way to install Opbasm is from `PyPI <https://pypi.python.org/pypi/opbasm>`_.
 
-.. parsed-literal::
+.. code-block:: sh
 
   > pip install --upgrade opbasm
 
 This will download and install the latest release, upgrading if you already have it installed. If you don't have "pip" you may have the "easy_install" command available which can be used to install "pip" on your system:
 
-.. parsed-literal::
+.. code-block:: sh
 
   > easy_install pip
 
 If you manually downloaded a source package or created a clone with Git you can install Opbasm with the following command run from the base Opbasm directory:
 
-.. parsed-literal::
+.. code-block:: sh
 
   > python setup.py install
 
@@ -79,7 +85,7 @@ After a successful install the Opbasm scripts will be available. On Linux they s
 
 If you can't use the installer script, it is possible to run *opbasm.py* directly without installation.
 
-.. parsed-literal::
+.. code-block:: sh
 
   > python opbasm.py ...
 
@@ -145,7 +151,7 @@ On the first assembly pass it is possible that the amount of extra code present 
 Using Opbasm
 ------------
 
-After installation you are ready to use Opbasm. The native KCPSM assemblers rely on HDL templates to carry assembled ROM data into synthesis. You can continue to use that process by using the provided Spartan-3 template or using a template from the KCPSM6 distribution. You can alternately use the `picoblaze_rom.vhdl <https://code.google.com/p/opbasm/source/browse/templates/picoblaze_rom.vhdl>`_ component which provides a generic resizable ROM that reads *.mem* and *.hex* files directly without requiring a template. See below for more information on the templating options.
+After installation you are ready to use Opbasm. The native KCPSM assemblers rely on HDL templates to carry assembled ROM data into synthesis. You can continue to use that process by using the provided Spartan-3 template or using a template from the KCPSM6 distribution. You can alternately use the `picoblaze_rom.vhdl <https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl>`_ component which provides a generic resizeable ROM that reads *.mem* and *.hex* files directly without requiring a template. See below for more information on the templating options.
 
 The assembler is invoked with the *opbasm* script. It supports the following command line syntax:
 
@@ -191,7 +197,7 @@ Opbasm defaults to using PicoBlaze-3 as the target processor. Beginning with ver
 
 To compile to PicoBlaze-3 opcodes, use the following:
 
-.. parsed-literal::
+.. code-block:: sh
 
   > opbasm foo.psm
   OPBASM - Open PicoBlaze Assembler
@@ -218,7 +224,7 @@ To compile to PicoBlaze-3 opcodes, use the following:
 
 To compile to PicoBlaze-6, use the following:
 
-.. parsed-literal::
+.. code-block:: sh
 
   > opbasm -6 foo.psm
   OPBASM - Open PicoBlaze Assembler
@@ -232,7 +238,7 @@ Opbasm returns 0 on success and can be used with automated builds using make or 
 Templating
 ~~~~~~~~~~
 
-All of the official KCPSM-provided HDL templates are supported. Any custom templates you have created can be used unchanged. Because of improvements to XST's support for synthesis of BRAM generics since the last release of KCPSM3, an updated Spartan-3 template `ROM_form_S3_1K.vhdl <https://code.google.com/p/opbasm/source/browse/templates/ROM_form_S3_1K.vhdl>`_ is included that eliminates the warnings from redundant attribute declarations. Templates for PicoBlaze-6 devices can be found in the KCPSM6 distribution.
+All of the official KCPSM-provided HDL templates are supported. Any custom templates you have created can be used unchanged. Because of improvements to XST's support for synthesis of BRAM generics since the last release of KCPSM3, an updated Spartan-3 template `ROM_form_S3_1K.vhdl <https://github.com/kevinpt/opbasm/blob/master/templates/ROM_form_S3_1K.vhdl>`_ is included that eliminates the warnings from redundant attribute declarations. Templates for PicoBlaze-6 devices can be found in the KCPSM6 distribution.
 
 Because Opbasm is more flexible in the naming of modules, the original template system's assumption that the "{name}" field matches the input source file isn't necessarily valid. A new field "{source file}" is added that clearly indicates the original top level source file used to populate a template. This field is optional and only used in a comment so it is not critical to include it in your templates.
 
@@ -240,7 +246,7 @@ The native KCPSM assemblers are hard-coded to look for a template named *ROM_for
 
 To save the bother of hunting down templates when you start a new project, you can generate copies of the default templates included with Opbasm using the following command:
 
-.. parsed-literal::
+.. code-block:: sh
 
   > obpasm -g
   Retrieving default templates...
@@ -251,7 +257,7 @@ To save the bother of hunting down templates when you start a new project, you c
 Generic ROM component
 ~~~~~~~~~~~~~~~~~~~~~
 
-As an alternative to the templating system, a generic, synthesizable VHDL ROM is provided in the `picoblaze_rom.vhdl <https://code.google.com/p/opbasm/source/browse/templates/picoblaze_rom.vhdl>`_  file. This component uses XSTs limited support for textio during synthesis to read a *.mem* or *.hex* file directly without the use of a template file. It takes advantage of XSTs support for automatically partitioning memories that exceed the maximum size of a BRAM. This provides a simplification of the synthesis flow and you do not need to manually switch to different template files if you change the size of the ROM for PicoBlaze-6 designs. For simulation, this component has the advantage that it doesn't have to be recompiled for every change to the PicoBlaze source code in a design and is portable across Xilinx families. It automatically re-reads the latest *.mem* or *.hex* whenever the simulation is reset. A generic can be set to select the implementation as BRAM or distributed RAM.
+As an alternative to the templating system, a generic, synthesizable VHDL ROM is provided in the `picoblaze_rom.vhdl <https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl>`_  file. This component uses XSTs limited support for textio during synthesis to read a *.mem* or *.hex* file directly without the use of a template file. It takes advantage of XSTs support for automatically partitioning memories that exceed the maximum size of a BRAM. This provides a simplification of the synthesis flow and you do not need to manually switch to different template files if you change the size of the ROM for PicoBlaze-6 designs. For simulation, this component has the advantage that it doesn't have to be recompiled for every change to the PicoBlaze source code in a design and is portable across Xilinx families. It automatically re-reads the latest *.mem* or *.hex* whenever the simulation is reset. A generic can be set to select the implementation as BRAM or distributed RAM.
 
 XST doesn't infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The "``ROM_form_S6_4K_<date>.vhd``" template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.
 
@@ -265,7 +271,7 @@ User defined PRAGMA meta-comments
 
 To facilitate post processing of assembled output, Opbasm includes a facility to annotate blocks of code using PRAGMA meta-comments. It uses a flexible syntax that provides considerable freedom in how you annotate your code.
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   ** Start a block:
   ;PRAGMA <name> [optional arguments] on|start|begin
@@ -275,7 +281,7 @@ To facilitate post processing of assembled output, Opbasm includes a facility to
 
 All fields are case insensitive. Case is preserved for the arguments. Blocks of different types can overlap. PRAGMAs with the "keep" name are the only ones with special behavior (see `static code analysis`_). All others are just annotations that appear in the log. The optional arguments can be any space separated list of strings. The most likely use case is to annotate functions as follows:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   ;PRAGMA FUNCTION empty_func BEGIN
   empty_func: return
@@ -309,7 +315,7 @@ Blocks containing no instructions are omitted from the log ("nothing" in this ca
 
 One potential use for the flexible formatting is to include a signature with a function block. Using VHDL-style syntax you can do the following:
 
-.. parsed-literal::
+.. code-block:: picoblaze
 
   ;PRAGMA function do_something [s0, s1 return s0] begin
   ...

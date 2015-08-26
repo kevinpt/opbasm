@@ -3,7 +3,9 @@ recursive-include example *.vhdl *.psm4 *.txt *.do
 prune example/build
 include opbasm_lib/*.m4
 recursive-include opbasm_lib/lang *
+recursive-include opbasm_lib/m4 *
 prune opbasm_lib/lang/tools
 include README.rst
 include ChangeLog.txt
 include CONTRIBUTING
+include AUTHORS

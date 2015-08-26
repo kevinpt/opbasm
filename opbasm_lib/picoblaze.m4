@@ -1,11 +1,11 @@
 divert(-1)
 changecom(;)
-; m4 macros for enhanced Picoblaze assembly
+; m4 macros for enhanced PicoBlaze assembly
 ; These are included as part of Opbasm and available automatically when processing
 ; files with .psm4 or .m4 extenstions or when the --m4 option is provided
 ;
-; These can be used manually with any Picoblaze assembler by running the following:
-;   m4 picoblaze.m4 [input source] > expanded_macros.gen.psm
+; These can be used manually with any PicoBlaze assembler by running the following:
+;   m4 PicoBlaze.m4 [input source] > expanded_macros.gen.psm
 
 ; Copyright © 2014, 2015 Kevin Thibedeau
 ; (kevin 'period' thibedeau 'at' gmail 'punto' com)
@@ -46,7 +46,7 @@ define(`evala', `eval(($1) & 0xFFF, 16, 3)  ; $1')
 define(`evalb', `eval((const2m4($1)) & 0xFF, 2, 8)''b  `;' $1)
 
 ; Evaluate expression with constant expansion
-define(`evalc', `eval(const2m4($1), $2, $3)')
+define(`evalc', `eval(const2m4($1), ifelse($2,,10,$2), ifelse($3,,0,$3))')
 
 
 ; Only evaluate valid expressions, otherwise reproduce the original text in the
@@ -64,16 +64,17 @@ define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($
 ;=============== TYPE CONVERSION ===============
 
 ;---------------------------------
-; Convert a list of values in Picoblaze hex format to decimal
+; Convert a list of values in PicoBlaze hex format to decimal
 ; Arg1-Argn: Hex values to convert
 ; Ex: pbhex(01, 02, 03, 0a, ff)  ; Expands to 1, 2, 3, 10, 255
 define(`pbhex', `ifelse(eval($#>1),1,eval(0x$1)`,' `$0(shift($@))',$1,,,`eval(0x$1)')')
 
 ;---------------------------------
-; Convert a list of decimal values to Picoblaze hex format
+; Convert a list of decimal values to PicoBlaze hex format
 ; Arg1-Argn: Decimal values to convert
 ; Ex: dec2pbhex(1, 2, 100, 200)  ; Expands to 01, 02, 64, C8
 define(`dec2pbhex', `ifelse(eval($#>1),1,`eval($1 & 0xFF,16,2)'`,' `$0(shift($@))',$1,,,`eval($1 & 0xFF,16,2)')')
+
 
 ;---------------------------------
 ; Convert a string to a list of decimal ASCII codes
@@ -81,11 +82,28 @@ define(`dec2pbhex', `ifelse(eval($#>1),1,`eval($1 & 0xFF,16,2)'`,' `$0(shift($@)
 ; Ex: asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
 changequote(<!,!>) ; Change quotes so we can handle "`" and "'"
 
-define(<!asciiord!>,<!changequote(<!,!>)changecom(-~-)<!!>_asciiord(<!$1!>)<!!>changecom(;)changequote`'dnl
+; NOTE: We have to escape the string argument to avoid unwanted substitutions
+define(<!asciiord!>,<!changequote(<!,!>)changecom(-~-)<!!>_asciiord(_esc_words($1))<!!>changecom(;)changequote`'dnl
 !>)
 
-define(<!_asciiord!>,<!ifelse(<!$1!>,,,<!_aconv(substr(<!$1!>,0,1))<!!>ifelse(len(<!$1!>),1,,<!,!>) $0(substr(<!$1!>,1))!>)!>)
+; We will use "^" as an escape char so we need to replace literal "^"s with "^1"
+define(<!_esc_caret!>, <!patsubst(<!$@!>,<!\^!>,<!^1!>)!>)
 
+; Escape commas in a string with "^2". This eliminates further problems with a string being split into separate args
+define(<!_esc_comma!>, <!patsubst(_esc_caret(<!$@!>), <!,!>,<!^2!>)!>)
+
+; We have to insert dummy chars to prevent recognition of substrings that are valid macro names
+; At this point we will have a string of regular chars followed by "~"s and escaped commas and carets
+define(<!_esc_words!>, <!patsubst(patsubst(_esc_comma(<!$*!>),<![^^]!>,<!\&~!>),<!\^\([0-9]\)~!>,<!^\1!>)!>)
+
+
+; Main recursive loop to convert each character. Because of the escaping we retrieve two chars at a time.
+define(<!_asciiord!>,<!ifelse(<!$1!>,,,<!_xaconv(substr(<!$1!>,0,2))<!!>ifelse(len(<!$1!>),2,,<!,!>) $0(substr(<!$1!>,2))!>)!>)
+
+; Convert "^1" and "^2" escapes to their ASCII code or call _aconv() for everything else
+define(<!_xaconv!>,<!ifelse(<!$1!>,<!^1!>,94,<!$1!>,<!^2!>,44,_aconv(substr(<!$1!>,0,1)))!>)
+
+; Convert an ASCII character to its numeric value
 define(<!_aconv!>,<!ifelse(<!$1!>,<! !>,32,<!$1!>,<!;!>,59,dnl
 <!index(<!                                 !"#$%&'()*+,-./0123456789: <=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ !>,<!$1!>)!>)!>)
 
@@ -116,6 +134,19 @@ define(`_esc', `ifelse(eval($#>1),1, `ifelse(eval($1==92),1,`_echar($2)`'ifelse(
 define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,13, eval($1==116),1,9, eval($1==98),1,8, eval($1==97),1,7, eval($1==101),1,27, eval($1==115),1,59,dnl
 `errmsg(`Invalid escape code')')')
 
+
+;---------------------------------
+; Return the length of a string constant, a portable string or a packed string
+; The argument is passed through the estr() macro to collapse escaped characters before counting them
+; Arg1: String to count length from. This is either a constant or the label to a string
+;       defined with string() or packed_string()
+; Ex: load s0, strlen(`foobar\r\n')  ; Expands to 8
+;
+;     packed_string(xyzzy, `This is a string')
+;     load s0, strlen(xyzzy) ; Expands to 16
+define(`strlen', `ifdef(`_$1_LENGTH', _$1_LENGTH, `_strlen(estr($1))')')
+define(`_strlen', $#)
+
 ;---------------------------------
 ; Add double quotes around a string
 ; This is allows the use of macros to generate strings where substitution within "" would
@@ -139,7 +170,7 @@ define(`_split_be', `eval((($1) & 0xFF00) >> 8), eval(($1) & 0xFF)')
 
 
 ;---------------------------------
-; Convert Picoblaze literals into m4 syntax
+; Convert PicoBlaze literals into m4 syntax
 ; Arg1: String to convert
 ; Result is an integer in m4 syntax
 ; Handles "c" -> ascii ord.,  nn'd -> decimal,  nn -> hex,  nn'b -> bin
@@ -269,21 +300,37 @@ define(`argc',`$#')
 ; Ex: use_clock(50) ; 50 MHz clock
 define(`use_clock', `define(`_cfreq', $1)')
 
-define(`_delay_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. Use `use_clock()' before any delay operation')')
+define(`_delay_clk_initcheck', `_initcheck(`_cfreq', `Delays are `not' initialized. Use `use_clock()' before any delay operation')')
+
+;---------------------------------
+; Define delay loop register
+; ** Only invoke once. Must be executed before any delay macros **
+; This register must be different from the registers used in the delay_us() and delay_ms() macros.
+; Arg1: register to use for inner loop counter
+; Ex: use_delay_reg(sA)
+define(`use_delay_reg', `define(`_dreg', $1)')
+
+define(`_delay_reg_initcheck', `_initcheck(`_dreg', `Delay register is `not' initialized. Call `use_delay_reg()' first')')
 
 
 ;---------------------------------
 ; Delay for a number of instruction cycles
 ; Arg1: Number of instructions to delay
+; This can generate two types of delay loops. The default is a recursive
+; delay implemented without any registers. For delays of 511 cycles or less
+; a more efficient loop can be generated if a loop count register is defined
+; first by calling the use_delay_reg() macro.
+; Ex: delay_cycles(10) ; Delay for 10 instructions (20 clock cycles)
+define(`delay_cycles', `ifelse(eval(ifdef(`_dreg',1,0) && const2m4($1) <= 511),1,`_alt_delay_cycles($1)',`_delay_cycles($1)')')
+
 ; This delay generator constructs a minimal delay using a combination of
 ; delay trees and NOPs. The result uses fewer instructions that a plain chain
 ; of NOPs. Note that the delay trees use recursion on the stack to maintain delay state.
 ; There is a slight risk of overflowing the stack if this routine is invoked for long delays
 ; when already in a deeply nested call frame.
 ; The maximum delay is appx. 100e9 cycles (1000sec at 100MHz)
-; Ex: delay_cycles(10) ; Delay for 10 instructions (20 clock cycles)
 ; Yo, dawg! I hard you like recursion so I put some recursion in your recursive loops
-define(`delay_cycles', `ifelse(eval(const2m4($1) < 5),1,`repeat(`nop', const2m4($1))',`_delay_tree(floor_log2(eval(const2m4($1) - 1)))'
+define(`_delay_cycles', `ifelse(eval(const2m4($1) < 5),1,`repeat(`nop', const2m4($1))',`_delay_tree(floor_log2(eval(const2m4($1) - 1)))'
 `$0(eval(const2m4($1) - 2**floor_log2(eval(const2m4($1) - 1)) - 1))')')
 
 ;---------------------------------
@@ -312,6 +359,16 @@ _dt`'_end:'`popdef(`_dt')')
 define(`_delay_tree_gen', `_dt`'_$1: call _dt`'_`'decr($1)'
 `ifelse(eval($1 > 1),1,`$0(decr($1))')')
 
+; This delay generator constructs a more efficient counter-based loop when the use_delay_reg() macro
+; has been called. The delay must be 511 cycles or less.
+define(`_alt_delay_cycles', `_delay_reg_initcheck' `ifelse(eval(const2m4($1) < 4),1,`repeat(`nop', const2m4($1))',dnl
+eval(const2m4($1) > 511),1,`errmsg(`Delay is too large (max 511)')',`pushdef(`_dl', uniqlabel(DLOOP_))'dnl
+`load _dreg, evalh((const2m4($1) - 1) / 2)
+_dl:
+sub _dreg, 01
+jump nz, _dl
+repeat(`nop', eval(const2m4($1) - 1 - ((const2m4($1)-1)/2)*2))
+')')
 
 ;---------------------------------
 ; Delay by milliseconds
@@ -347,7 +404,8 @@ _delay_us(eval(const2m4($1)*1000),$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
 define(`delay_us', ``; Delay for' const2m4($1) us at _cfreq MHz
 _delay_us(const2m4($1),$2,$3,`ifelse(`$4',,2,`eval(2 + $4)')')')
 
-define(`_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
+define(`_delay_us', `_delay_clk_initcheck' `ifelse($2,_dreg,`errmsg(`Register "$2" is in use `for' inner delay loop')',dnl
+$3,_dreg,`errmsg(`Register "$3" is in use `for' inner delay loop')')' `pushdef(`_dly', uniqlabel(DELAY_))'`dnl
 ifelse(eval(_dval_us($1,$4) >= 2**16),1,`errmsg(`Delay value is too large')')dnl
 load16($2,$3, _dval_us($1,$4))
 _dly: `; Total loop delay:' eval(3 + _dnop_us($1,$4)) instructions
@@ -420,7 +478,8 @@ _var_delay_us(eval(const2m4($1)*1000),$2,$3)')
 define(`var_delay_us', ``; Variable delay for max' const2m4($1) us at _cfreq MHz
 _var_delay_us(const2m4($1),$2,$3)')
 
-define(`_var_delay_us', `_delay_initcheck' `pushdef(`_dly', uniqlabel(VDELAY_))'`dnl
+define(`_var_delay_us', `_delay_clk_initcheck' `ifelse($2,_dreg,`errmsg(`Register "$2" is in use `for' inner delay loop')',dnl
+$3,_dreg,`errmsg(`Register "$3" is in use `for' inner delay loop')')' `pushdef(`_dly', uniqlabel(VDELAY_))'`dnl
 ifelse(eval(_dval_pre($1,0) >= 2**16),1,`errmsg(`Max delay value is too large')')dnl
 _dly: `; Total loop delay:' eval(3 + _dnop_us($1,0)) instructions
 delay_cycles(_dnop_us($1,0))
@@ -477,9 +536,9 @@ define(`clearbit', `and $1,  eval((~(2**($2))) & 0xFF, 16, 2)  ; Clear bit $2')
 define(`mask', `ifelse($1,,0,`eval(2**($1) + $0(shift($@)))')')
 
 ;---------------------------------
-; Alternate mask that can be used as a direct argument to a Picoblaze instruction
+; Alternate mask that can be used as a direct argument to a PicoBlaze instruction
 ; Arg1: Bit numbers to set in mask (0-7) 
-; Result is a mask in Picoblaze hex format
+; Result is a mask in PicoBlaze hex format
 ; Ex: test s0, maskh(3,4,5) ; Test if bits 3, 4, and 5 are clear
 ;     jump z, is_clear
 define(`maskh', `eval(mask($@), 16, 2)')
@@ -570,7 +629,8 @@ define(`retlt', `return c  ; if less than')
 ;---------------------------------
 ; Generic if macro
 ; Arg1: Boolean comparison expression
-;       Must be of the form: "reg op reg|expression" where op is <, >=, ==, !=, or &
+;       Must be of the form: "reg op reg|expression" where op is <, >, <=, >=, ==, !=, or &
+;       or of the form "reg" which is treated as "reg != 0".
 ;       Signed comparison is invoked with "signed(comparison expr.)"
 ;       With signed comparison the right operand cannot be a named constant.
 ;       With the & operator a test instruction is used in place of compare. The true
@@ -586,7 +646,8 @@ define(`retlt', `return c  ; if less than')
 define(`if', `ifelse(eval($# > 3),1,`_if(_iftokens($1), `$2', `if(shift(shift($@)))')',dnl
 `_if(_iftokens($1), `$2', `$3')')')
 
-define(`_iftokens', `regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\(.+\)', `\1, \2, \3')')
+; Split comparison expression into tokens
+define(`_iftokens', `ifelse(regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\(.+\)'),-1,`$1, !=, 0',`regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\(.+\)', `\1, \2, \3')')')
 
 define(`_if', `; If $1 $2 $3'
 `ifelse(regexp($2,`^\(s<\|s>=\)$'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
@@ -616,7 +677,7 @@ define(`_rcurly', `}')
 define(`_rparen', `)')
 
 ; The preprocessor converts constant directives into const() macros so that
-; the m4 code is aware of constants declared in picoblaze syntax
+; the m4 code is aware of constants declared in PicoBlaze syntax
 changequote(<!,!>)
 define(<!const!>, <!changequote(<!,!>)<!!>pushdef(<!_cname_$1!>,<!$2!>)!><!constant $1, translit($2,!,')<!!>changequote`'dnl
 !>)
@@ -910,7 +971,7 @@ define(`addstackreg', `_stack_initcheck' `sub _stackptr, $1  ; Add local stack v
 ;=============== STRING AND TABLE OPERATIONS ===============
 
 ;---------------------------------
-; Repeated string function call operation (useful for Picoblaze-3)
+; Repeated string function call operation (useful for PicoBlaze-3)
 ; Arg1: Subroutine to call for each character
 ; Arg2: Register used to hold characters (typically an argument to the subroutine)
 ; Arg3: String to split into characters
@@ -1099,7 +1160,9 @@ define(`_strings_initcheck', `_initcheck(`_string_char', `String handler is `not
 ;     main:
 ;     ...
 ;         call my_string ; Output the string
-define(`string', `ifelse($#,0, ``$0'', `_strings_initcheck' `ifdef(`PB3', `; "$2"
+define(`string', `ifelse($#,0, ``$0'', `_strings_initcheck' dnl
+`define(`_$1_LENGTH',strlen($2))'dnl
+`ifdef(`PB3', `; "$2"
 $1: calltable(_string_char_handler, _string_char, estr($2))
 return',dnl
 ` ; "$2"
@@ -1107,6 +1170,7 @@ table $1#, [dec2pbhex(cstr($2))]
 $1: loadaddr(_saddr_msb, _saddr_lsb, _$1_STR)
 jump __string_handler
 _$1_STR: load&return _string_char, $1#')')')
+
 
 
 ;---------------------------------
@@ -1117,8 +1181,7 @@ _$1_STR: load&return _string_char, $1#')')')
 ; scans for a NUL terminator on data read from an external ROM.
 ; Arg1: Register to store even characters
 ; Arg2: Register to store odd characters
-; Arg3: Register for MSB of address to string (Only used on PB6)
-; Arg4: Register for LSB of address to string (Only used on PB6)
+; Arg3, Arg4: Registers for MSB, LSB of address to string
 ; Arg5: Label of user provided function to process each character (Only needs to handle the even char register)
 ; Arg6: Label of user provided function to read pairs of characters from memory
 ; Ex: use_packed_strings(s0, s1, s5,s4, write_char, read_next_chars)
@@ -1150,7 +1213,9 @@ define(`_pstrings_initcheck', `_initcheck(`_pstring_char1', `Packed string handl
 ;     main:
 ;     ...
 ;         call my_string ; Output the string
-define(`packed_string', `_pstrings_initcheck' `; "$2"
+define(`packed_string', `_pstrings_initcheck' dnl
+`define(`_$1_LENGTH',strlen($2))'dnl
+`; "$2"
 $1: loadaddr(_psaddr_msb, _psaddr_lsb, _$1_STR)
 jump __packed_string_handler
 _$1_STR: insttable_be(cstr($2))')
@@ -1173,6 +1238,17 @@ define(`ansi_magenta', `\e[35'`ifelse($1,bold,`\s1')'`m')
 define(`ansi_cyan',    `\e[36'`ifelse($1,bold,`\s1')'`m')
 define(`ansi_white',   `\e[37'`ifelse($1,bold,`\s1')'`m')
 define(`ansi_reset',   `\e[0m')
+
+;---------------------------------
+; Wrap a string in ANSI color codes
+; The resulting string contains backslash escapes that must be processed
+; by cstr() or estr().
+; Arg1: String to modify
+; Arg2: ANSI color name (black, red, green, yellow, blue, magenta, cyan, and white)
+; Arg3: Optional argument "bold" will select bold text
+; Ex: colorize(`foobar', blue) is equivalent to ansi_blue`foobar'ansi_reset
+;     colorize(`foobar', red, bold) is equivalent to ansi_red(bold)`foobar'ansi_reset
+define(`colorize', `ifelse($3,bold,`ansi_$2(bold)',ansi_$2)$1`'ansi_reset')
 
 ;=============== ARITHMETIC OPERATIONS ===============
 
@@ -2158,7 +2234,7 @@ xor $1, eval(constupper($3), 16, 2)')
 ;   Arg3: Decimal constant or expression
 ; 4 arguments: test with register
 ;   Arg3, Arg4: MSB2, LSB2
-; NOTE: On Picoblaze-3 only the Z flag is set properly
+; NOTE: On PicoBlaze-3 only the Z flag is set properly
 ifdef(`PB3', `define(`test16', `ifelse($#,4,`_test16pb3($@)',`_test16kpb3($@)')')',
 `define(`test16', `ifelse($#,4,`_test16($@)',`_test16k($@)')')')
 
@@ -2184,7 +2260,7 @@ _tnz:'`popdef(`_tnz')')
 ; 16-bit comparison
 ; Arg1, Arg2: MSB1, LSB1
 ; Arg3, Arg4: MSB2, LSB2
-; Note: On Picoblaze-3 only the Z flag is correct
+; Note: On PicoBlaze-3 only the Z flag is correct
 ifdef(`PB3', `define(`compare16', `if($1 == $3, `compare $2, $4')')',
 `define(`compare16', `compare $2, $4
 comparecy $1, $3')')
@@ -2396,13 +2472,14 @@ add $3, 01')
 ; Expands to 11 instructions.
 ; Arg1: label to use for random function
 ; Arg2: Random state variable (Initialize this with a non-zero seed)
-; The temp register is destructively modified.
+; The common temp register is destructively modified.
 ; Ex: namereg s8, RS
 ;     use_random8(random, RS)
 ;     ...
 ;     load RS, 5A   ; Seed the PRNG (Use an external entropy source like an ADC in real life)
 ;     call random
-define(`use_random8', `$1:    ; 8-bit PRNG with state in $2
+define(`use_random8', `; PRAGMA function $1 [$2 return $2] begin
+  $1:    ; 8-bit PRNG with state in $2
   ; Shift left 1
   load _tempreg, $2
   sl0 _tempreg
@@ -2416,7 +2493,8 @@ define(`use_random8', `$1:    ; 8-bit PRNG with state in $2
   sl0 _tempreg
   sl0 _tempreg
   xor $2, _tempreg
-  return')
+  return
+  ;PRAGMA function end')
 
 ;---------------------------------
 ; 16-bit pseudo-random generator
@@ -2430,7 +2508,8 @@ define(`use_random8', `$1:    ; 8-bit PRNG with state in $2
 ;     ...
 ;     load16(RS, 0x1234)   ; Seed the PRNG (Use an external entropy source like an ADC in real life)
 ;     call random
-define(`use_random16', `$1:    ; 16-bit PRNG with state in $2,$3
+define(`use_random16', `; PRAGMA function $1 [$2, $3 return $2, $3] begin
+  $1:    ; 16-bit PRNG with state in $2,$3
   ; Shift left 1
   load16($4, $5, $2, $3)
   sl0_16($4, $5, 1)       
@@ -2444,8 +2523,24 @@ define(`use_random16', `$1:    ; 16-bit PRNG with state in $2,$3
   load $5, 00
   sl0($4, 6)
   xor16($2, $3, $4, $5)
-  return')
-  
+  return
+  ; PRAGMA function end')
+
+
+;---------------------------------
+; Generate a 16-bit checksum constant from a string using the BSD algorithm.
+; This does not dynamically compute a hash from variable data. It can be used to seed a PRNG
+; from a build time string like a timestamp.
+; Arg1: String to compute hash over
+; Ex:   strhash(`Hello world')  ; Expands to 27566
+;
+;       reg16(RS, s0, s1)
+;       load16(RS, strhash(DATE_STAMP TIME_STAMP)) ; Seed the PRNG with the build time
+;       call random16
+define(`strhash', `_strhash(asciiord($1))')
+
+define(`_strhash', `ifelse(`$1',,0,`pushdef(`_SH_CS',$0(shift($@)))'`eval(((_SH_CS >> 1) + ((_SH_CS & 0x01) << 15) + $1) & 0xFFFF)')'`popdef(`_SH_CS')')
+
   
 
 ;=============== UPPERCASE MACROS ===============
