@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.2.12'
+__version__ = '1.2.13'
 
 
 class FatalError(Exception):
@@ -1455,6 +1455,8 @@ def parse_command_line():
                     default=0, type=int, help=_('Scratchpad memory size'))
   parser.add_option('-x', '--hex', dest='hex_output', action='store_true', default=False, \
         help=_('Write HEX in place of MEM file'))
+  parser.add_option('--mif', dest='mif_output', action='store_true', default=False, \
+        help=_('Write MIF in place of MEM file'))
   parser.add_option('-o', '--outdir', dest='output_dir', default='.', help=_('Output directory'))
 
 
@@ -1713,13 +1715,37 @@ def extract_pragma_blocks(slist):
 
 
 def write_hex_file(fname, mmap):
-  '''Write a memory map as a hex or mem format file'''
+  '''Write a memory map as a hex format file'''
   with open(fname, 'w') as fh:
-    if fname.endswith('.mem'):
-      print('@00000000', file=fh)
     for m in mmap:
       print('{:05X}'.format(m), file=fh)
 
+def write_mem_file(fname, mmap):
+  '''Write a memory map as a mem format file'''
+  with open(fname, 'w') as fh:
+    # write MEM file header (one start address)
+    print('@00000000', file=fh)
+    # write data lines 
+    for m in mmap:
+      print('{:05X}'.format(m), file=fh)
+
+def write_mif_file(fname, mmap):
+  '''Write a memory map in Altera's MIF format.'''
+  with open(fname, 'w') as fh:
+    # write MIF file header
+    print('DEPTH = {};         -- memory words'.format(len(mmap)), file=fh)
+    print('WIDTH = 18;           -- bits per word', file=fh)
+    print('ADDRESS_RADIX = HEX;  -- Address radix (BIN, DEC, HEX, OCT or UNS)', file=fh)
+    print('DATA_RADIX = HEX;     -- Data radix', file=fh)
+    print('CONTENT', file=fh)
+    print('BEGIN', file=fh)
+    # write data lines -> 'Address : Content'
+    address = 0
+    for m in mmap:
+      print('{:04X} : {:05X};'.format(address, m), file=fh)
+      address += 1
+    # write MIF footer
+    print('END;', file=fh)
 
 def get_timestamp():
   '''Get a current datestamp'''
@@ -2178,6 +2204,8 @@ def main():
 
   if options.hex_output:
     hex_mem_file = add_output_dir(options.output_dir, options.module_name + '.hex')
+  elif options.mif_output:
+    hex_mem_file = add_output_dir(options.output_dir, options.module_name + '.mif')
   else:
     hex_mem_file = add_output_dir(options.output_dir, options.module_name + '.mem')
 
@@ -2318,7 +2346,13 @@ def main():
     printq('{:>{}}'.format(_('preprocessor:'), field_size), options.debug_preproc)
 
   mmap = build_memmap(assembled_code, options.mem_size, asm.default_jump)
-  write_hex_file(hex_mem_file, mmap)
+  if options.hex_output:
+    write_hex_file(hex_mem_file, mmap)
+  elif options.mif_output:
+    write_mif_file(hex_mem_file, mmap)
+  else:
+    write_mem_file(hex_mem_file, mmap)
+  
   printq('{:>{}}'.format(_('mem map:'), field_size), hex_mem_file)
   
   show_dead = True if options.report_dead_code or options.remove_dead_code else False
