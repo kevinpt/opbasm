@@ -204,7 +204,7 @@ define(`use_tempreg', `pushdef(`_tempreg', $1)')
 
 ;---------------------------------
 ; No-op macros
-define(`nop', `load sF, sF  ; NOP')
+define(`nop', `load _tempreg, _tempreg  ; NOP')
 
 ;---------------------------------
 ; Swap registers
@@ -509,7 +509,7 @@ define(`_dval_var', `eval(($1 * _cfreq / 2 - 2) / (3 + _dnop_us($2,2)) - 1)')
 
 ;---------------------------------
 ; Clear the carry flag
-define(`clearcy', `and sF, sF  ; Clear carry')
+define(`clearcy', `and _tempreg, _tempreg  ; Clear carry')
 
 ;---------------------------------
 ; Set the carry flag
@@ -1348,17 +1348,21 @@ define(`multiply8x8s', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
 $1_loop:    test _plier, _mask
             jump z, $1_no_add
             add _msb, _cand
-$1_no_add:  srx _msb
+$1_no_add:  sra _msb
             sra _lsb
             sl0 _mask
             jump nz, $1_loop
             test _plier, 80 ; Add correction for negative multiplier
-            jump z, $1_no_correct
+            jump z, $1_no_correct1
             sub  _msb, _cand
-$1_no_correct: ifelse(`$6',,`
+$1_no_correct1:            
+            test _cand, 80  ; Add correction for negative multiplicand
+            jump z, $1_no_correct2
+            sub _msb, _plier
+$1_no_correct2: ifelse(`$6',,`
             return
             ; PRAGMA function end')')
-
+            
 ;---------------------------------
 ; SignedxUnsigned Multiply 8 x 8 subroutine
 ; Same arguments as multiply8x8
@@ -1369,10 +1373,13 @@ define(`multiply8x8su', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
 $1_loop:    test _plier, _mask
             jump z, $1_no_add
             add _msb, _cand
-$1_no_add:  srx _msb
+$1_no_add:  sra _msb
             sra _lsb
             sl0 _mask
             jump nz, $1_loop
+            test _cand, 80 ; Add correction for negative multiplicand
+            jump z, $1_no_correct
+            sub _msb, _plier
 $1_no_correct: ifelse(`$6',,`
             return
             ; PRAGMA function end')')
@@ -1451,7 +1458,7 @@ $1_no_sub:  sr0 _tempreg
 ; Arg7:       Remainder
 ; Arg8:       Optional preamble code block. Also supresses return statement if present
 ; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
-; before invoking this macro to change it.
+; before invoking this macro to change it. The MSB of the dividend is destroyed
 ; Ex: divide16x8(div16, s0,s1, s2, s3,s4, s5)
 ;     load s0, 20'd
 ;     load s1, 4'd
@@ -1472,15 +1479,20 @@ $1_no_sub:  sr0 _mask
             jump nz, $1_loop
 
             load _mask, 80
+            load _dend_m, 00    ; Using _dend_m as temporary upper byte of remainder
 $1_loop2:   test _dend_l, _mask
             sla _rem
+            sla _dend_m
             sl0 _quo_l
             sla _quo_m
+            compare _dend_m, 00
+            jump nz, $1_do_sub2
             compare _rem, _visor
             jump c, $1_no_sub2
+$1_do_sub2:
             sub _rem, _visor
-            add _quo_l, 01
-            addcy _quo_m, 00
+            subcy _dend_m, 00
+            add _quo_l, 01      ; Dont need addcy since LSB is guaranteed to be 0
 $1_no_sub2: sr0 _mask
             jump nz, $1_loop2 ifelse(`$8',,`
             return
@@ -1495,7 +1507,7 @@ $1_no_sub2: sr0 _mask
 ; Arg7:       Remainder
 ; Arg8:       Optional preamble code block. Also supresses return statement if present
 ; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
-; before invoking this macro to change it.
+; before invoking this macro to change it. The MSB of the dividend is destroyed
 ; Ex: divide16x8(div16, s0,s1, s2, s3,s4, s5)
 ;     load s0, 20'd
 ;     load s1, 4'd
@@ -1527,15 +1539,20 @@ $1_no_sub:  sr0 _mask
             jump nz, $1_loop
 
             load _mask, 80
+            load _dend_m, 00    ; Using _dend_m as temporary upper byte of remainder
 $1_loop2:   test _dend_l, _mask
             sla _rem
+            sla _dend_m
             sl0 _quo_l
             sla _quo_m
+            compare _dend_m, 00
+            jump nz, $1_do_sub2
             compare _rem, _visor
             jump c, $1_no_sub2
+$1_do_sub2:            
             sub _rem, _visor
-            add _quo_l, 01
-            addcy _quo_m, 00
+            subcy _dend_m, 00
+            add _quo_l, 01    ; Dont need addcy since LSB is guaranteed to be 0
 $1_no_sub2: sr0 _mask
             jump nz, $1_loop2
             pop(_tempreg)
