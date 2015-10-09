@@ -64,6 +64,7 @@ type
                         logFile: string,
                         instLimit:int,
                         verbose: bool,
+                        trace: bool,
                         quiet: bool,
                         jsonInput: string,
                         jsonOutput: bool,
@@ -171,6 +172,7 @@ method portWrite(periph: ConsolePeriph, port: uint8, state: ref ProcState, quiet
     periph.charLog.add(periph.charBuf)
     periph.charBuf = ""
   else:
+    #echo "### CHAR: ", ch
     periph.charBuf.add(ch)
     
   result = true
@@ -189,11 +191,15 @@ method portWrite(periph: LoopbackPeriph, port: uint8, state: ref ProcState, quie
 
 method portWrite(periph: ROMPeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
   let address : int32 = state.portsOut[periph.writePorts[0]].int32 shl 8 + state.portsOut[periph.writePorts[1]].int32
-  let data = state.rom[][address]
-  state.portsIn[periph.readPorts[0]] = (data shr 8).uint8
-  state.portsIn[periph.readPorts[1]] = (data and 0xFF).uint8
-  
-  result = true
+  if address < len(state.rom[]):
+    let data = state.rom[][address]
+    state.portsIn[periph.readPorts[0]] = (data shr 8).uint8
+    state.portsIn[periph.readPorts[1]] = (data and 0xFF).uint8
+    result = true
+  else:
+    state.termination = termInvalidAddress
+    if not quiet: echo "ERROR: Invalid access to address: 0x", toHex(address, 5)
+    result = false
 
 
 
@@ -208,7 +214,7 @@ proc getSymbol(state: ref ProcState, address: int32): string =
 # Instruction templates
 
 template reportInst(i:expr): expr =
-  when defined(show_trace):
+  if show_trace:
     echo toHex(state.pc, 3), " ", toHex(w, 5), ' '.repeat(len(state.callStack)*2 + 1), i
 
 template do_badOp(): expr =
@@ -603,17 +609,14 @@ proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8
   result = state
 
 
-proc simulate(state: ref ProcState, rom: ref seq[int32], options: CommandOptions, symbolTable: Table[int32, string]) =
+template simulateLoop(): expr =
   ## Main simulation loop
   #  Terminates normally when an OUTPUT instruction targeting quitPort executes 
-  var
-    next_pc: int32
-
+    
   state.rom = rom
   state.symbolTable = symbolTable
   
   for i in 0..<options.instLimit:
-    var w: int32
 
     # Fetch next instruction
     if state.pc < len(state.rom[]):
@@ -623,13 +626,10 @@ proc simulate(state: ref ProcState, rom: ref seq[int32], options: CommandOptions
       do_terminate()
 
     # Decode common fields
-    let opc = (w shr 12) and 0xFF
-    let x = (w shr 8) and 0xF #(w and 0xF00'i32) shr 8
-    let y = (w shr 4) and 0xF #let y = (w and 0xF0'i32) shr 4
-    let imm: uint8 = w and 0xFF #let imm: uint8 = w and 0xFF'i32
-    
-    var address: int32
-    
+    opc = (w shr 12) and 0xFF
+    x = (w shr 8) and 0xF
+    y = (w shr 4) and 0xF
+    imm = w and 0xFF
     
     next_pc = state.pc + 1
     state.totalInsts += 1
@@ -821,18 +821,30 @@ proc simulate(state: ref ProcState, rom: ref seq[int32], options: CommandOptions
     
     state.pc = next_pc
 
-    when not defined(show_trace):
-      if not options.quiet and (state.totalInsts mod 1_000_000 == 0):
-        stdout.write(".")
-        stdout.flushFile()
+    if not show_trace and not options.quiet and (state.totalInsts mod 1_000_000 == 0):
+      stdout.write(".")
+      stdout.flushFile()
 
-  when not defined(show_trace):
-    if not options.quiet: echo ""
+  if not show_trace and not options.quiet: echo ""
 
   if state.totalInsts == options.instLimit:
     state.termination = termInstLimit
 
 
+proc simulate(state: ref ProcState, rom: ref seq[int32], options: CommandOptions, symbolTable: Table[int32, string]) =
+  var
+    w, opc, x, y, address, next_pc: int32
+    imm: uint8
+  
+  # Instantiate two versions of the simulation loop
+  # This avoids testing the trace setting on every instruction and instead uses
+  # templates to expand two variants of the simulation loop.
+  if options.trace:
+    const show_trace = true
+    simulateLoop
+  else:
+    const show_trace = false
+    simulateLoop
   
 
 const usageString = """
@@ -845,6 +857,7 @@ Options:
   --log:LOG_FILE                Log file with symbol table
   -L:NUM        --limit:NUM     Limit to NUM instructions executed
   -v            --verbose       Verbose output
+  -t            --trace         Print execution trace
   -q            --quiet         Quiet output
   -j            --json          JSON report [forces quiet too]
   --pb3                         Simulate PicoBlase-3 code
@@ -869,6 +882,7 @@ proc main() =
       of "limit", "L"  : options.instLimit = parseInt(val)
       of "log",        : options.logFile = val
       of "verbose", "v": options.verbose = true
+      of "trace", "t"  : options.trace = true
       of "quiet", "q"  : options.quiet = true
       of "input", "i"  : options.jsonInput = val
       of "json", "j"   : options.jsonOutput = true
@@ -885,6 +899,7 @@ proc main() =
 
   if options.jsonOutput:
     options.verbose = false
+    options.trace = false
     options.quiet = true
   
   var jsonInput : array[0..255, uint8]
