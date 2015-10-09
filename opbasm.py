@@ -1063,6 +1063,7 @@ class Assembler(object):
     for s in slist:
       if s.label is not None:
         self.labels[s.label].value = cur_addr
+        s.address = cur_addr
 
       if s.is_instruction():
         if bounds_check and cur_addr >= self.mem_size:
@@ -1086,7 +1087,7 @@ class Assembler(object):
       if s.is_instruction():
         cur_addr = s.address
         continue
-      elif s.label or s.comment or s.command:
+      elif s.comment or s.command:
         s.address = cur_addr
 
     
