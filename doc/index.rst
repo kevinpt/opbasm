@@ -385,7 +385,7 @@ Syntax highlighting
 
 PicoBlaze syntax highlighting rules for Gedit and Notepad++ have been included in the "highlight" directory in the source distribution.
 
- * Gedit install: Copy ``picoblaze.lang`` to "~/.local/share/gtksourceview-3.0/language-specs".
+ * Gedit install: Copy ``picoblaze.lang`` to "~/.local/share/gtksourceview-3.0/language-specs". Create the directories if they do not exist.
  * Notepad++ install: Select "Language|Define your language...". Click "Import..." and select the ``picoblaze.xml`` file.
 
 
