@@ -81,7 +81,7 @@ class TestPicoblaze(RandomSeededTestCase):
       shutil.copyfile(os.path.join('test/kcpsm3/Assembler', f), os.path.join(test_output, f))
 
   
-  @unittest.skip('debug')
+  @unittest.skip('not in use')
   def test_pb3(self):
     self.test_name = 'Picoblaze 3 test'
     self.trial_count = 10
@@ -130,7 +130,7 @@ class TestPicoblaze(RandomSeededTestCase):
         'Mem file mismatch {}'.format(kcpsm_mem))
 
 
-  #@unittest.skip('debug')
+  @unittest.skip('not in use')
   def test_pb6(self):
     self.test_name = 'Picoblaze 6 test'
     self.trial_count = 10
