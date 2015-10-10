@@ -31,19 +31,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
 
   </head>
-  <body>
-    <div class="related">
-      <h3>Navigation</h3>
-      <ul>
-        <li class="right" style="margin-right: 10px">
-          <a href="genindex.html" title="General Index"
-             accesskey="I">index</a></li>
-        <li class="right" >
-          <a href="rst/m4.html" title="m4 support in Opbasm"
-             accesskey="N">next</a> |</li>
-        <li><a href="#">Opbasm 1.3 documentation</a> &raquo;</li> 
-      </ul>
-    </div>  
+  <body>  
 
     <div class="document">
       <div class="documentwrapper">
@@ -209,7 +197,7 @@ Running in PicoBlaze-3 mode
   Reading <span class="nb">source</span>: foo.psm
 
   Assembling code... SUCCESS
-    15 instructions out of 1024 <span class="o">(</span>1%<span class="o">)</span>
+    <span class="m">15</span> instructions out of <span class="m">1024</span> <span class="o">(</span>1%<span class="o">)</span>
     Highest occupied address: 00E hex
 
   Found template:
@@ -353,7 +341,7 @@ Generated updated bit file: new_foobar.bit
 <p>PicoBlaze syntax highlighting rules for Gedit and Notepad++ have been included in the &#8220;highlight&#8221; directory in the source distribution.</p>
 <blockquote>
 <div><ul class="simple">
-<li>Gedit install: Copy <tt class="docutils literal"><span class="pre">picoblaze.lang</span></tt> to &#8220;~/.local/share/gtksourceview-3.0/language-specs&#8221;.</li>
+<li>Gedit install: Copy <tt class="docutils literal"><span class="pre">picoblaze.lang</span></tt> to &#8220;~/.local/share/gtksourceview-3.0/language-specs&#8221;. Create the directories if they do not exist.</li>
 <li>Notepad++ install: Select &#8220;Language|Define your language...&#8221;. Click &#8220;Import...&#8221; and select the <tt class="docutils literal"><span class="pre">picoblaze.xml</span></tt> file.</li>
 </ul>
 </div></blockquote>
@@ -400,10 +388,14 @@ Generated updated bit file: new_foobar.bit
     </div>
   </div>
   <br>
+</div><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="rst/m4.html" title="next chapter">m4 support in Opbasm</a></li>
+  </ul></li>
+</ul>
 </div>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="rst/m4.html"
-                        title="next chapter">m4 support in Opbasm</a></p>
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Open PicoBlaze Assembler</a><ul>
@@ -488,7 +480,8 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
   JSONP("https://api.github.com/users/kevinpt/repos?type=owner&callback=?", function(response) {
     var projects = {};
     $.each(response.data, function(index, value) {
-      projects[value.name] = value.homepage;
+      if(!value.fork)
+        projects[value.name] = value.homepage;
     });
     
     insert_projects(projects);
@@ -525,7 +518,7 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
       
       |
       <a href="_sources/index.txt"
-          rel="nofollow">Page source</a></li>
+          rel="nofollow">Page source</a>
     </div>
 
     

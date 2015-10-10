@@ -33,6 +33,7 @@
 .highlight .nv { color: #000000 } /* Name.Variable */
 .highlight .ow { color: #998800 } /* Operator.Word */
 .highlight .w { color: #000000 } /* Text.Whitespace */
+.highlight .mb { color: #008888; font-weight: bold } /* Literal.Number.Bin */
 .highlight .mf { color: #008888; font-weight: bold } /* Literal.Number.Float */
 .highlight .mh { color: #008888; font-weight: bold } /* Literal.Number.Hex */
 .highlight .mi { color: #008888; font-weight: bold } /* Literal.Number.Integer */
