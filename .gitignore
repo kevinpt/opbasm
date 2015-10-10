@@ -1,6 +1,8 @@
 __pycache__/
+nimcache/
 opbasm.egg-info/
 build/
+_build/
 dist/
 
 *.pyc
