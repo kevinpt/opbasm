@@ -1074,7 +1074,7 @@ class Assembler(object):
         cur_addr += self.statement_words(s) # Move to next address. Could be > 1 if a string or table operand
 
       elif s.command == 'address':
-        cur_addr = convert_literal(s.arg1)
+        cur_addr = self.get_address(s.arg1)
         if cur_addr is None:
           raise FatalError(s, _('Invalid address:'), s.arg1)
 
