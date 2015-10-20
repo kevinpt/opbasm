@@ -741,6 +741,14 @@ class Assembler(object):
     ecode = re.sub(r'if\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'if(\1, `', ecode) # if statement
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*else(?:\s*;.*\n)*\s*{', r"', `", ecode) # else clause
     ecode = re.sub(r'do(?:\s*;.*\n)*\s*{', r'_dowhile2(`', ecode) # start of do-while
+
+    # proc def
+    ecode = re.sub(r'proc\s+(\w+)\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"proc(\1,`\2',`", ecode)
+    # func def
+    ecode = re.sub(r'func\s+(\w+)\s*\(([^)]*)\)\s*:?\s*(\d*)(?:\s*;.*\n)*\s*{', r"func(\1,`\2',\3,`", ecode)
+    # isr def
+    ecode = re.sub(r'isr\s+(\w+)\s*\(([^)]*)\)\s*:?\s*(\w*)(?:\s*;.*\n)*\s*{', r"isr(\1,`\2',`\3',`", ecode)
+
     # while following a block
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"')\nwhile(\1, `", ecode)
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)', r"',\1)", ecode) # end of do-while

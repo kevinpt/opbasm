@@ -275,13 +275,49 @@ store $1, $3')
 ; The alias becomes an alternate name for the register. It is loaded with a value if the
 ; optional initializer is included. The value can be any constant expression or register.
 ; Ex: vars(s0 is counter := 0, s1 is sum, s2 is max := 20*3)
-define(`vars', `ifelse(`$1',,,`_vardef(_vartokens(`$1'))
+define(`vars', `pushdef(`_vars_ctx', `_vars_names($@)')' `_vars($@)')
+
+define(`_vars', `ifelse(`$1',,,`_vardef(_vartokens(`$1'))
 $0(shift($@))')')
 
-define(`_vartokens', `regexp(`$1',`\([^ ]+\) +is +\([^ ]+\)\( *:= *\([^ ]+\)\)?',`\1, `\2', \4')')
+define(`_vartokens', `regexp(`$1',`\([^ ]+\) +is +\([^ ]+\)\( *:= *\([^ ]+\)\)?',``\1', `\2', \4')')
 
-define(`_vardef', `ifelse(`$1',,`errmsg(Invalid variable definition)')'`pushdef(`$2', $1)'dnl
+define(`_vardef', `ifelse(`$1',,`errmsg(Invalid variable definition)')'`pushdef(`$2', `$1')'dnl
 `ifelse(`$3',,,`load $1, evalx($3, 16, 2) `;' Var `$2' := $3')')
+
+
+;---------------------------------
+; Remove definitions from previous call to vars()
+define(`popvars', `_popvars(_vars_ctx) popdef(`_vars_ctx')')
+define(`_popvars', `ifelse(`$1',,,`popdef(`$1')$0(shift($@))')')
+
+
+; Eliminate arguments without an "is" clause to create a valid argument list for vars()
+define(`_vars_filter', `ifelse(`$1',,,regexp(`$1',` is '),-1,`$0(shift($@))', ``$1', $0(shift($@))')')
+
+; Get register names from vars() arg list without optional "is" clauses
+define(`_vars_regs', `ifelse(`$1',,,regexp(`$1',`\(\w+\)\s+is ',``\1''),,`$1`'ifelse(eval(`$# >= 2'),1,`,')`'$0(shift($@))',`regexp(`$1',`\(\w+\)\s+is ',``\1'')`'ifelse(eval(`$# >= 2'),1,`,')`'$0(shift($@))')')
+
+; Get var names from vars() arg list
+define(`_vars_names', `ifelse(`$1',,,regexp(`$1',`\w+\s+is\s+\(\w+\)',``\1''),,`$1`'ifelse(eval(`$# >= 2'),1,`,')`'$0(shift($@))',`regexp(`$1',`\w+\s+is\s+\(\w+\)',``\1'')`'ifelse(eval(`$# >= 2'),1,`,')`'$0(shift($@))')')
+
+
+; FIXME: Replace with patsubst impl
+define(`_old_split_args', `ifelse(`$1',,,`regexp(`$1', `^\([^,]*\)', ``\1'')`'ifelse(regexp(`$1', `^\([^,]*\),'),-1,`',`,')`'$0(regexp(`$1', `^\([^,]*\),\(.*\)$', ``\2''))')')
+
+; Split a quoted string on commas while guarding aginst unwanted substitution of the result
+changequote(<!,!>)
+define(<!_split_comma!>,
+<!changequote(<!,!>)dnl
+`patsubst(<!<!$1!>!>,<!,\s*!>,<!',`!>)'dnl
+changequote!>)
+changequote
+
+define(`_strip_quotes', $*)
+
+; Split a string into a list of quoted strings without any substitution
+define(`_split_args', `_strip_quotes(_split_comma(`$1'))')
+
 
 
 ;---------------------------------
@@ -823,6 +859,134 @@ define(`break', `jump _elbl')
 
 ; Continue statement to restart loop
 define(`continue', `jump _clbl')
+
+
+;=============== FUNCTION CALLS ===============
+
+
+;---------------------------------
+; Procedure definition
+; Arg1: Label for procedure
+; Arg2: Variable definitions (same format as passed to the vars() macro)
+; Arg3: Code block for proc body
+; Ex: proc(add2, `s0 is result', `add result, 02')
+;     ...
+;     load s0, 42
+;     call add2
+define(`proc', `;PRAGMA function $1 [$2] begin
+$1:
+  vars(_vars_filter(_split_args(`$2')))
+  `;' VAR DEF: _vars_filter(_split_args(`$2')) XXX _vars_ctx
+  $3
+  return
+;PRAGMA function $1 end
+popvars')
+
+
+; Pull arguments from the stack and load them into local registers
+define(`_func_get_args', `add _stackptr, evalx(`$1 + $# - 1', 16, 2)  `;' Fetch stack offset eval($1 + $# - 1)
+_fetch_args(shift($@))dnl
+sub _stackptr, evalx(`$1 + 1', 16, 2)')
+
+define(`_fetch_args', `ifelse(`$1',,,`fetch $1, (_stackptr)
+ifelse(eval($# >= 2),1,`sub _stackptr, 01',`dnl')
+$0(shift($@))')')
+
+;---------------------------------
+; Function definition
+; This creates a function that receives its arguments on the stack.
+; A macro is generated to prepare the stack arguments and call the function.
+; The function will save registers automatically and load the stack arguments.
+; The saved registers and call frame are cleaned up at the end.
+; Do not use RETURN instructions in the code body. Instead call the
+; leave_func() macro.
+; Arg1: Label for function
+; Arg2: Variable definitions (same format as passed to the vars() macro)
+; Arg3: Number of bytes returned on stack
+; Arg4: Code block for func body
+; Ex: func(mul, `s0 is m1, s1 is m2, s2 is result', 0, `expr(result := m1 * m2)')
+define(`func', `_func(`$1', `$2', ifelse(`$3',,0,$3), `$4')')
+
+define(`_func', `_stack_initcheck' `define(`_funcname', $1)' `;PRAGMA function $1 [stack($2 : $3)] begin
+$1:
+  define(`_func_args', `_split_args(`$2')')dnl
+  define(`_func_ret_num', `$3')dnl
+  ifelse(eval($3 > argc(_func_args)),1,`define(`_func_frame_cleanup',0)'dnl
+  `; Adjust for extra return bytes on stack
+  addstack(eval($3 - argc(_func_args)))',dnl
+  `define(`_func_frame_cleanup',`eval(argc(_func_args) - $3)')')
+
+  ; Save registers
+  push(_vars_regs(_func_args))
+  vars(_vars_filter(_func_args))dnl
+
+  ; Get arguments
+  _func_get_args(argc(_func_args), _vars_regs(_func_args))
+
+  $4
+
+LEAVE_$1:
+  ; Restore registers
+  pop(_vars_regs(_func_args))
+  ifelse(_func_frame_cleanup,0,,dnl
+  `; Remove call frame
+  dropstack(_func_frame_cleanup)')
+  return
+;PRAGMA function $1 end
+popvars'
+`define(`$1',`; Push arguments:
+push('$`'@`)
+call `$1'')')
+
+
+;---------------------------------
+; Return from func() and isr() macro code bodies
+; Arg1: Optional condition code (Z, NZ, C, or NC)
+; ex: leave_func(Z)
+define(`leave_func', `jump ifelse(`$1',,,`$1,') LEAVE_`'_funcname')
+
+;---------------------------------
+; Place func return value onto the stack
+; Only call this macro inside a func code body
+; Arg1: Register with value to save
+; Arg2: Offset from end of return frame (starting at 1)
+; Ex: retvalue(s0, 1) ; First return value to be popped off after return
+;     retvalue(s1, 2) ; Second value to return from func
+define(`retvalue', `ifelse(eval($2 > 0 && $2 <= _func_ret_num),1,`putstackat($1, eval($2 + argc(_func_args) + _func_frame_cleanup))',dnl
+  `errmsg(`Invalid `func' return value offset: $2')')')
+
+;---------------------------------
+; ISR definition
+; This creates an ISR that takes care of saving registers on the stack.
+; Do not use RETURNI instructions in the code body. Instead call the
+; leave_func() macro.
+; By default the ISR returns with interrupts enabled. You can leave them
+; disabled by passing "disable" as Arg3.
+; Arg1: Address for ISR
+; Arg2: Variable definitions (same format as passed to the vars() macro)
+; Arg3: Optional return interrupt state "enable"|"disable"|empty
+; Arg4: Code block for ISR body
+; Ex: isr(0x3FF, `s0, s1, s2', `load s0, 42
+;                               output s0, ff')
+define(`isr', `_stack_initcheck' `define(`_funcname', `__ISR')' `__ISR:
+address evala($1)
+jump __ISR
+address __ISR
+;PRAGMA function __ISR begin
+  ; Save registers
+  push(_vars_regs($2))
+  vars(_vars_filter($2))
+
+  $4
+
+LEAVE___ISR:
+  ; Restore registers
+  pop(_vars_regs($2))
+
+  returni ifelse(`$3',,`enable',`$3')
+;PRAGMA function __ISR end')
+
+
 
 ;=============== SHIFT AND ROTATE OPERATIONS ===============
 
