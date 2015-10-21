@@ -225,15 +225,15 @@ def fail(s, loc, tokens):
 
 regex_parser = re.compile(r'''
   (?:
-    (?P<label>\w+):\s*
+    (?P<label>[.\w]+):\s*
   )?
   (?:
     (?P<cmd>[\w&@]+)\s*
     (?:
-        (?:(?P<arg1>[\w~'#$]+)\s*|(?P<arg1s>".+")\s*)
-        (?:,\s*(?P<arg2>[\w~'%#$]+)|,\s*\(\s*(?P<arg2b>\w+)\s*\)
+        (?:(?P<arg1>[.\w~'#$]+)\s*|(?P<arg1s>".+")\s*)
+        (?:,\s*(?P<arg2>[.\w~'%#$]+)|,\s*\(\s*(?P<arg2b>\w+)\s*\)
         |,\s*\[(?P<arg2t>[^\]]+\]('[db])?)|,\s*(?P<arg2s>".+"))?
-        |\(\s*(?P<addr1>[\w~']+)\s*,\s*(?P<addr2>[\w~']+)\s*\)
+        |\(\s*(?P<addr1>[.\w~']+)\s*,\s*(?P<addr2>[.\w~']+)\s*\)
     )?\s*
   )?
   (?P<cmnt>;.*)?$
@@ -335,6 +335,7 @@ class Statement(object):
     self.line = line
     self.ix_line = ix_line
     self.label = ptree['label'][0] if 'label' in ptree else None
+    self.xlabel = self.label
     self.comment = ptree['comment'][0] if 'comment' in ptree else None
 
     self.command = None
@@ -557,6 +558,7 @@ class Assembler(object):
     self.constants = self._init_constants()
     self.labels = {}
     self.removed_labels = set()
+    self.cur_context = ''
 
     self.registers = None
     self.init_registers()
@@ -831,10 +833,18 @@ class Assembler(object):
     for s in slist:
       # Track label sources
       if s.label is not None:
-        if s.label in self.labels:
-          raise FatalError(s, _('Redefinition of label:'), s.label)
+        if s.label.startswith('.'): # Local label
+          xlabel = self.expand_label(s.label)
+          s.xlabel = xlabel
+        else: # Global label
+          self.cur_context = s.label
+          xlabel = s.label
 
-        self.labels[s.label] = Symbol(s.label, -1, source_file=source_file, source_line=s.line)
+        if xlabel in self.labels:
+          raise FatalError(s, _('Redefinition of label:'), xlabel)
+
+        #print('### LABEL DEF:', xlabel)
+        self.labels[xlabel] = Symbol(s.label, -1, source_file=source_file, source_line=s.line)
 
       # Recursively include additional sources
       if s.command == 'include':
@@ -954,12 +964,21 @@ class Assembler(object):
       else:
         yield s
 
+  def expand_label(self, addr_label):
+    if addr_label.startswith('.'):
+      return self.cur_context + addr_label
+    else:
+      return addr_label
+
 
   def get_address(self, addr_label):
     '''Lookup the address assigned to addr_label'''
-    if addr_label in self.labels:
-      self.labels[addr_label].in_use = True
-      return self.labels[addr_label].value
+
+    xlabel = self.expand_label(addr_label)
+    #print('## GA:', addr_label, xlabel)
+    if xlabel in self.labels:
+      self.labels[xlabel].in_use = True
+      return self.labels[xlabel].value
     else:
       return convert_literal(addr_label)
 
@@ -1070,7 +1089,18 @@ class Assembler(object):
     # Pass 2: Set instruction and label addresses
     for s in slist:
       if s.label is not None:
-        self.labels[s.label].value = cur_addr
+        if s.label.startswith('.'): # Local label
+          xlabel = s.xlabel
+        else: # Global label
+          #print('### GLOBAL:', s.label)
+          self.cur_context = s.label
+          xlabel = s.label
+
+        #print('### SET LABEL:', xlabel)
+        if xlabel not in self.labels:
+          raise FatalError(s, _('Label not found "{}". Possibly removed.').format(xlabel))
+
+        self.labels[xlabel].value = cur_addr
         s.address = cur_addr
 
       if s.is_instruction():
@@ -1102,7 +1132,11 @@ class Assembler(object):
 
     # Pass 3: Validate and assemble instructions
     instructions = []
+    self.cur_context = ''
     for s in slist:
+
+      if s.label is not None and not s.label.startswith('.'):
+        self.cur_context = s.label
 
       if s.is_instruction():
         # Verify instruction is valid
@@ -1163,7 +1197,8 @@ class Assembler(object):
 
             if s.immediate is None:
               if s.arg2.endswith("'upper") or s.arg2.endswith("'lower"):
-                if s.arg2.split("'")[0] in self.removed_labels:
+                xlabel = self.expand_label(s.arg2.split("'")[0])
+                if xlabel in self.removed_labels:
                   raise FatalError(s, _('Label has been removed: {}\n       Add ";PRAGMA keep [on,off]" to preserve this label').format(s.arg2))
                 else:
                   raise FatalError(s, _('Unknown label:'), s.arg2)
@@ -1213,11 +1248,14 @@ class Assembler(object):
 
           elems = []
           if s.arg2.endswith('$'):
-            self.strings[s.arg2].in_use = True # FIXME: this should all happen in get_string()?
-            elems = [(ord(e), '"{}"'.format(e)) for e in self.strings[s.arg2].value]
+            string_data = self.get_string(s.arg2)
+            if string_data is not None:
+              elems = [(ord(e), '"{}"'.format(e)) for e in string_data]
+
           elif s.arg2.endswith('#'):
-            self.tables[s.arg2].in_use = True # FIXME: this should all happen in get_table()?
-            elems = [(e, '{:02X}'.format(e)) for e in self.tables[s.arg2].value]
+            table_data = self.get_table(s.arg2)
+            if table_data is not None:
+              elems = [(e, '{:02X}'.format(e)) for e in table_data]
 
           if len(elems) > 0:
             for i, (e, e_text) in enumerate(elems):
@@ -1255,6 +1293,7 @@ class Assembler(object):
             elems = [(e, '{:02X}'.format(e)) for e in self.tables[s.arg1].value]
 
           if len(elems) > 0: # Table or string argument
+            # Create expanded load&return instructions for each element in string or table
             for i, (e, e_text) in enumerate(elems):
               new_s = copy.deepcopy(s)
               new_s.immediate = (e << 4) + port
@@ -1358,7 +1397,7 @@ class Assembler(object):
       prev_jump = None
       for s in instructions:
         if s.label is not None:
-          cur_label = s.label
+          cur_label = s.xlabel
           prev_jump = None
         
         unconditional_jump = s.command == 'jump' and s.arg2 is None
@@ -1403,6 +1442,22 @@ class Assembler(object):
       self.default_jump = self.op_info['opcodes']['jump'] + self.default_jump
 
     return instructions
+
+
+  def remove_dead_code(self, assembled_code):
+    '''Mark unreachable code for removal'''
+    for s in assembled_code:
+      if s.removable():
+        s.comment = _('REMOVED: ') + s.format().lstrip()
+        s.command = None
+        if s.label is not None:
+          if s.xlabel in self.labels:
+            #print('### Deleting label:', s.xlabel)
+            del self.labels[s.xlabel]
+            self.removed_labels.add(s.xlabel)
+          s.label = None
+          s.xlabel = None
+
 
 
 def hex_to_int(s):
@@ -1564,6 +1619,13 @@ def build_memmap(slist, mem_size, default_jump):
           crc = gen_crc(16, 9, poly, 0x0000, xor, reflect, reflect, mmap9)
           print('### CRC: {:04X} {:04X} {:5s} = {:04X}'.format(xor, poly, str(reflect), crc))
   return mmap
+
+
+def find_dead_code(assembled_code, entry_points):
+  '''Perform dead code analysis'''
+  itable = build_instruction_table(assembled_code)
+  analyze_code_reachability(assembled_code, itable, entry_points)
+  analyze_recursive_keeps(assembled_code, itable)
 
 
 def build_instruction_table(slist):
@@ -2251,9 +2313,7 @@ def main():
     printq(_('  Static analysis: searching for dead code... '), end='')
     entry_points = set((asm.default_jump & 0xFFF, 0))
     entry_points |= set(options.entry_point)
-    itable = build_instruction_table(assembled_code)
-    analyze_code_reachability(assembled_code, itable, entry_points)
-    analyze_recursive_keeps(assembled_code, itable)
+    find_dead_code(assembled_code, entry_points)
     printq(success(_('COMPLETE')))
 
     # Summarize analysis
@@ -2262,23 +2322,15 @@ def main():
     dead_instructions = len([s for s in assembled_code if s.removable()])
     printq(_('    {} dead instructions found').format(dead_instructions))
 
+
   if options.remove_dead_code:
-    # Remove dead code
-    for s in assembled_code:
-      if s.removable():
-        s.comment = _('REMOVED: ') + s.format().lstrip()
-        s.command = None
-        if s.label is not None:
-          if s.label in asm.labels:
-            #print('### Deleting label:', s.label)
-            del asm.labels[s.label]
-            asm.removed_labels.add(s.label)
-          s.label = None
+    asm.remove_dead_code(assembled_code)
 
     # Reinitialize registers to default names
     asm.init_registers()
 
     printq(_('  Removing dead code... '), end='')
+    # Reassemble code with dead code removed
     try:
       assembled_code = asm.raw_assemble(assembled_code)
     except FatalError, e:
