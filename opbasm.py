@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.2.12'
+__version__ = '1.2.13'
 
 
 class FatalError(Exception):
@@ -647,7 +647,14 @@ class Assembler(object):
 
     self.m4_file_num += 1
 
-    m4_options = '-s' # Activate synclines so we can track original line numbers
+    m4_options = ['-s'] # Activate synclines so we can track original line numbers
+
+    source_dir = os.path.dirname(source_file)
+    if len(source_dir) > 0:
+      # Add source file directory to m4 search path for include() macros
+      m4_options.append('-I ' + os.path.dirname(source_file))
+
+    m4_options = ' '.join(m4_options)
     
     m4_defines = self.m4_defines.copy()
     # Set default defines for m4, overriding any attempt to redefine them by the user
@@ -940,7 +947,8 @@ class Assembler(object):
   def flatten_includes(self, slist, include_stack=None):
     '''Generator function that produces a flattened list of statements
     after evaluating INCLUDE directives.
-    slist : List of statements from top-level source file
+
+    slist         : List of statements from top-level source file
     include_stack : Stack of parent source files used to detect recursive includes
     '''
     if include_stack is None: include_stack = [self.top_source_file]
@@ -1134,6 +1142,7 @@ class Assembler(object):
     instructions = []
     self.cur_context = ''
     for s in slist:
+      addr_label = None
 
       if s.label is not None and not s.label.startswith('.'):
         self.cur_context = s.label
@@ -1969,8 +1978,6 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
     for r in format_table(rows, headings, indent=3):
       printf(r)
 
-
-
 def build_xilinx_mem_init(mmap, split_data=False):
   '''Create a dict of Xilinx BRAM INIT and INITP strings'''
   minit = {}
@@ -2026,6 +2033,38 @@ def build_9_bit_mem_init(mmap, minit, bit_range):
 
     init = ''.join('{:01X}'.format(n & 0xF) for n in reversed(nibbles))
     minit['[{}]_INITP_{:02X}'.format(bit_range, a)] = init
+
+
+try:
+  from  opbasm_lib.hamming import secded_encode_num
+  
+  def build_xilinx_ecc_mem_init(mmap):
+    '''Create a dict of Xilinx BRAM INIT and INITP strings for the 7-series ECC template'''
+    minit = {}
+
+    # ECC memory is 1.5K long. We must first fold three 500-byte blocks into 64-bit words
+    folded = [(z << 40) + (y << 20) + x for x,y,z in zip(mmap[0:0x200], mmap[0x200:0x400], mmap[0x400:0x600])]
+
+    # Merge every 4 folded words into an init word
+    for a in xrange(len(folded) // 4):
+      mline = folded[a*4:(a+1)*4]
+      init = ''.join('{:016X}'.format(w) for w in reversed(mline))
+      minit['ECC_7S_1K5_INIT_{:02X}'.format(a)] = init
+
+    # Compute Hamming ECC (72,64) and store in INITPs
+    hamming = [secded_encode_num(w, 64) for w in folded]
+
+    for a in xrange(len(folded) // 32):
+      mline = hamming[a*32:(a+1)*32]
+      init = ''.join('{:02X}'.format(w) for w in reversed(mline))
+      minit['ECC_7S_1K5_INITP_{:02X}'.format(a)] = init
+
+    return minit
+
+except ImportError:
+  def build_xilinx_ecc_mem_init(mmap):
+    return {}
+
 
 
 def build_default_jump_inits(default_jump):
@@ -2086,7 +2125,8 @@ def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp, default
   # We don't support {psmname} because it is followed by a hard-coded extension in the templates which may be invalid
   hdl = hdl.replace('{name}', os.path.splitext(hdl_file)[0])
   hdl = hdl.replace('{timestamp}', timestamp)
-  # {default_jump} # Used in ROM_form_7S_1K5_with_ecc
+  # Used in ROM_form_7S_1K5_with_ecc
+  hdl = hdl.replace('{default_jump}', '{:018b}'.format(default_jump))
   # {CRC_2K}       # Used in ROM_form_7S_2K_with_error_detection
 
   with io.open(hdl_file, 'w', encoding='latin1') as fh:
@@ -2155,6 +2195,11 @@ def find_templates(template_file):
 
   return templates
 
+class TemplateDataFormat(object):
+  ROM9    = 9
+  ROM18   = 18
+  ROMBoth = 19
+  ROMECC  = 20  # Special ECC template using 7-series BRAM ECC hardware
 
 def template_data_size(template_file):
   ''''Determine the data bus width used by an HDL template
@@ -2172,25 +2217,37 @@ def template_data_size(template_file):
   init_9 = False
   init_18 = False
 
+  signatures = {'init_9': '{[8:0]_INIT_00}', 'init_18': '{INIT_00}',
+              'init_ecc': '{ECC_7S_1K5_INIT_00}'}
+
+  found_sigs = set()
+
+  # Search for a line containing each possible signature
   with io.open(template_file, 'r', encoding='latin1') as fh:
     for l in fh:
-      if '{[8:0]_INIT_00}' in l:
-        init_9 = True
-        break
+      for name, sig in signatures.iteritems():
+        if sig in l:
+          found_sigs.add(name)
+          break
 
-    fh.seek(0)
-    for l in fh:
-      if '{INIT_00}' in l:
-        init_18 = True
-        break
-        
-  if init_18 and init_9: # This is a ROM_form.vhdl file containing both memories
-    return -1
-  elif init_9:
-    return 9
+  data_format = None
+
+  # Determine which format is in use
+  if 'init_9' in found_sigs or 'init_18' in found_sigs:
+    if 'init_9' in found_sigs and 'init_18' in found_sigs:
+      data_format = TemplateDataFormat.ROMBoth
+    elif 'init_9' in found_sigs:
+      data_format = TemplateDataFormat.ROM9
+    else:
+      data_format = TemplateDataFormat.ROM18
   else:
-    return 18
-        
+    if 'init_ecc' in found_sigs:
+      data_format = TemplateDataFormat.ROMECC
+
+  if data_format is None:
+    asm_error(_('Cannot determine template data format'), exit=1)
+
+  return data_format
 
 
 import shutil
@@ -2399,14 +2456,18 @@ def main():
 
   for hdl_name, template_file in templates.iteritems():
     # Prepare INIT strings for the memory width found in the template
-    data_size = template_data_size(templates[hdl_name])
-    if data_size < 0: # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
+    data_format = template_data_size(templates[hdl_name])
+    if data_format == TemplateDataFormat.ROMBoth: # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
       minit = minit_9.copy()
       minit.update(minit_18) # Merge the init strings together for both types
-    elif data_size == 9:
+    elif data_format == TemplateDataFormat.ROM9:
       minit = minit_9
-    else: # 18-bit only
+    elif data_format == TemplateDataFormat.ROM18:
       minit = minit_18
+    elif data_format == TemplateDataFormat.ROMECC:
+      minit = build_xilinx_ecc_mem_init(mmap)
+    else:
+      asm_error(_('Unknown template data format'), exit=1)
 
     target_file = vhdl_file if hdl_name == 'vhdl' else verilog_file
     file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
