@@ -302,9 +302,6 @@ define(`_vars_regs', `ifelse(`$1',,,regexp(`$1',`\(\w+\)\s+is ',``\1''),,`$1`'if
 define(`_vars_names', `ifelse(`$1',,,regexp(`$1',`\w+\s+is\s+\(\w+\)',``\1''),,`$1`'ifelse(eval(`$# >= 2'),1,`,')`'$0(shift($@))',`regexp(`$1',`\w+\s+is\s+\(\w+\)',``\1'')`'ifelse(eval(`$# >= 2'),1,`,')`'$0(shift($@))')')
 
 
-; FIXME: Replace with patsubst impl
-define(`_old_split_args', `ifelse(`$1',,,`regexp(`$1', `^\([^,]*\)', ``\1'')`'ifelse(regexp(`$1', `^\([^,]*\),'),-1,`',`,')`'$0(regexp(`$1', `^\([^,]*\),\(.*\)$', ``\2''))')')
-
 ; Split a quoted string on commas while guarding aginst unwanted substitution of the result
 changequote(<!,!>)
 define(<!_split_comma!>,
@@ -899,10 +896,11 @@ $0(shift($@))')')
 ; The function will save registers automatically and load the stack arguments.
 ; The saved registers and call frame are cleaned up at the end.
 ; Do not use RETURN instructions in the code body. Instead call the
-; leave_func() macro.
+; leave_func() macro. Use the retvalue() macro to store return values
+; on the stack.
 ; Arg1: Label for function
 ; Arg2: Variable definitions (same format as passed to the vars() macro)
-; Arg3: Number of bytes returned on stack
+; Arg3: Number of bytes returned on stack (0 for no return values)
 ; Arg4: Code block for func body
 ; Ex: func(mul, `s0 is m1, s1 is m2, s2 is result', 0, `expr(result := m1 * m2)')
 define(`func', `_func(`$1', `$2', ifelse(`$3',,0,$3), `$4')')
@@ -945,6 +943,8 @@ call `$1'')')
 ; ex: leave_func(Z)
 define(`leave_func', `jump ifelse(`$1',,,`$1,') LEAVE_`'_funcname')
 
+define(`leave_isr', `leave_func($1)')
+
 ;---------------------------------
 ; Place func return value onto the stack
 ; Only call this macro inside a func code body
@@ -968,7 +968,9 @@ define(`retvalue', `ifelse(eval($2 > 0 && $2 <= _func_ret_num),1,`putstackat($1,
 ; Arg4: Code block for ISR body
 ; Ex: isr(0x3FF, `s0, s1, s2', `load s0, 42
 ;                               output s0, ff')
-define(`isr', `_stack_initcheck' `define(`_funcname', `__ISR')' `__ISR:
+define(`isr', `_stack_initcheck' `define(`_funcname', `__ISR')'dnl
+`ifdef(`_isr_exists', `errmsg(`ISR can only be defined once')', `define(`_isr_exists', 1)')'dnl
+`__ISR:
 address evala($1)
 jump __ISR
 address __ISR
@@ -1108,28 +1110,24 @@ sub _stackptr, evalx($2, 16, 2)')
 
 
 ;---------------------------------
-; Drop values stored on the stack
-; Arg1: Number of values to drop from the stack
-; Ex: dropstack(2)  ; Remove 2 values
-define(`dropstack', `_stack_initcheck' `add _stackptr, eval($1, 16, 2)  ; Remove stack values')
+;Drop values stored on the stack
+;Args:
+;  Arg1: Number of values to drop from the stack or a register
+;
+;Example:
+;  dropstack(2)  ; Remove 2 values
+;  dropstack(s1) ; Remove number of values specified in s1 register
+define(`dropstack', `_stack_initcheck' `add _stackptr, evalx($1, 16, 2)  ; Remove stack values')
 
 ;---------------------------------
-; Drop values stored on the stack using a register
-; Arg1: Number of values to drop from the stack
-; Ex: dropstackreg(s1)  ; Remove number of values specified in s1 register
-define(`dropstackreg', `_stack_initcheck' `add _stackptr, $1  ; Remove stack values')
-
-;---------------------------------
-; Allocate local space on the stack
-; Arg1: Number of values to add to the stack
-; Ex: addstack(2)  ; Add 2 values
-define(`addstack', `_stack_initcheck' `sub _stackptr, eval($1, 16, 2)  ; Add local stack values')
-
-;---------------------------------
-; Allocate local space on the stack using a register
-; Arg1: Number of values to add to the stack
-; Ex: addstackreg(s1)  ; Add number of values from s1
-define(`addstackreg', `_stack_initcheck' `sub _stackptr, $1  ; Add local stack values')
+;Allocate local space on the stack
+;Args:
+; Arg1: Number of values to add to the stack or a register
+;
+;Example:
+;  addstack(2)  ; Add 2 values
+;  addstack(s1) ; Add number of values from s1
+define(`addstack', `_stack_initcheck' `sub _stackptr, evalx($1, 16, 2)  ; Add local stack values')
 
 
 ;=============== STRING AND TABLE OPERATIONS ===============
@@ -2825,9 +2823,7 @@ define(`GETSTACKAT', `getstackat($@)')
 define(`PUTSTACK', `putstack($@)')
 define(`PUTSTACKAT', `putstackat($@)')
 define(`DROPSTACK', `dropstack($@)')
-define(`DROPSTACKREG', `dropstackreg($@)')
 define(`ADDSTACK', `addstack($@)')
-define(`ADDSTACKREG', `addstackreg($@)')
 define(`CALLSTRING', `callstring($@)')
 define(`OUTPUTSTRING', `outputstring($@)')
 define(`STORESTRING', `storestring($@)')
