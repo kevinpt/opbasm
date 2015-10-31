@@ -986,7 +986,8 @@ LEAVE___ISR:
   pop(_vars_regs($2))
 
   returni ifelse(`$3',,`enable',`$3')
-;PRAGMA function __ISR end')
+;PRAGMA function __ISR end
+popvars')
 
 
 
@@ -1423,16 +1424,20 @@ define(`colorize', `ifelse($3,bold,`ansi_$2(bold)',ansi_$2)$1`'ansi_reset')
 ;=============== ARITHMETIC OPERATIONS ===============
 
 ;---------------------------------
-; 2s complement negation
-; Arg1: Register to negate
-; Result is in the same register
+;2s complement negation
+;Args:
+;  Arg1: Register to negate
+;Result:
+;  Result is in the same register
 define(`negate', `xor $1, FF  ; Negate
 add $1, 01')
 
 ;---------------------------------
-; Logical not
-; Arg1: Register to invert
-; Result is in the same register
+;Logical not
+;Args:
+;  Arg1: Register to invert
+;Result:
+;  Result is in the same register
 define(`not', `xor $1, FF  ; Not')
 
 ;---------------------------------
@@ -1506,7 +1511,8 @@ $1_no_add:  sra _msb
             sl0 _mask
             jump nz, $1_loop ifelse(`$6',,`
             return 
-            ; PRAGMA function end')')
+            ; PRAGMA function end
+            popvars')')
 
 
 ;---------------------------------
@@ -1532,7 +1538,8 @@ $1_no_correct1:
             sub _msb, _plier
 $1_no_correct2: ifelse(`$6',,`
             return
-            ; PRAGMA function end')')
+            ; PRAGMA function end
+            popvars')')
             
 ;---------------------------------
 ; SignedxUnsigned Multiply 8 x 8 subroutine
@@ -1553,7 +1560,8 @@ $1_no_add:  sra _msb
             sub _msb, _plier
 $1_no_correct: ifelse(`$6',,`
             return
-            ; PRAGMA function end')')
+            ; PRAGMA function end
+            popvars')')
 
 
 ;---------------------------------
@@ -1584,7 +1592,8 @@ $1_loop:    test _dend, _mask
 $1_no_sub:  sr0 _mask
             jump nz, $1_loop ifelse(`$6',,`
             return
-            ; PRAGMA function end')')
+            ; PRAGMA function end
+            popvars')')
 
 ;---------------------------------
 ; Signed Divide 8 x 8 subroutine
@@ -1617,7 +1626,8 @@ $1_no_sub:  sr0 _tempreg
             if(_tempreg & 0x80, `negate(_quo)')
             if(_tempreg & 0x01, `negate(_rem)') ifelse(`$6',,`
             return
-            ; PRAGMA function end')')
+            ; PRAGMA function end
+            popvars')')
 
 
 ;---------------------------------
@@ -1667,7 +1677,8 @@ $1_do_sub2:
 $1_no_sub2: sr0 _mask
             jump nz, $1_loop2 ifelse(`$8',,`
             return
-            ; PRAGMA function end')')
+            ; PRAGMA function end
+            popvars')')
 
 ;---------------------------------
 ; Signed divide 16 / 8 subroutine. Implements truncating division
@@ -1731,7 +1742,8 @@ $1_no_sub2: sr0 _mask
             if(_tempreg & 0x80, `negate16(_quo_m, _quo_l)')
             if(_tempreg & 0x01, `negate(_rem)') ifelse(`$8',,`
             return
-            ; PRAGMA function end')')
+            ; PRAGMA function end
+            popvars')')
 
 
 ;---------------------------------
@@ -2729,7 +2741,278 @@ define(`strhash', `_strhash(asciiord($1))')
 
 define(`_strhash', `ifelse(`$1',,0,`pushdef(`_SH_CS',$0(shift($@)))'`eval(((_SH_CS >> 1) + ((_SH_CS & 0x01) << 15) + $1) & 0xFFFF)')'`popdef(`_SH_CS')')
 
+
+
+;=============== SCRATCHPAD ARRAY OPERATIONS ===============
+
+;---------------------------------
+;Generate a function to copy an array in scratchpad memory
+;Args:
+;  Arg1: Name of function to generate
+;  Arg2: Register for first function argument,
+;        the scratchpad address of the source array
+;  Arg3: Register for destination address
+;  Arg4: Register for number of bytes to copy
+;Returns:
+;  The generated function has no return value. All registers are
+;  preserved on the stack.
+;Example:
+;  use_memcopy(memcopy, s0, s1, s2)
+;  load s0, 20 ; Source address
+;  load s1, 30 ; Dest address
+;  load s2, 05 ; Copy 5 bytes
+;  call memcopy
+define(`use_memcopy', `; PRAGMA function $1 [$2, $3, $4] begin
+            $1:  ; Copy count ($4) bytes from src ($2) to dest ($3) in scratchpad
+              vars(`$2 is _src', `$3 is _dest', `$4 is _count')
+              push(_src, _dest, _count)
+              add _count, _src
+              dowhile(`_src < _count', `
+                fetch _tempreg, (_src)
+                store _tempreg, (_dest)
+                add _src, 01
+                add _dest, 01')
+              pop(_src, _dest, _count)
+              return
+              ; PRAGMA function end
+              popvars')
+
+;---------------------------------
+;Generate a function to set an array in scratchpad memory
+;Args:
+;  Arg1: Name of function to generate
+;  Arg2: Register for first function argument,
+;        the scratchpad address of the source array
+;  Arg3: Register for number of bytes to copy
+;  Arg4: Register for value to set array bytes to
+;Returns:
+;  The generated function has no return value. All registers are
+;  preserved on the stack.
+;Example:
+;  use_memset(memset, s0, s1, s2)
+;  load s0, 20 ; Source address
+;  load s1, 05 ; Copy 5 bytes
+;  load s2, 00 ; Set all bytes to 0
+;  call memset
+define(`use_memset', `; PRAGMA function $1 [$2, $3, $4] begin
+            $1:  ; Write count ($3) bytes of value ($4) to dest ($2) in scratchpad
+              vars(`$2 is _dest', `$3 is _count', `$4 is _value')
+              push(_count, _dest)
+              add _count, _dest
+              dowhile(`_dest < _count', `
+                store _value, (_dest)
+                add _dest, 01')
+              pop(_count, _dest)
+              return            
+              ; PRAGMA function end
+              popvars')
+
+;---------------------------------
+;Generate a function to write an array of bytes to an output port
+;Args:
+;  Arg1: Name of function to generate
+;  Arg2: Register for first function argument,
+;        the scratchpad address of the source array
+;  Arg3: Register for number of bytes to write
+;  Arg4: Port address to write. This is a fixed value that can't
+;        be changed at runtime
+;Returns:
+;  The generated function has no return value. All registers are
+;  preserved on the stack.
+;Example:
+;  constant ConsolePort, FE
+;  use_memwrite(memwrite, s0, s1, ConsolePort)
+;  load s0, 20 ; Source address
+;  load s1, 05 ; Write 5 bytes
+;  call memwrite
+define(`use_memwrite', `; PRAGMA function $1 [$2, $3] begin
+            $1: ; Write an array in memory to port $4
+              vars(`$2 is _src', `$3 is _count')
+              push(_src, _count)
+              add _count, _src
+              dowhile(`_src < _count', `
+                fetch _tempreg, (_src)
+                output _tempreg, evalh($4)
+                add _src, 01')
+              pop(_src, _count)
+              return
+              ; PRAGMA function end
+              popvars')
+
+
+;---------------------------------
+;Generate a function to write an array of BCD coded bytes to an output port
+;Args:
+;  Arg1: Name of function to generate
+;  Arg2: Register for first function argument,
+;        the scratchpad address of the source BCD data
+;  Arg3: Register for number of bytes to write
+;  Arg4: Port address to write. This is a fixed value that can't
+;        be changed at runtime
+;Returns:
+;  The generated function has no return value. All registers are
+;  preserved on the stack.
+;Example:
+;  constant ConsolePort, FE
+;  use_bcdwrite(bcdwrite, s0, s1, ConsolePort)
+;  load s0, 20 ; Source address
+;  load s1, 05 ; Write 5 bytes
+;  call bcdwrite
+define(`use_bcdwrite', `; PRAGMA function $1 [$2, $3] begin
+            $1: ; Write BCD array in memory as ASCII digits to port $4
+              vars(`$2 is _src', `$3 is _count')
+              push(_src, _count)
+              add _count, _src
+              sub _count, 01
+              dowhile(`_src < _count', `
+                fetch _tempreg, (_src)
+                if(`_tempreg != 0', `break')
+                add _src, 01')
+              dowhile(`_src <= _count', `
+                fetch _tempreg, (_src)
+                add _tempreg, "0"
+                output _tempreg, evalh($4)
+                add _src, 01')
+              pop(_src, _count)
+              return
+              ; PRAGMA function end
+              popvars')
+
+
+;---------------------------------
+;Generate a function to write an array to an output port as ASCII hex
+;Args:
+;  Arg1: Name of function to generate
+;  Arg2: Register for first function argument,
+;        the scratchpad address of the source data
+;  Arg3: Register for number of bytes to write
+;  Arg4: Port address to write. This is a fixed value that can't
+;        be changed at runtime
+;Returns:
+;  The generated function has no return value. All registers are
+;  preserved on the stack.
+;Example:
+;  constant ConsolePort, FE
+;  use_hexwrite(hexwrite, s0, s1, ConsolePort)
+;  load s0, 20 ; Source address
+;  load s1, 05 ; Write 5 bytes
+;  call hexwrite
+define(`use_hexwrite', `; PRAGMA function $1 [$2, $3] begin
+            $1: ; Write array in memory as ASCII hex digits to port $4
+              vars(`$2 is _src', `$3 is _count')
+              push(_src, _count)
+              add _count, _src
+              dowhile(`_src < _count', `
+                ; Upper nibble
+                fetch _tempreg, (_src)
+                sr0(_tempreg, 4)
+                if(`_tempreg >= 10',`add _tempreg, 07')
+                add _tempreg, "0"
+                output _tempreg, evalh($4)
+                ; Lower nibble
+                fetch _tempreg, (_src)
+                and _tempreg, 0F
+                if(`_tempreg >= 10',`add _tempreg, 07')
+                add _tempreg, "0"
+                output _tempreg, evalh($4)
+                add _src, 01')
+              pop(_src, _count)
+              return
+              ; PRAGMA function end
+              popvars')
+
+
+;---------------------------------
+;Generate a function to convert an integer to BCD coded bytes
+;stored in a scratchpad buffer
+;The number to convert is passed on the stack as one or mote bytes
+;with the MSB pushed last. The buffer size is fixed after generating
+;the function. You must ensure it is large enough to contain the
+;largest integer you expect to convert. Each buffer byte corresponds to
+;one decimal digit.
+;Args:
+;  Arg1: Name of function to generate
+;  Arg2: Number of bytes for scratchpad buffer (fixed constant)
+;  Arg3: First argument of generated function.
+;        Register with destination scratchpad address
+;  Arg4: Register containing number of bytes of data to convert
+;        on the stack
+;  Arg5: Internal temp register
+;  Arg6: Internal temp register
+;  Arg7: Internal temp register
+;  Arg8: Internal temp register
+;Returns:
+;  The generated function has no return value. All registers are
+;  preserved on the stack.
+;Example:
+;  use_int2bcd(int2bcd, 5, s0, s1, s2, s3, s4, s5) ; Support up to 5 decimal digits
+;  load s0, 20 ; Dest address
+;  load s1, 2  ; Convert 16-bit number (2-bytes)
+;  load16(s4,s3, 31337)
+;  push(s3,s4) ; Put number to convert on stack; LSB then MSB
+;  call int2bcd
+define(`use_int2bcd', `
+; PRAGMA function $1 [$3, $4] begin
+$1:  ; Convert a number on the stack into BCD stored in a scratchpad buffer of $2 bytes
+  vars(`$3 is _dest', `$4 is _bytes', `$5 is _curbyte', `$6 is _bitcount', `$7 is _bytecount', `$8 is _digit')
+  push(_curbyte, _bitcount, _bytecount, _digit)
+  ; Zero scratch array
+  load _digit, 00
+  load _tempreg, _dest
+  add _tempreg, evalh($2)
+  dowhile(`_tempreg != _dest',
+    `sub _tempreg, 01
+    store _digit, (_tempreg)')
+
+  dropstack(4) ; Get SP back to number we are converting
   
+  load _bytecount, _bytes
+  while(`_bytecount > 0', `
+    pop(_curbyte) ; Get next byte to convert (in MSB to LSB order on stack)
+    
+    load _bitcount, 01   ; Init one-hot bit counter
+    $1_bitloop:
+      load _tempreg, _dest
+      add _tempreg, evalh($2 - 1)
+      ; Load lower digit from array
+      fetch _digit, (_tempreg)
+      
+      sl0 _curbyte ; Get next MSb from binary byte
+      sla _digit   ; Multiply by 2 and shift in MSb
+      
+      dowhile(`_tempreg != _dest', `
+        if(`_digit > 9',
+          `sub _digit, 0A ; Correct for overflow in digit
+          
+          ; Store digit
+          store _digit, (_tempreg)
+          sub _tempreg, 01
+          fetch _digit, (_tempreg) ; Get next digit
+          sl1 _digit               ; Multiply by 2 and carry overflow into next digit',
+         `; No carry to next digit
+          ; Store digit
+          store _digit, (_tempreg)
+          sub _tempreg, 01
+          fetch _digit, (_tempreg) ; Get next digit
+          sl0 _digit               ; Multiply by 2')
+
+      ')
+      
+      store _digit, (_tempreg) ; Store last digit
+      
+      sl0 _bitcount
+      jump nz, $1_bitloop
+    sub _bytecount, 01
+  ')
+
+  addstack(_bytes)  ; Restore SP so we can pop saved registers
+  addstack(4)
+  pop(_curbyte, _bitcount, _bytecount, _digit)
+  dropstack(_bytes) ; Clean original stack argument
+  return
+  ; PRAGMA function end
+  popvars')
+
 
 ;=============== UPPERCASE MACROS ===============
 

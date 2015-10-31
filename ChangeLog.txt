@@ -8,6 +8,11 @@ v1.x / 2015-??-??
   Changes
   -------
   * Added notice that the default target will change to PB6 in 1.4 release
+  * New command line simulator opbsim is included with automated test suite
+  * New syntax: local labels starting with a "." and use of labels in
+    address directives
+  * New macros for handling scratchpad arrays: memcopy, memset, memwrite, hexwrite, bcdwrite
+  * General purpose BCD conversion macro int2bcd
   * Added multilingual support with German and French translations
   * More efficient 16-bit shifts and rotates when the shift is greater than 8.
   * Improved reporting of error line numbers when macros have been expanded in the original source.
@@ -22,12 +27,17 @@ v1.x / 2015-??-??
     optional NUL terminator.
   * Added qstr() macro to wrap macros in double quotes.
   * New generic string and packed string handler macros for both PB3 and PB6
+  * High-level procedure and ISR macros with stack management of arguments and
+    return values.
   * ANSI escape code macros for color text
   * PRNG macros for 8 and 16-bit random numbers
   * Simple string hashing macro (Useful for building static PRNG seeds)
   * Added DATE_STAMP and TIME_STAMP macros for use within m4.
   * Add -D option to allow definition of m4 macros from the command line
   * Add automatic keep pragma to jump tables (2 or more consecutive unconditional jumps)
+  * Support for KCPSM6 ECC template for 7-series devices
+  * Support reading input source from stdin
+  * New more compact delay_cycles() macro
     
   Bug fixes
   ---------
@@ -41,6 +51,8 @@ v1.x / 2015-??-??
   * Macro text inside quoted strings no longer expands.
   * Fixed leftover "const()" macros in commented out constant declarations.
   * Unicode text mode (cp65001) now works properly on Windows console. ANSI color does not work however.
+  * Fix bug causing instructions allocated to the same address
+  * Fix bugs in signed multiply and divide macros
 
 v1.2 / 2014-12-12
 =================
