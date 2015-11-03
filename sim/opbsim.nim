@@ -23,8 +23,7 @@
 
 ## This module implements a rudimentary PicoBlaze-3 and -6 simulator primarily meant
 ## to run validation teats against the Opbasm macro libray. It supports the full
-## instruction set with the exception of the interrupt instructions (ENABLE/DISABLE,
-## RETURNI) and HWBUILD on PB6.
+## instruction set with the exception of HWBUILD on PB6.
 
 ## Hardware differences:
 ## * Overflowing or underflowing the call stack causes termination
@@ -60,16 +59,18 @@ proc extractSymbols(fname: string): Table[int32, string] =
 
 
 type 
-  CommandOptions = tuple[memFile: string,
-                        logFile: string,
-                        instLimit:int,
-                        verbose: bool,
-                        trace: bool,
-                        quiet: bool,
-                        jsonInput: string,
-                        jsonOutput: bool,
-                        usePB3: bool,
-                        usePB6: bool]
+  CommandOptions = tuple
+    memFile: string
+    logFile: string
+    instLimit:int
+    verbose: bool
+    trace: bool
+    quiet: bool
+    jsonInput: string
+    jsonOutput: bool
+    listPeriphs : bool
+    usePB3: bool
+    usePB6: bool
 
 type
   simTermination = enum
@@ -97,25 +98,40 @@ type
   # Access program memory as a 16-bit ROM
   ROMPeriph = ref object of Peripheral
 
+  # Generate an interrupt when written to
+  InterruptPeriph = ref object of Peripheral
+
+
+type execFlags = tuple
+  z : bool
+  c : bool
+  activeBank : range[0..1]
 
   
 type ProcState = object
   pc: int32
-  progc: uint32
-  z: bool
-  c: bool
+  
+  curFlags   : execFlags
+  savedFlags : execFlags
+  
+  intFlag   : bool
+  intActive : bool
+  intVec    : int32
+  
   callStack: seq[int32]
-  activeBank: range[0..1]
   regs: array[0..1, array[0..15, uint8]]
   portsIn: array[0..255, uint8]
   portsOut: array[0..255, uint8]
   kports: array[0..15, uint8]
   scratchpad: array[0..63, uint8]
+  
   rom: ref seq[int32]
   symbolTable: Table[int32, string]
+  
   totalInsts: int
   termination: simTermination
   executed: HashSet[int32]
+  
   peripherals: seq[Peripheral]
   periphWriteIndex: Table[int, ref seq[Peripheral]]
   periphReadIndex : Table[int, ref seq[Peripheral]]
@@ -150,6 +166,11 @@ proc newROMPeriph(name: string, writePorts: seq[uint8], readPorts: seq[uint8]): 
   result.writePorts = writePorts
   result.readPorts = readPorts
 
+proc newInterruptPeriph(name: string, writePorts: seq[uint8]): InterruptPeriph =
+  new result
+  result.name = name
+  result.writePorts = writePorts
+
 
 method init(periph: Peripheral, state: ref ProcState, quiet: bool) =
   discard
@@ -161,7 +182,8 @@ method portRead(periph: Peripheral, port: uint8, state: ref ProcState, quiet: bo
   result = true
 
 method activateInterrupt(periph: Peripheral, state: ref ProcState, quiet: bool) =
-  discard
+  if state.intActive:
+    state.intFlag = true
 
   
 method portWrite(periph: ConsolePeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
@@ -202,6 +224,11 @@ method portWrite(periph: ROMPeriph, port: uint8, state: ref ProcState, quiet: bo
     result = false
 
 
+method portWrite(periph: InterruptPeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
+  periph.activateInterrupt(state, quiet);
+  result = true
+
+
 
 proc getSymbol(state: ref ProcState, address: int32): string =
   if state.symbolTable.hasKey(address):
@@ -237,179 +264,179 @@ template do_terminate(): expr =
 # ======================
 template do_load(n:expr): expr =
   reportInst("Load  s" & toHex(x,1) & " = 0x" & toHex(n.int,2))
-  state.regs[state.activeBank][x] = n
+  state.regs[state.curFlags.activeBank][x] = n
 
 
 template do_and(n:expr): expr =
   reportInst("And  s" & toHex(x,1) & " & 0x" & toHex(n.int,2))
-  state.regs[state.activeBank][x] = state.regs[state.activeBank][x] and n
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = false
+  state.regs[state.curFlags.activeBank][x] = state.regs[state.curFlags.activeBank][x] and n
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = false
 
 template do_test(n:expr): expr =
   reportInst("Test  s" & toHex(x,1) & " & 0x" & toHex(n.int,2))
-  let r: uint8 = state.regs[state.activeBank][x] and n
-  state.z = r == 0
+  let r: uint8 = state.regs[state.curFlags.activeBank][x] and n
+  state.curFlags.z = r == 0
   # Compute parity in C
   var p: uint8 = r xor (r shr 1)
   p = p xor (p shr 2)
   p = p xor (p shr 4)
-  state.c = (p and 1) != 0
+  state.curFlags.c = (p and 1) != 0
 
   
 template do_testcy(n:expr): expr =
   reportInst("Testcy  s" & toHex(x,1) & " & 0x" & toHex(n.int,2))
-  let r: uint8 = state.regs[state.activeBank][x] and n
-  state.z = state.z and (r == 0)
+  let r: uint8 = state.regs[state.curFlags.activeBank][x] and n
+  state.curFlags.z = state.curFlags.z and (r == 0)
   # Compute parity in C
   var p: uint8 = r xor (r shr 1)
   p = p xor (p shr 2)
   p = p xor (p shr 4)
-  p = p xor (if state.c: 1 else: 0)
-  state.c = (p and 1) != 0
+  p = p xor (if state.curFlags.c: 1 else: 0)
+  state.curFlags.c = (p and 1) != 0
   
 template do_or(n:expr): expr =
   reportInst("Or  s" & toHex(x,1) & " | 0x" & toHex(n.int,2))
-  state.regs[state.activeBank][x] = state.regs[state.activeBank][x] or n
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = false
+  state.regs[state.curFlags.activeBank][x] = state.regs[state.curFlags.activeBank][x] or n
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = false
 
 template do_xor(n:expr): expr =
   reportInst("Xor  s" & toHex(x,1) & " ^ 0x" & toHex(n.int,2))
-  state.regs[state.activeBank][x] = state.regs[state.activeBank][x] xor n
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = false
+  state.regs[state.curFlags.activeBank][x] = state.regs[state.curFlags.activeBank][x] xor n
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = false
 
 
 template do_add(n:expr): expr =
   reportInst("Add  s" & toHex(x,1) & " + 0x" & toHex(n.int,2))
-  let r: uint16 = state.regs[state.activeBank][x].uint16 + n.uint16
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = (r and 0x100'u16) != 0'u16
+  let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 + n.uint16
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 template do_addcy(n:expr): expr =
   reportInst("Addcy  s" & toHex(x,1) & " + 0x" & toHex(n.int,2))
-  let r: uint16 = state.regs[state.activeBank][x].uint16 + n.uint16 + (if state.c: 1 else: 0)
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.z and (state.regs[state.activeBank][x] == 0)
-  state.c = (r and 0x100'u16) != 0'u16
+  let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 + n.uint16 + (if state.curFlags.c: 1 else: 0)
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.curFlags.z and (state.regs[state.curFlags.activeBank][x] == 0)
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 template do_sub(n:expr): expr =
   reportInst("Sub  s" & toHex(x,1) & " - 0x" & toHex(n.int,2))
-  let r: uint16 = state.regs[state.activeBank][x].uint16 - n.uint16
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = (r and 0x100'u16) != 0'u16
+  let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 - n.uint16
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 template do_subcy(n:expr): expr =
   reportInst("Subcy  s" & toHex(x,1) & " - 0x" & toHex(n.int,2))
-  let r: uint16 = state.regs[state.activeBank][x].uint16 - n.uint16 - (if state.c: 1 else: 0)
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.z and (state.regs[state.activeBank][x] == 0)
-  state.c = (r and 0x100'u16) != 0'u16
+  let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 - n.uint16 - (if state.curFlags.c: 1 else: 0)
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.curFlags.z and (state.regs[state.curFlags.activeBank][x] == 0)
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 template do_compare(n:expr): expr =
-  reportInst("Compare  s" & toHex(x,1) & " - 0x" & toHex(n.int,2))
-  let r: uint16 = state.regs[state.activeBank][x].uint16 - n.uint16
-  #echo "@@@ Compare: ", state.regs[state.activeBank][x].uint16, " ", n.uint16, " -> ", r
-  state.z = (r and 0xFF) == 0
-  state.c = (r and 0x100'u16) != 0'u16
+  reportInst("Compare  s" & toHex(x,1) & "(0x" & toHex(state.regs[state.curFlags.activeBank][x].int,2) & ") - 0x" & toHex(n.int,2))
+  let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 - n.uint16
+  #echo "@@@ Compare: ", state.regs[state.curFlags.activeBank][x].uint16, " ", n.uint16, " -> ", r
+  state.curFlags.z = (r and 0xFF) == 0
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 template do_comparecy(n:expr): expr =
   reportInst("Comparecy  s" & toHex(x,1) & " - 0x" & toHex(n.int,2))
-  let r: uint16 = state.regs[state.activeBank][x].uint16 - n.uint16 - (if state.c: 1 else: 0)
-  state.z = state.z and ((r and 0xFF) == 0)
-  state.c = (r and 0x100'u16) != 0'u16
+  let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 - n.uint16 - (if state.curFlags.c: 1 else: 0)
+  state.curFlags.z = state.curFlags.z and ((r and 0xFF) == 0)
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
   
   
 template do_sl0(): expr =
   reportInst("Sl0  << s" & toHex(x,1) & " & '0'")
-  var r: uint16 = state.regs[state.activeBank][x]
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
   r = r shl 1
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = (r and 0x100'u16) != 0'u16
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 template do_sl1(): expr =
   reportInst("Sl1  << s" & toHex(x,1) & " & '1'")
-  var r: uint16 = state.regs[state.activeBank][x]
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
   r = (r shl 1) or 0x01
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = false
-  state.c = (r and 0x100'u16) != 0'u16  
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = false
+  state.curFlags.c = (r and 0x100'u16) != 0'u16  
 
 template do_slx(): expr =
   reportInst("Slx  << s" & toHex(x,1) & " & s" & toHex(x,1) & "[0]")
-  var r: uint16 = state.regs[state.activeBank][x]
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
   r = (r shl 1) or (r and 0x01)
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = (r and 0x100'u16) != 0'u16
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 template do_sla(): expr =
   reportInst("Sla  << s" & toHex(x,1) & " & C")
-  var r: uint16 = state.regs[state.activeBank][x]
-  r = (r shl 1) or (if state.c: 1 else: 0)
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = (r and 0x100'u16) != 0'u16
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
+  r = (r shl 1) or (if state.curFlags.c: 1 else: 0)
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 
 template do_sr0(): expr =
   reportInst("Sr0  >> '0' & s" & toHex(x,1))
-  var r: uint16 = state.regs[state.activeBank][x]
-  state.c = (r and 0x01) != 0'u16
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
+  state.curFlags.c = (r and 0x01) != 0'u16
   r = r shr 1
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
 
 template do_sr1(): expr =
   reportInst("Sr1  >> '1' & s" & toHex(x,1))
-  var r: uint16 = state.regs[state.activeBank][x]
-  state.c = (r and 0x01) != 0'u16
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
+  state.curFlags.c = (r and 0x01) != 0'u16
   r = (r shr 1) or 0x80
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = false
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = false
 
 template do_srx(): expr =
   reportInst("Srx  >> s" & toHex(x,1) & "[0] & s" & toHex(x,1))
-  var r: uint16 = state.regs[state.activeBank][x]
-  state.c = (r and 0x01) != 0'u16
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
+  state.curFlags.c = (r and 0x01) != 0'u16
   r = (r shr 1) or (r and 0x80)
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
 
 template do_sra(): expr =
   reportInst("Sra  >> C & s" & toHex(x,1))
-  var r: uint16 = state.regs[state.activeBank][x]
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
   let new_c = (r and 0x01) != 0'u16
-  r = (r shr 1) or (if state.c: 0x80 else: 0)
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = new_c
+  r = (r shr 1) or (if state.curFlags.c: 0x80 else: 0)
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = new_c
 
   
 template do_rl(): expr =
   reportInst("Rl  s" & toHex(x,1))
-  var r: uint16 = state.regs[state.activeBank][x]
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
   r = (r shl 1) or (r shr 7)
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
-  state.c = (r and 0x100'u16) != 0'u16
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
+  state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 template do_rr(): expr =
   reportInst("Rr  s" & toHex(x,1))
-  var r: uint16 = state.regs[state.activeBank][x]
-  state.c = (r and 0x01) != 0'u16
+  var r: uint16 = state.regs[state.curFlags.activeBank][x]
+  state.curFlags.c = (r and 0x01) != 0'u16
   r = (r shr 1) or (r shl 7)
-  state.regs[state.activeBank][x] = r.uint8
-  state.z = state.regs[state.activeBank][x] == 0
+  state.regs[state.curFlags.activeBank][x] = r.uint8
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   
 template do_regbank(): expr =
-  state.activeBank = (w and 0x01)
-  reportInst("Regbank  " & (if state.activeBank == 0: "A" else: "B"))
+  state.curFlags.activeBank = (w and 0x01)
+  reportInst("Regbank  " & (if state.curFlags.activeBank == 0: "A" else: "B"))
 
 
 template do_input(n:expr): expr =
@@ -424,11 +451,11 @@ template do_input(n:expr): expr =
   if not success: # Stop simulation loop
     break
 
-  state.regs[state.activeBank][x] = state.portsIn[n]
+  state.regs[state.curFlags.activeBank][x] = state.portsIn[n]
 
 template do_output(n:expr): expr =
   reportInst("Output  port[" & toHex(n.int,2) & "] = s" & toHex(x,1))
-  state.portsOut[n] = state.regs[state.activeBank][x]
+  state.portsOut[n] = state.regs[state.curFlags.activeBank][x]
   
   var success = true
 
@@ -447,20 +474,21 @@ template do_outputk(): expr =
 
 
 template do_store(n:expr): expr =
-  reportInst("Store  s" & toHex(x,1) & " = sp[" & toHex(n.int,2) & "]")
-  if n.int < len(state.scratchpad):
-    state.scratchpad[n] = state.regs[state.activeBank][x]
-  else:
-    state.termination = termInvalidScratchpad
-    do_terminate()
+  reportInst("Store  sp[" & toHex(n.int,2) & "] = s" & toHex(x,1))
+  #if n.int < len(state.scratchpad):
+  state.scratchpad[(n and 0x3F).uint8] = state.regs[state.curFlags.activeBank][x] # FIXME: Allow for variable SP size
+#  else:
+#    state.termination = termInvalidScratchpad
+#    do_terminate()
 
 template do_fetch(n:expr): expr =
-  reportInst("Fetch  sp[" & toHex(n.int,2) & "] = s" & toHex(x,1))
-  if n.int < len(state.scratchpad):
-    state.regs[state.activeBank][x] = state.scratchpad[n]
-  else:
-    state.termination = termInvalidScratchpad
-    do_terminate()
+  reportInst("Fetch  s" & toHex(x,1) & " = sp[" & toHex(n.int,2) & "]  (" & toHex(state.scratchpad[(n and 0x3F).uint8].int,2) & ")")
+  #n = n and 0x3F # FIXME
+  #if n.int < len(state.scratchpad):
+  state.regs[state.curFlags.activeBank][x] = state.scratchpad[(n and 0x3F).uint8] # FIXME: Allow for variable SP size
+  #else:
+  #  state.termination = termInvalidScratchpad
+  #  do_terminate()
 
 
 template do_jump(): expr =
@@ -468,24 +496,24 @@ template do_jump(): expr =
   next_pc = address
 
 template do_jump_z(): expr =
-  reportInst("Jump Z  " & $state.z & "  " & state.getSymbol(address))
-  if state.z: next_pc = address
+  reportInst("Jump Z  " & $state.curFlags.z & "  " & state.getSymbol(address))
+  if state.curFlags.z: next_pc = address
 
 template do_jump_nz(): expr =
-  reportInst("Jump NZ  " & $(not state.z) & "  " & state.getSymbol(address))
-  if not state.z: next_pc = address
+  reportInst("Jump NZ  " & $(not state.curFlags.z) & "  " & state.getSymbol(address))
+  if not state.curFlags.z: next_pc = address
 
 template do_jump_c(): expr =
-  reportInst("Jump C  " & $state.c & "  " & state.getSymbol(address))
-  if state.c: next_pc = address
+  reportInst("Jump C  " & $state.curFlags.c & "  " & state.getSymbol(address))
+  if state.curFlags.c: next_pc = address
 
 template do_jump_nc(): expr =
-  reportInst("Jump NC  " & $(not state.c) & "  " & state.getSymbol(address))
-  if not state.c: next_pc = address
+  reportInst("Jump NC  " & $(not state.curFlags.c) & "  " & state.getSymbol(address))
+  if not state.curFlags.c: next_pc = address
 
 template do_jump_at(): expr =
   reportInst("Jump@")
-  next_pc = ((state.regs[state.activeBank][x].int32 shl 8) or state.regs[state.activeBank][y].int32) and 0xFFF
+  next_pc = ((state.regs[state.curFlags.activeBank][x].int32 shl 8) or state.regs[state.curFlags.activeBank][y].int32) and 0xFFF
 
 
 template do_call_push(n: expr): expr =
@@ -501,32 +529,32 @@ template do_call(): expr =
   do_call_push(state.pc+1)
 
 template do_call_z(): expr =
-  reportInst("Call Z  " & $state.z & "  " & state.getSymbol(address))
-  if state.z:
+  reportInst("Call Z  " & $state.curFlags.z & "  " & state.getSymbol(address))
+  if state.curFlags.z:
     next_pc = address
     do_call_push(state.pc+1)
 
 template do_call_nz(): expr =
-  reportInst("Call NZ  " & $(not state.z) & "  " & state.getSymbol(address))
-  if not state.z:
+  reportInst("Call NZ  " & $(not state.curFlags.z) & "  " & state.getSymbol(address))
+  if not state.curFlags.z:
     next_pc = address
     do_call_push(state.pc+1)
 
 template do_call_c(): expr =
-  reportInst("Call C  " & $state.c & "  " & state.getSymbol(address))
-  if state.c:
+  reportInst("Call C  " & $state.curFlags.c & "  " & state.getSymbol(address))
+  if state.curFlags.c:
     next_pc = address
     do_call_push(state.pc+1)
 
 template do_call_nc(): expr =
-  reportInst("Call NC  " & $(not state.c) & "  " & state.getSymbol(address))
-  if not state.c:
+  reportInst("Call NC  " & $(not state.curFlags.c) & "  " & state.getSymbol(address))
+  if not state.curFlags.c:
     next_pc = address
     do_call_push(state.pc+1)
 
 template do_call_at(): expr =
   reportInst("Call@")
-  next_pc = ((state.regs[state.activeBank][x].int32 shl 8) or state.regs[state.activeBank][y].int32) and 0xFFF
+  next_pc = ((state.regs[state.curFlags.activeBank][x].int32 shl 8) or state.regs[state.curFlags.activeBank][y].int32) and 0xFFF
   do_call_push(state.pc+1)
 
 
@@ -543,36 +571,53 @@ template do_return(): expr =
   do_popCall()
   
 template do_return_z(): expr =
-  reportInst("Return Z  " & $state.z)
-  if state.z: do_popCall()
+  reportInst("Return Z  " & $state.curFlags.z)
+  if state.curFlags.z: do_popCall()
 
 template do_return_nz(): expr =
-  reportInst("Return NZ  " & $(not state.z))
-  if not state.z: do_popCall()
+  reportInst("Return NZ  " & $(not state.curFlags.z))
+  if not state.curFlags.z: do_popCall()
 
 template do_return_c(): expr =
-  reportInst("Return C  " & $state.c)
-  if state.c: do_popCall()
+  reportInst("Return C  " & $state.curFlags.c)
+  if state.curFlags.c: do_popCall()
 
 template do_return_nc(): expr =
-  reportInst("Return NC  " & $(not state.c))
-  if not state.c: do_popCall()
+  reportInst("Return NC  " & $(not state.curFlags.c))
+  if not state.curFlags.c: do_popCall()
+
+
+template do_returni(): expr =
+  reportInst("ReturnI")
+  
+  # Restore processor flags from before the interrupt
+  state.curFlags = state.savedFlags
+  state.intActive = (if imm == 1: true else: false)
+  do_popCall()
+
+template do_enable_disable(): expr =
+  if imm == 1:
+    reportInst("Enable")
+    state.intActive = true
+  else:
+    reportInst("Disable")
+    state.intActive = false
 
   
 template do_load_and_return(): expr =
   reportInst("Load&return  s" & toHex(x, 1) & " = " & toHex(imm.int, 2))
-  state.regs[state.activeBank][x] = imm
+  state.regs[state.curFlags.activeBank][x] = imm
   do_popCall()
 
 template do_star(): expr =
-  reportInst("Star s$# ($#) = s$# ($#)" % [toHex(x,1), (if state.activeBank == 0: "B" else: "A"),
-                                          toHex(y,1), (if state.activeBank == 0: "A" else: "B")])
-  state.regs[1 - state.activeBank][x] = state.regs[state.activeBank][y]
+  reportInst("Star s$# ($#) = s$# ($#)" % [toHex(x,1), (if state.curFlags.activeBank == 0: "B" else: "A"),
+                                          toHex(y,1), (if state.curFlags.activeBank == 0: "A" else: "B")])
+  state.regs[1 - state.curFlags.activeBank][x] = state.regs[state.curFlags.activeBank][y]
 
 
 
 
-proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8]): ref ProcState =
+proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8], intVec: int32 = 0x3FF): ref ProcState =
   var state: ref ProcState
   new state
 
@@ -582,6 +627,10 @@ proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8
   state.callStack = @[]
   state.portsIn = jsonInput
   state.peripherals = @periphs
+  
+  state.intActive = true
+  state.intFlag = false
+  state.intVec = intVec
   
   
   # Index which peripherals are on each in/out port
@@ -619,6 +668,15 @@ template simulateLoop(): expr =
   for i in 0..<options.instLimit:
 
     # Fetch next instruction
+    if state.intFlag:
+      state.intActive = false
+      state.intFlag = false
+      # Save current flags
+      state.savedFlags = state.curFlags
+      do_call_push(state.pc)
+      state.pc = state.intVec
+      
+      
     if state.pc < len(state.rom[]):
       w = state.rom[state.pc]
     else:
@@ -640,32 +698,32 @@ template simulateLoop(): expr =
 
       # Decode PB6 opcodes
       case opc
-      of 0x00: do_load(state.regs[state.activeBank][y])
+      of 0x00: do_load(state.regs[state.curFlags.activeBank][y])
       of 0x01: do_load(imm)
-      of 0x02: do_and(state.regs[state.activeBank][y])
+      of 0x02: do_and(state.regs[state.curFlags.activeBank][y])
       of 0x03: do_and(imm)
-      of 0x04: do_or(state.regs[state.activeBank][y])
+      of 0x04: do_or(state.regs[state.curFlags.activeBank][y])
       of 0x05: do_or(imm)
-      of 0x06: do_xor(state.regs[state.activeBank][y])
+      of 0x06: do_xor(state.regs[state.curFlags.activeBank][y])
       of 0x07: do_xor(imm)
       
-      of 0x10: do_add(state.regs[state.activeBank][y])
+      of 0x10: do_add(state.regs[state.curFlags.activeBank][y])
       of 0x11: do_add(imm)
-      of 0x12: do_addcy(state.regs[state.activeBank][y])
+      of 0x12: do_addcy(state.regs[state.curFlags.activeBank][y])
       of 0x13: do_addcy(imm)
       
-      of 0x18: do_sub(state.regs[state.activeBank][y])
+      of 0x18: do_sub(state.regs[state.curFlags.activeBank][y])
       of 0x19: do_sub(imm)
-      of 0x1A: do_subcy(state.regs[state.activeBank][y])
+      of 0x1A: do_subcy(state.regs[state.curFlags.activeBank][y])
       of 0x1B: do_subcy(imm)
       
-      of 0x0C: do_test(state.regs[state.activeBank][y])
+      of 0x0C: do_test(state.regs[state.curFlags.activeBank][y])
       of 0x0D: do_test(imm)
-      of 0x0E: do_testcy(state.regs[state.activeBank][y])
+      of 0x0E: do_testcy(state.regs[state.curFlags.activeBank][y])
       of 0x0F: do_testcy(imm)
-      of 0x1C: do_compare(state.regs[state.activeBank][y])
+      of 0x1C: do_compare(state.regs[state.curFlags.activeBank][y])
       of 0x1D: do_compare(imm)
-      of 0x1E: do_comparecy(state.regs[state.activeBank][y])
+      of 0x1E: do_comparecy(state.regs[state.curFlags.activeBank][y])
       of 0x1F: do_comparecy(imm)
       
       of 0x14:
@@ -686,19 +744,19 @@ template simulateLoop(): expr =
 
       of 0x37: do_regbank()
       
-      of 0x08: do_input(state.regs[state.activeBank][y])
+      of 0x08: do_input(state.regs[state.curFlags.activeBank][y])
       of 0x09: do_input(imm)
-      of 0x2C: do_output(state.regs[state.activeBank][y])
+      of 0x2C: do_output(state.regs[state.curFlags.activeBank][y])
       of 0x2D: do_output(imm)
       of 0x2B: do_outputk()
       
-      of 0x2E: do_store(state.regs[state.activeBank][y])
+      of 0x2E: do_store(state.regs[state.curFlags.activeBank][y])
       of 0x2F: do_store(imm)
-      of 0x0A: do_fetch(state.regs[state.activeBank][y])
+      of 0x0A: do_fetch(state.regs[state.curFlags.activeBank][y])
       of 0x0B: do_fetch(imm)
       
-      of 0x28: do_unsupportedOp()  # DISABLE / ENABLE
-      of 0x29: do_unsupportedOp()  # RETURNI
+      of 0x28: do_enable_disable()
+      of 0x29: do_returni()
       
       of 0x22: do_jump()
       of 0x32: do_jump_z()
@@ -733,28 +791,28 @@ template simulateLoop(): expr =
       address = w and 0x3FF
       # Decode PB3 opcodes
       case opc
-      of 0x01: do_load(state.regs[state.activeBank][y])
+      of 0x01: do_load(state.regs[state.curFlags.activeBank][y])
       of 0x00: do_load(imm)
-      of 0x0B: do_and(state.regs[state.activeBank][y])
+      of 0x0B: do_and(state.regs[state.curFlags.activeBank][y])
       of 0x0A: do_and(imm)
-      of 0x0D: do_or(state.regs[state.activeBank][y])
+      of 0x0D: do_or(state.regs[state.curFlags.activeBank][y])
       of 0x0C: do_or(imm)
-      of 0x0F: do_xor(state.regs[state.activeBank][y])
+      of 0x0F: do_xor(state.regs[state.curFlags.activeBank][y])
       of 0x0E: do_xor(imm)
       
-      of 0x19: do_add(state.regs[state.activeBank][y])
+      of 0x19: do_add(state.regs[state.curFlags.activeBank][y])
       of 0x18: do_add(imm)
-      of 0x1B: do_addcy(state.regs[state.activeBank][y])
+      of 0x1B: do_addcy(state.regs[state.curFlags.activeBank][y])
       of 0x1A: do_addcy(imm)
       
-      of 0x1D: do_sub(state.regs[state.activeBank][y])
+      of 0x1D: do_sub(state.regs[state.curFlags.activeBank][y])
       of 0x1C: do_sub(imm)
-      of 0x1F: do_subcy(state.regs[state.activeBank][y])
+      of 0x1F: do_subcy(state.regs[state.curFlags.activeBank][y])
       of 0x1E: do_subcy(imm)
       
-      of 0x13: do_test(state.regs[state.activeBank][y])
+      of 0x13: do_test(state.regs[state.curFlags.activeBank][y])
       of 0x12: do_test(imm)
-      of 0x15: do_compare(state.regs[state.activeBank][y])
+      of 0x15: do_compare(state.regs[state.curFlags.activeBank][y])
       of 0x14: do_compare(imm)
       
       of 0x20:
@@ -773,19 +831,19 @@ template simulateLoop(): expr =
         of 0x80: do_unsupportedOp() # HWBUILD
         else: do_badOp
 
-      of 0x05: do_input(state.regs[state.activeBank][y])
+      of 0x05: do_input(state.regs[state.curFlags.activeBank][y])
       of 0x04: do_input(imm)
-      of 0x2D: do_output(state.regs[state.activeBank][y])
+      of 0x2D: do_output(state.regs[state.curFlags.activeBank][y])
       of 0x2C: do_output(imm)
       #of 0x2B: do_outputk()
       
-      of 0x2F: do_store(state.regs[state.activeBank][y])
+      of 0x2F: do_store(state.regs[state.curFlags.activeBank][y])
       of 0x2E: do_store(imm)
-      of 0x07: do_fetch(state.regs[state.activeBank][y])
+      of 0x07: do_fetch(state.regs[state.curFlags.activeBank][y])
       of 0x06: do_fetch(imm)
       
-      of 0x3C: do_unsupportedOp()  # DISABLE / ENABLE
-      of 0x38: do_unsupportedOp()  # RETURNI
+      of 0x3C: do_enable_disable()
+      of 0x38: do_returni()
       
       of 0x34: do_jump()
       of 0x35:
@@ -860,6 +918,7 @@ Options:
   -t            --trace         Print execution trace
   -q            --quiet         Quiet output
   -j            --json          JSON report [forces quiet too]
+  -p            --list-periphs  Print peripheral information
   --pb3                         Simulate PicoBlase-3 code
   --pb6                         Simulate PicoBlaze-6 code [default]
 """
@@ -886,6 +945,7 @@ proc main() =
       of "quiet", "q"  : options.quiet = true
       of "input", "i"  : options.jsonInput = val
       of "json", "j"   : options.jsonOutput = true
+      of "list-periphs", "p": options.listPeriphs = true
       of "pb3"         : options.usePB3 = true
       of "pb6"         : options.usePB6 = true
       else             : discard
@@ -956,7 +1016,8 @@ proc main() =
   let periphs = [con,
                 newQuitPeriph("quit", @[quitPort]),
                 newLoopbackPeriph("loopback", toSeq(0x00'u8 .. 0x0F'u8)),
-                newROMPeriph("ROM", @[0xFA'u8, 0xFB'u8], @[0xFA'u8, 0xFB'u8])
+                newROMPeriph("ROM", @[0xFA'u8, 0xFB'u8], @[0xFA'u8, 0xFB'u8]),
+                newInterruptPeriph("IntGen", @[0xFC'u8])
                 ]
 
   var state = newProcState(periphs, jsonInput)
@@ -1008,6 +1069,19 @@ proc main() =
     of termStackUnderflow:    echo "UNEXPECTED TERMINATION: PC stack underflow"
     of termStackOverflow:     echo "UNEXPECTED TERMINATION: PC stack overflow"
     else:                     echo "UNEXPECTED TERMINATION: UNKNOWN"
+    
+    if options.listPeriphs:
+      echo "\nPeripherals:"
+      
+      # Get the longest peripheral name
+      var maxLen = 0
+      for p in state.peripherals:
+        if len(p.name) > maxLen: maxLen = len(p.name)
+        
+      for p in state.peripherals:
+        echo "  " & p.name & ' '.repeat(maxLen - len(p.name)) &
+             " W: " & p.writePorts.mapIt(string, toHex(it.int32,2)).join(",") &
+             "  R: " & p.readPorts.mapIt(string, toHex(it.int32,2)).join(",")
     
     
   if options.jsonOutput:
