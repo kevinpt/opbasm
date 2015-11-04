@@ -45,8 +45,8 @@ proc readMemFile(fname: string): ref seq[int32] =
 
 
 proc extractSymbols(fname: string): Table[int32, string] =
-  var
-    s = initTable[int32, string]()
+  ## Read the symbol definitions from a log file
+  var s = initTable[int32, string]()
 
   let symRe = re(r"\s+[*]?\s+(\w+)\s+([0-9A-F]{3})\s+([\w.]+)")
 
@@ -101,8 +101,12 @@ type
   # Generate an interrupt when written to
   InterruptPeriph = ref object of Peripheral
 
+type RomInfo = tuple
+  data        : seq[int32]
+  symbolTable : Table[int32, string]
 
-type execFlags = tuple
+
+type ExecFlags = tuple
   z : bool
   c : bool
   activeBank : range[0..1]
@@ -111,8 +115,8 @@ type execFlags = tuple
 type ProcState = object
   pc: int32
   
-  curFlags   : execFlags
-  savedFlags : execFlags
+  curFlags   : ExecFlags
+  savedFlags : ExecFlags
   
   intFlag   : bool
   intActive : bool
@@ -124,9 +128,8 @@ type ProcState = object
   portsOut: array[0..255, uint8]
   kports: array[0..15, uint8]
   scratchpad: array[0..63, uint8]
-  
-  rom: ref seq[int32]
-  symbolTable: Table[int32, string]
+
+  rom: ref RomInfo  
   
   totalInsts: int
   termination: simTermination
@@ -139,9 +142,6 @@ type ProcState = object
 
 
 
-
-#proc initConsolePeriph(writePorts: seq[uint8]): ConsolePeriph =
-#  result = ConsolePeriph(writePorts: writePorts, charBuf: "")
 
 proc newQuitPeriph(name: string, writePorts: seq[uint8]): QuitPeriph =
   new result
@@ -213,8 +213,8 @@ method portWrite(periph: LoopbackPeriph, port: uint8, state: ref ProcState, quie
 
 method portWrite(periph: ROMPeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
   let address : int32 = state.portsOut[periph.writePorts[0]].int32 shl 8 + state.portsOut[periph.writePorts[1]].int32
-  if address < len(state.rom[]):
-    let data = state.rom[][address]
+  if address < len(state.rom.data):
+    let data = state.rom.data[address]
     state.portsIn[periph.readPorts[0]] = (data shr 8).uint8
     state.portsIn[periph.readPorts[1]] = (data and 0xFF).uint8
     result = true
@@ -231,8 +231,8 @@ method portWrite(periph: InterruptPeriph, port: uint8, state: ref ProcState, qui
 
 
 proc getSymbol(state: ref ProcState, address: int32): string =
-  if state.symbolTable.hasKey(address):
-    result = state.symbolTable[address]
+  if state.rom.symbolTable.hasKey(address):
+    result = state.rom.symbolTable[address]
   else:
     result = ""
 
@@ -618,6 +618,7 @@ template do_star(): expr =
 
 
 proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8], intVec: int32 = 0x3FF): ref ProcState =
+  ## Initialize a procState object
   var state: ref ProcState
   new state
 
@@ -662,8 +663,7 @@ template simulateLoop(): expr =
   ## Main simulation loop
   #  Terminates normally when an OUTPUT instruction targeting quitPort executes 
     
-  state.rom = rom
-  state.symbolTable = symbolTable
+  state.rom = romData # FIXME: reloacte?
   
   for i in 0..<options.instLimit:
 
@@ -677,8 +677,8 @@ template simulateLoop(): expr =
       state.pc = state.intVec
       
       
-    if state.pc < len(state.rom[]):
-      w = state.rom[state.pc]
+    if state.pc < len(state.rom.data):
+      w = state.rom.data[state.pc]
     else:
       state.termination = termInvalidAddress
       do_terminate()
@@ -889,7 +889,8 @@ template simulateLoop(): expr =
     state.termination = termInstLimit
 
 
-proc simulate(state: ref ProcState, rom: ref seq[int32], options: CommandOptions, symbolTable: Table[int32, string]) =
+proc simulate(state: ref ProcState, romData: ref RomInfo, options: CommandOptions) =
+  ## Run a simulation with a program in ROM
   var
     w, opc, x, y, address, next_pc: int32
     imm: uint8
@@ -903,7 +904,18 @@ proc simulate(state: ref ProcState, rom: ref seq[int32], options: CommandOptions
   else:
     const show_trace = false
     simulateLoop
+
+
+proc newRomInfo(memFile: string, logFile: string): ref RomInfo =
+  ## Create a new RomInfo tuple with data read from a mem file and optional symbols
+  new result
+  result.data = readMemFile(memFile)[]
   
+  if logFile != nil and logFile != "":
+    result.symbolTable = extractSymbols(logFile)
+  else:
+    result.symbolTable = initTable[int32, string]()
+
 
 const usageString = """
 Open PicoBlaze simulator
@@ -986,14 +998,7 @@ proc main() =
     echo "PicoBlaze simulator"
     echo "Running in ", (if options.usePB6: "PicoBlaze-6" else: "PicoBlaze-3"), " mode"
     echo "Input: ", options.memFile
-  
-  var rom: ref seq[int32] = readMemFile(options.memFile)
-  if len(rom[]) == 0: echo "ERROR: Invalid MEM file"; quit(1)
-  
-  if not options.quiet:
-    echo "Read $# words\n" % [$len(rom[])]
 
-  var symbolTable: Table[int32, string]
 
   # Look for log file if one wasn't provided in arguments
   if options.logFile == "" or options.logFile == nil:
@@ -1002,12 +1007,15 @@ proc main() =
     if fileExists(logFile):
       options.logFile = logFile
 
-  if options.logFile != "" and options.logFile != nil:
-    symbolTable = extractSymbols(options.logFile)
-    if not options.quiet:
-      echo "Found $# symbols in $#\n" % [$len(symbolTable), options.logFile]
-  else:
-    symbolTable = initTable[int32, string]()
+  var romData = newRomInfo(options.memFile, options.logFile)
+
+  if len(romData.data) == 0: echo "ERROR: Invalid MEM file"; quit(1)
+
+  if not options.quiet:
+    echo "Read $# words\n" % [$len(romData.data)]
+
+    if options.logFile != nil and options.logFile != "":
+      echo "Found $# symbols in $#\n" % [$len(romData.symbolTable), options.logFile]
 
 
   # Instantiate the peripherals
@@ -1024,7 +1032,7 @@ proc main() =
 
   # Run the simulator
   let t1 = cpuTime()
-  state.simulate(rom, options, symbolTable)
+  state.simulate(romData, options)
   let t2 = cpuTime()
   
   let cpuRuntime = t2 - t1
@@ -1045,10 +1053,10 @@ proc main() =
 
   # Determine the number of valid instructions in the ROM
   # Assume the last instruction is a default_jump or uninitialized 0's
-  let nonInst = state.rom[state.rom[].high]
+  let nonInst = state.rom.data[state.rom.data.high]
   var instCount = 0
-  for i in 0..state.rom[].high:
-    if state.rom[i] != nonInst:
+  for i in 0..state.rom.data.high:
+    if state.rom.data[i] != nonInst:
       instCount = instCount + 1
       
   if not options.quiet:
