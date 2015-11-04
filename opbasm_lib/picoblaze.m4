@@ -30,10 +30,15 @@ changecom(;)
 
 
 ;=============== LITERAL OPERATIONS ===============
+;==================================================
 
 ;---------------------------------
-; Extensions to eval
-; Evaluate expression as a decimal number
+;Extensions to eval
+;Evaluate expression as a decimal number
+;Args:
+;  Arg1: Expression or constant name
+;Result:
+;  Expands to a PicoBlaze decimal literal with a comment listing the original expression
 define(`evald', `eval(const2m4($1))''d  `;' $1)
 
 ; Evaluate expression as an 8-bit hex number
@@ -62,6 +67,7 @@ define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($
 
 
 ;=============== TYPE CONVERSION ===============
+;===============================================
 
 ;---------------------------------
 ; Convert a list of values in PicoBlaze hex format to decimal
@@ -194,6 +200,7 @@ define(<!_conv_char!>, <!_alt_ao(substr(<!$1!>,1,1))!>)
 changequote
 
 ;=============== INTERNAL CONFIGURATION ===============
+;======================================================
 
 define(`_tempreg', `sE')
 
@@ -201,6 +208,7 @@ define(`use_tempreg', `pushdef(`_tempreg', $1)')
 
 
 ;=============== MISCELLANEOUS OPERATIONS ===============
+;========================================================
 
 ;---------------------------------
 ; No-op macros
@@ -325,6 +333,7 @@ define(`argc',`$#')
 
 
 ;=============== DELAYS ===============
+;======================================
 
 ;---------------------------------
 ; Define system clock frequency
@@ -539,6 +548,7 @@ define(`_dval_var', `eval(($1 * _cfreq / 2 - 2) / (3 + _dnop_us($2,2)) - 1)')
 
 
 ;=============== CARRY FLAG OPERATIONS ===============
+;=====================================================
 
 ;---------------------------------
 ; Clear the carry flag
@@ -553,6 +563,7 @@ define(`setcy', `ifelse(`$1',,`pushdef(`_cyreg', `_tempreg')', `pushdef(`_cyreg'
 compare _cyreg, 01'`popdef(`_cyreg')')
 
 ;=============== BITFIELD OPERATIONS ===============
+;===================================================
 
 ;---------------------------------
 ; Set and clear bits in a register
@@ -596,6 +607,7 @@ define(`testbit', `test $1, eval(2**($2), 16, 2)  ; Test bit $2')
 
 
 ;=============== CONDITIONAL JUMP, CALL, and RETURN OPERATIONS ===============
+;=============================================================================
 
 ; Jump if not equal
 ; Arg1: Label to jump to
@@ -657,6 +669,7 @@ define(`retlt', `return c  ; if less than')
 
 
 ;=============== CONDITIONAL IF-THEN-ELSE ===============
+;========================================================
 
 
 ;---------------------------------
@@ -785,6 +798,7 @@ define(`warnmsg', `errprint($1  __file__ line __line__)')
 
 
 ;=============== CONDITIONAL LOOPS ===============
+;=================================================
 
 ;---------------------------------
 ; While loop
@@ -859,6 +873,7 @@ define(`continue', `jump _clbl')
 
 
 ;=============== FUNCTION CALLS ===============
+;==============================================
 
 
 ;---------------------------------
@@ -873,7 +888,6 @@ define(`continue', `jump _clbl')
 define(`proc', `;PRAGMA function $1 [$2] begin
 $1:
   vars(_vars_filter(_split_args(`$2')))
-  `;' VAR DEF: _vars_filter(_split_args(`$2')) XXX _vars_ctx
   $3
   return
 ;PRAGMA function $1 end
@@ -920,6 +934,7 @@ $1:
 
   ; Get arguments
   _func_get_args(argc(_func_args), _vars_regs(_func_args))
+  define(`_frame_offset', 0)dnl
 
   $4
 
@@ -952,7 +967,8 @@ define(`leave_isr', `leave_func($1)')
 ; Arg2: Offset from end of return frame (starting at 1)
 ; Ex: retvalue(s0, 1) ; First return value to be popped off after return
 ;     retvalue(s1, 2) ; Second value to return from func
-define(`retvalue', `ifelse(eval($2 > 0 && $2 <= _func_ret_num),1,`putstackat($1, eval($2 + argc(_func_args) + _func_frame_cleanup))',dnl
+define(`retvalue', `ifelse(eval($2 > 0 && $2 <= _func_ret_num),1,dnl
+  `putstackat($1, eval($2 + argc(_func_args) + _func_frame_cleanup + _frame_offset))',dnl
   `errmsg(`Invalid `func' return value offset: $2')')')
 
 ;---------------------------------
@@ -992,6 +1008,7 @@ popvars')
 
 
 ;=============== SHIFT AND ROTATE OPERATIONS ===============
+;===========================================================
 
 ;---------------------------------
 ; Repeat a string
@@ -1026,6 +1043,7 @@ define(`rr', `ifelse($#,0, ``$0'', `repeat(`rr $1', eval(const2m4($2)))')')
 
 
 ;=============== STACK OPERATIONS ===============
+;================================================
 
 ;---------------------------------
 ; Initialize and define stack pointer register.
@@ -1042,6 +1060,11 @@ define(`_initcheck', `ifdef(`$1',, `errmsg(`$2')')')
 define(`_stack_initcheck', `_initcheck(`_stackptr', `Stack is `not' initialized. Use `use_stack()' before any operation')')
 
 
+define(`_frame_offset', 0)
+
+define(`_inc_frame', `define(`_frame_offset', eval(_frame_offset + $1))')
+define(`_dec_frame', `define(`_frame_offset', eval(_frame_offset - $1))')
+
 
 ;---------------------------------
 ; Pseudo-stack operations using the scratchpad RAM
@@ -1053,14 +1076,14 @@ define(`_stack_initcheck', `_initcheck(`_stackptr', `Stack is `not' initialized.
 ;     push(s3, s4, s5)  ; Push and pop multiple registers at once
 ;     pop(s3, s4, s5)   ; Pop is performed in reverse order from push
 define(`push', `_stack_initcheck' `ifelse(`$1',,,`store $1, (_stackptr)  ; Push
-sub _stackptr, 01
+sub _stackptr, 01`'_inc_frame(1)
 $0(shift($@))')')
 
 
 define(`pop', `_pop(reverse($@))')
 
 define(`_pop', `_stack_initcheck' `ifelse(`$1',,,`add _stackptr, 01  ; Pop
-fetch $1, (_stackptr)
+fetch $1, (_stackptr)`'_dec_frame(1)
 $0(shift($@))')')
 
 
@@ -1118,7 +1141,7 @@ sub _stackptr, evalx($2, 16, 2)')
 ;Example:
 ;  dropstack(2)  ; Remove 2 values
 ;  dropstack(s1) ; Remove number of values specified in s1 register
-define(`dropstack', `_stack_initcheck' `add _stackptr, evalx($1, 16, 2)  ; Remove stack values')
+define(`dropstack', `_stack_initcheck' `_dec_frame($1)' `add _stackptr, evalx($1, 16, 2)  ; Remove stack values')
 
 ;---------------------------------
 ;Allocate local space on the stack
@@ -1128,10 +1151,11 @@ define(`dropstack', `_stack_initcheck' `add _stackptr, evalx($1, 16, 2)  ; Remov
 ;Example:
 ;  addstack(2)  ; Add 2 values
 ;  addstack(s1) ; Add number of values from s1
-define(`addstack', `_stack_initcheck' `sub _stackptr, evalx($1, 16, 2)  ; Add local stack values')
+define(`addstack', `_stack_initcheck' `_inc_frame($1)' `sub _stackptr, evalx($1, 16, 2)  ; Add local stack values')
 
 
 ;=============== STRING AND TABLE OPERATIONS ===============
+;===========================================================
 
 ;---------------------------------
 ; Repeated string function call operation (useful for PicoBlaze-3)
@@ -1422,6 +1446,7 @@ define(`ansi_reset',   `\e[0m')
 define(`colorize', `ifelse($3,bold,`ansi_$2(bold)',ansi_$2)$1`'ansi_reset')
 
 ;=============== ARITHMETIC OPERATIONS ===============
+;=====================================================
 
 ;---------------------------------
 ;2s complement negation
@@ -1807,6 +1832,7 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, _tempreg) return
 
 
 ;=============== EXPRESSIONS ===============
+;===========================================
 
 ;---------------------------------
 ; Expression evaluators
@@ -2256,6 +2282,7 @@ load16($1,$2, _div16s_quo)
 
 
 ;=============== 16-bit ARITHMETIC AND LOGICAL OPERATIONS ===============
+;========================================================================
 
 ;---------------------------------
 ; Create a virtual 16-bit register
@@ -2558,6 +2585,7 @@ repeat(`_rr16($1, $2)', eval(const2m4($3) - 8))',dnl
 
 
 ;=============== 16-bit I/O OPERATIONS ===============
+;=====================================================
 
 ;---------------------------------
 ; 16-bit fetch
@@ -2665,6 +2693,7 @@ add $3, 01')
 
 
 ;=============== RANDOM NUMBER GENERATORS ===============
+;========================================================
 
 ;---------------------------------
 ; 8-bit pseudo-random generator
@@ -2744,6 +2773,7 @@ define(`_strhash', `ifelse(`$1',,0,`pushdef(`_SH_CS',$0(shift($@)))'`eval(((_SH_
 
 
 ;=============== SCRATCHPAD ARRAY OPERATIONS ===============
+;===========================================================
 
 ;---------------------------------
 ;Generate a function to copy an array in scratchpad memory
@@ -2947,7 +2977,7 @@ define(`use_hexwrite', `; PRAGMA function $1 [$2, $3] begin
 ;Example:
 ;  use_int2bcd(int2bcd, 5, s0, s1, s2, s3, s4, s5) ; Support up to 5 decimal digits
 ;  load s0, 20 ; Dest address
-;  load s1, 2  ; Convert 16-bit number (2-bytes)
+;  load s1, 02 ; Convert 16-bit number (2-bytes)
 ;  load16(s4,s3, 31337)
 ;  push(s3,s4) ; Put number to convert on stack; LSB then MSB
 ;  call int2bcd
@@ -3015,6 +3045,7 @@ $1:  ; Convert a number on the stack into BCD stored in a scratchpad buffer of $
 
 
 ;=============== UPPERCASE MACROS ===============
+;================================================
 
 
 define(`EVALD', `evald($@)')
