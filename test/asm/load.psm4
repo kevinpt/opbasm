@@ -1,0 +1,19 @@
+include(`setup.m4')
+
+;VALIDATES: load_out, load_st
+
+for(s2 := 1, s2 < 255, s2 := s2 + 1) {
+  load_out(s0, s2, 0x01)
+  input s1, 01
+  assert_true(s0 == s1)
+}
+
+for(s2 := 1, s2 < 255, s2 := s2 + 1) {
+  load_st(s0, s2, 0x01)
+  fetch s1, 01
+  assert_true(s0 == s1)
+}
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

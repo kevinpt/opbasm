@@ -1,0 +1,270 @@
+include(`setup.m4')
+
+;VALIDATES: if, continue, break, while, dowhile, ifeq, ifne, iflt, ifge
+
+; == operator
+
+load s2, 01
+load s3, 01
+if(`s2 == s3',`load s0, 01', `load s0, 02')
+assert_true(s0 == 1)
+
+load s3, 04
+if(`s2 == s3',`load s0, 01', `load s0, 02')
+assert_true(s0 == 2)
+
+; != operator
+
+if(`s2 != s3',`load s0, 03', `load s0, 04')
+assert_true(s0 == 3)
+
+load s2, 04
+if(`s2 != s3',`load s0, 03', `load s0, 04')
+assert_true(s0 == 4)
+
+; & operator
+
+load s2, f0
+load s3, 80
+if(`s2 & s3', `load s0, 01', `load s0, 02')
+assert_true(s0 == 1)
+
+load s3, 08
+if(`s2 & s3', `load s0, 01', `load s0, 02')
+assert_true(s0 == 2)
+
+
+; < operator
+
+load s2, 00
+do {
+  load s3, s2
+  add s3, 01
+  
+  if(`s2 < s3', `load s0, 01', `load s0, 02')
+  assert_true(s0 == 1)
+
+  add s2, 01
+} while(s2 != 255)
+
+load s2, 01
+do {
+  load s3, s2
+  sub s3, 01
+  
+  if(`s2 < s3', `load s0, 01', `load s0, 02')
+  assert_true(s0 == 2)
+
+  add s2, 01
+} while(s2 != 0)
+
+
+; > operator
+
+load s2, 00
+do {
+  load s3, s2
+  add s3, 01
+  
+  if(`s2 > s3', `load s0, 01', `load s0, 02')
+  assert_true(s0 == 2)
+
+  add s2, 01
+} while(s2 != 255)
+
+load s2, 01
+do {
+  load s3, s2
+  sub s3, 01
+  
+  if(`s2 > s3', `load s0, 01', `load s0, 02')
+  assert_true(s0 == 1)
+
+  add s2, 01
+} while(s2 != 0)
+
+
+; <= operator
+
+load s2, 00
+do {
+  load s3, s2
+  
+  if(`s2 <= s3', `load s0, 01', `load s0, 02')
+  assert_true(s0 == 1)
+
+  add s2, 01
+} while(s2 != 0)
+
+load s2, 01
+do {
+  load s3, s2
+  sub s3, 01
+  
+  if(`s2 <= s3', `load s0, 01', `load s0, 02')
+  assert_true(s0 == 2)
+
+  add s2, 01
+} while(s2 != 0)
+
+
+; >= operator
+
+load s2, 00
+do {
+  load s3, s2
+  
+  if(`s2 >= s3', `load s0, 01', `load s0, 02')
+  assert_true(s0 == 1)
+
+  add s2, 01
+} while(s2 != 0)
+
+load s2, 00
+do {
+  load s3, s2
+  add s3, 01
+  
+  if(`s2 >= s3', `load s0, 01', `load s0, 02')
+  assert_true(s0 == 2)
+
+  add s2, 01
+} while(s2 != 255)
+
+
+; signed(<) operator
+
+load s2, evalh(-128)
+do {
+  load s3, s2
+  add s3, 01
+  
+  if(signed(`s2 < s3'), `load s0, 01', `load s0, 02')
+  assert_true(s0 == 1)
+
+  add s2, 01
+} while(s2 != 127)
+
+
+load s2, evalh(-127)
+do {
+  load s3, s2
+  sub s3, 01
+  
+  if(signed(`s2 < s3'), `load s0, 01', `load s0, 02')
+  assert_true(s0 == 2)
+
+  add s2, 01
+} while(s2 != 128)
+
+
+
+; signed(>) operator
+
+load s2, evalh(-128)
+do {
+  load s3, s2
+  add s3, 01
+  
+  if(signed(`s2 > s3'), `load s0, 01', `load s0, 02')
+  assert_true(s0 == 2)
+
+  add s2, 01
+} while(s2 != 127)
+
+
+load s2, evalh(-127)
+do {
+  load s3, s2
+  sub s3, 01
+  
+  if(signed(`s2 > s3'), `load s0, 01', `load s0, 02')
+  assert_true(s0 == 1)
+
+  add s2, 01
+} while(s2 != 128)
+
+
+; signed(<=) operator
+
+load s2, evalh(-128)
+do {
+  load s3, s2
+  
+  if(signed(`s2 <= s3'), `load s0, 01', `load s0, 02')
+  assert_true(s0 == 1)
+
+  add s2, 01
+} while(s2 != 128)
+
+load s2, evalh(-127)
+do {
+  load s3, s2
+  sub s3, 01
+  
+  if(signed(`s2 <= s3'), `load s0, 01', `load s0, 02')
+  assert_true(s0 == 2)
+
+  add s2, 01
+} while(s2 != 128)
+
+
+; signed(>=) operator
+
+load s2, evalh(-128)
+do {
+  load s3, s2
+  
+  if(signed(`s2 >= s3'), `load s0, 01', `load s0, 02')
+  assert_true(s0 == 1)
+
+  add s2, 01
+} while(s2 != 128)
+
+load s2, evalh(-128)
+do {
+  load s3, s2
+  add s3, 01
+  
+  if(signed(`s2 >= s3'), `load s0, 01', `load s0, 02')
+  assert_true(s0 == 2)
+
+  add s2, 01
+} while(s2 != 127)
+
+
+; Check continue and break
+
+load s2, 00
+for(s4 := 0, s4 < 10, s4 := s4 + 1) {
+  if(s4 == 5) { continue }
+  add s2, 01
+  if(s4 == 8) { break }
+}
+assert_true(s2 == 8)
+
+
+load s2, 00
+load s4, 00
+while(s4 < 10) {
+  add s4, 01
+  if(s4 == 5) { continue }
+  add s2, 01
+  if(s4 == 8) { break }
+}
+assert_true(s2 == 7)
+
+
+load s2, 00
+load s4, 00
+do {
+  add s4, 01
+  if(s4 == 5) { continue }
+  add s2, 01
+  if(s4 == 8) { break }
+} while(s4 < 10)
+assert_true(s2 == 7)
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

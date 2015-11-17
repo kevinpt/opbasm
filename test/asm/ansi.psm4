@@ -1,4 +1,6 @@
-include(`test/asm/setup.m4')
+include(`setup.m4')
+
+;VALIDATES: ansi_black, ansi_red, ansi_green, ansi_yellow, ansi_blue, ansi_magenta, ansi_cyan, ansi_white, ansi_reset, colorize
 
 ;:::::::::: Generate ANSI color strings ::::::::::
 
@@ -34,6 +36,11 @@ string(cyan_bold, ansi_cyan(bold)`foobar'ansi_reset`\n')
 string(white, ansi_white`foobar'ansi_reset`\n')
 string(white_bold, ansi_white(bold)`foobar'ansi_reset`\n')
 
+string(cred, colorize(`colorize macro red', red))
+string(cblue, colorize(`colorize macro blue', blue, bold))
+
+string(endl, `\n')
+
 main:
 
 call black
@@ -59,6 +66,12 @@ call cyan_bold
 
 call white
 call white_bold
+
+call cred
+call endl
+
+call cblue
+call endl
 
 
 ;:::::::::: Finish testcase ::::::::::

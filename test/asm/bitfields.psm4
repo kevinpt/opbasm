@@ -1,4 +1,4 @@
-include(`test/asm/setup.m4')
+include(`setup.m4')
 
 ;:::::::::: setbit ::::::::::
 

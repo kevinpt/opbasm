@@ -1,5 +1,6 @@
-include(`test/asm/setup.m4')
+include(`setup.m4')
 
+;VALIDATES: jlt, jge, jeq, jne
 
 vars(s0 is i, s1 is j, s2 is count)
 for(i := 0, i < 255, i := i + 1) {
