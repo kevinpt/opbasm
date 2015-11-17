@@ -23,7 +23,7 @@
 
 ## This module implements a rudimentary PicoBlaze-3 and -6 simulator primarily meant
 ## to run validation teats against the Opbasm macro libray. It supports the full
-## instruction set with the exception of HWBUILD on PB6.
+## instruction set for both architecutres.
 
 ## Hardware differences:
 ## * Overflowing or underflowing the call stack causes termination
@@ -129,7 +129,8 @@ type ProcState = object
   kports: array[0..15, uint8]
   scratchpad: array[0..63, uint8]
 
-  rom: ref RomInfo  
+  rom: ref RomInfo
+  hwbuild : uint8
   
   totalInsts: int
   termination: simTermination
@@ -614,10 +615,16 @@ template do_star(): expr =
                                           toHex(y,1), (if state.curFlags.activeBank == 0: "A" else: "B")])
   state.regs[1 - state.curFlags.activeBank][x] = state.regs[state.curFlags.activeBank][y]
 
+template do_hwbuild(): expr =
+  reportInst("Hwbuild s$# = $#" % [toHex(x,1), toHex(state.hwbuild.int32,2)])
+  state.regs[state.curFlags.activeBank][x] = state.hwbuild
+  state.curFlags.c = true
+  state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
 
 
 
-proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8], intVec: int32 = 0x3FF): ref ProcState =
+
+proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8], intVec: int32 = 0x3FF, hwbuild: uint8 = 0): ref ProcState =
   ## Initialize a procState object
   var state: ref ProcState
   new state
@@ -632,6 +639,8 @@ proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8
   state.intActive = true
   state.intFlag = false
   state.intVec = intVec
+  
+  state.hwbuild = hwbuild
   
   
   # Index which peripherals are on each in/out port
@@ -739,7 +748,7 @@ template simulateLoop(): expr =
         of 0x0A: do_srx()
         of 0x08: do_sra()
         of 0x0C: do_rr()
-        of 0x80: do_unsupportedOp() # HWBUILD
+        of 0x80: do_hwbuild() # HWBUILD
         else: do_badOp
 
       of 0x37: do_regbank()
