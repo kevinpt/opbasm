@@ -1265,7 +1265,8 @@ sub _stackptr, evalx($2, 16, 2)')
 ;Example:
 ;  dropstack(2)  ; Remove 2 values
 ;  dropstack(s1) ; Remove number of values specified in s1 register
-define(`dropstack', `_stack_initcheck' `_dec_frame($1)' `add _stackptr, evalx($1, 16, 2)  ; Remove stack values')
+define(`dropstack', `_stack_initcheck' `ifelse(isnum($1),1,`_dec_frame($1)')'dnl
+`add _stackptr, evalx($1, 16, 2)  ; Remove stack values')
 
 ;---------------------------------
 ;Allocate local space on the stack
@@ -1275,7 +1276,8 @@ define(`dropstack', `_stack_initcheck' `_dec_frame($1)' `add _stackptr, evalx($1
 ;Example:
 ;  addstack(2)  ; Add 2 values
 ;  addstack(s1) ; Add number of values from s1
-define(`addstack', `_stack_initcheck' `_inc_frame($1)' `sub _stackptr, evalx($1, 16, 2)  ; Add local stack values')
+define(`addstack', `_stack_initcheck' `ifelse(isnum($1),1,`_inc_frame($1)')'dnl
+`sub _stackptr, evalx($1, 16, 2)  ; Add local stack values')
 
 
 ;=============== STRING AND TABLE OPERATIONS ===============
