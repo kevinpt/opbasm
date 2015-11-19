@@ -314,7 +314,7 @@ The ``maskh()`` macro works like ``mask()`` but produces a result in PicoBlaze h
 Shift and rotate
 ----------------
 
-Shifts and rotates are inconvenient in PicoBlaze assembly because they must be performed one bit at a time. Macros are provided that generate shifts and rotates by any number of bits more easily.
+Shifts and rotates are inconvenient in PicoBlaze assembly because they must be performed one bit at a time. Macros are provided that generate shifts and rotates by any number of bits more easily. The shift amount must be a constant integer. It cannot come from another register.
 
 .. code-block:: picoblaze
 
@@ -322,7 +322,7 @@ Shifts and rotates are inconvenient in PicoBlaze assembly because they must be p
   sl0(s0, 4)  ; Shift left by 4 bits  s0 = 00010000'b
   sr1(s0, 3)  ; Shift right by 3 bits with 1's inserted  s0 = 11100010'b
 
-All 10 of the PicoBlaze shift and an rotate instructions have macro equivalents. The original instructions can still be used as usual.
+All 10 of the PicoBlaze shift and rotate instructions have macro equivalents. The original instructions can still be used as usual.
 
 .. _Conditional jump, call, and return:
 

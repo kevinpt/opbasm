@@ -1,0 +1,78 @@
+include(`setup.m4')
+
+;VALIDATES: ansi_black, ansi_red, ansi_green, ansi_yellow, ansi_blue, ansi_magenta, ansi_cyan, ansi_white, ansi_reset, colorize
+
+;:::::::::: Generate ANSI color strings ::::::::::
+
+jump main
+
+use_strings(s0, sA,sB, write_char)
+
+write_char:
+  output s0, portConsole
+  return
+
+string(black, ansi_black`foobar'ansi_reset`\n')
+string(black_bold, ansi_black(bold)`foobar'ansi_reset`\n')
+
+string(red, ansi_red`foobar'ansi_reset`\n')
+string(red_bold, ansi_red(bold)`foobar'ansi_reset`\n')
+
+string(green, ansi_green`foobar'ansi_reset`\n')
+string(green_bold, ansi_green(bold)`foobar'ansi_reset`\n')
+
+string(yellow, ansi_yellow`foobar'ansi_reset`\n')
+string(yellow_bold, ansi_yellow(bold)`foobar'ansi_reset`\n')
+
+string(blue, ansi_blue`foobar'ansi_reset`\n')
+string(blue_bold, ansi_blue(bold)`foobar'ansi_reset`\n')
+
+string(magenta, ansi_magenta`foobar'ansi_reset`\n')
+string(magenta_bold, ansi_magenta(bold)`foobar'ansi_reset`\n')
+
+string(cyan, ansi_cyan`foobar'ansi_reset`\n')
+string(cyan_bold, ansi_cyan(bold)`foobar'ansi_reset`\n')
+
+string(white, ansi_white`foobar'ansi_reset`\n')
+string(white_bold, ansi_white(bold)`foobar'ansi_reset`\n')
+
+string(cred, colorize(`colorize macro red', red))
+string(cblue, colorize(`colorize macro blue', blue, bold))
+
+string(endl, `\n')
+
+main:
+
+call black
+call black_bold
+
+call red
+call red_bold
+
+call green
+call green_bold
+
+call yellow
+call yellow_bold
+
+call blue
+call blue_bold
+
+call magenta
+call magenta_bold
+
+call cyan
+call cyan_bold
+
+call white
+call white_bold
+
+call cred
+call endl
+
+call cblue
+call endl
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

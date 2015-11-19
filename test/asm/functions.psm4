@@ -1,0 +1,70 @@
+include(`setup.m4')
+
+;VALIDATES: proc, func, isr, leave_func, leave_isr
+
+jump main
+
+proc proc1(s0 is result := 1) {
+  load result, 42
+}
+
+func func1(s1 is val) : 1 {
+  push(s0)
+  addstack(4)
+  load s0, val
+  add s0, 01
+  retvalue(s0, 1)
+  dropstack(4)
+  pop(s0)
+  
+  leave_func
+  
+  load s0, 52
+}
+
+
+isr 0x3FF(s0, s1, s2) : enable {
+
+  disable interrupt ; Redundant, but here to test the assembler
+  load s0, 01
+  load s1, 02
+  load s2, 03
+  
+  store s2, 00
+  
+  leave_isr
+  
+  store s1, 00
+}
+
+main:
+
+
+call proc1
+assert_true(s0 == 0x42)
+
+load s1, 5a
+load s4, 0a
+func1(s4)
+pop(s5)
+assert_true(s5 == 11)
+assert_true(s0 == 0x42)
+assert_true(s1 == 0x5a)
+
+load s0, 42
+load s1, 43
+load s2, 44
+
+; Trigger ISR
+output s0, portISR
+
+; ISR executes here
+
+fetch s3, 00
+assert_true(s3 == 0x03)
+assert_true(s0 == 0x42)
+assert_true(s1 == 0x43)
+assert_true(s2 == 0x44)
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

@@ -1,0 +1,47 @@
+include(`setup.m4')
+
+;VALIDATES: use_strings, use_packed_strings
+
+;:::::::::: Generate portable strings ::::::::::
+
+jump main
+
+use_strings(s0, sA,sB, write_char)
+use_strings(s1, sA,sB, write_char2, alt_string)
+use_packed_strings(s0, s1, sA,sB, write_char, read_next_chars)
+
+write_char:
+  output s0, portConsole
+  return
+
+write_char2:
+  output s1, portConsole
+  return
+  
+mem16(P_ROM, 0xFA,0xFB)            ; Define 16-bit port addresses for dual-ported ROM  
+read_next_chars:
+            output16(sA,sB, P_ROM) ; Select next address from second port
+            nop
+            input16(s0,s1, P_ROM)  ; Read back upper and lower byte
+            return
+
+
+ifdef(`PB6', `
+string my_str$, "abc"')
+
+string(hello_str, `Hello world\n')
+
+alt_string(hello_alt, `Hello world alternative\n')
+
+packed_string(hello_packed, `Hello world packed in ROM\n')
+
+
+main:
+
+call hello_str
+call hello_alt
+call hello_packed
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

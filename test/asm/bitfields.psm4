@@ -1,0 +1,102 @@
+include(`setup.m4')
+
+;:::::::::: setbit ::::::::::
+
+load s4, 00
+
+setbit(s4,0)
+assert_true(s4 == 0x01)
+
+setbit(s4,1)
+assert_true(s4 == 0x03)
+
+setbit(s4,2)
+assert_true(s4 == 0x07)
+
+setbit(s4,3)
+assert_true(s4 == 0x0F)
+
+setbit(s4,4)
+assert_true(s4 == 0x1F)
+
+setbit(s4,5)
+assert_true(s4 == 0x3F)
+
+setbit(s4,6)
+assert_true(s4 == 0x7F)
+
+setbit(s4,7)
+assert_true(s4 == 0xFF)
+
+
+;:::::::::: clearbit ::::::::::
+
+clearbit(s4,0)
+assert_true(s4 == 0xFE)
+
+clearbit(s4,1)
+assert_true(s4 == 0xFC)
+
+clearbit(s4,2)
+assert_true(s4 == 0xF8)
+
+clearbit(s4,3)
+assert_true(s4 == 0xF0)
+
+clearbit(s4,4)
+assert_true(s4 == 0xE0)
+
+clearbit(s4,5)
+assert_true(s4 == 0xC0)
+
+clearbit(s4,6)
+assert_true(s4 == 0x80)
+
+clearbit(s4,7)
+assert_true(s4 == 0x00)
+
+;:::::::::: setmask / clearmask ::::::::::
+
+load s4, 00
+
+setmask(s4, mask(7,0))
+assert_true(s4 == 0x81)
+
+clearmask(s4, mask(3,2,1,0))
+assert_true(s4 == 0x80)
+
+
+;:::::::::: testbit ::::::::::
+
+
+load s4, 5A
+
+testbit(s4,0)
+assert_z
+
+testbit(s4,1)
+assert_nz
+
+testbit(s4,2)
+assert_z
+
+testbit(s4,3)
+assert_nz
+
+testbit(s4,4)
+assert_nz
+
+testbit(s4,5)
+assert_z
+
+testbit(s4,6)
+assert_nz
+
+testbit(s4,7)
+assert_z
+
+
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

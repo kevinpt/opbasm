@@ -1,0 +1,25 @@
+include(`setup.m4')
+
+;VALIDATES: clearcy, setcy
+
+;:::::::::: carry ::::::::::
+
+clearcy
+assert_nc
+
+setcy
+assert_c
+
+load s0, ff
+add s0, 02
+assert_c
+
+sub s0, 02
+assert_c
+
+sub s0, 02
+assert_nc
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

@@ -1,0 +1,40 @@
+include(`setup.m4')
+
+;VALIDATES: sl0, sr0, sla, sra, slx, srx, rl, rr
+
+;:::::::::: Shifts and rotates ::::::::::
+
+load s0, 40
+
+sl0(s0, 1)
+assert_true(s0 == 0x80)
+sr0(s0, 2)
+assert_true(s0 == 0x20)
+
+load s0, 0F
+sla(s0, 3)
+assert_true(s0 == 0x78)
+setcy
+sra(s0, 4)
+assert_true(s0 == 0x17)
+
+load s0, 0D
+slx(s0, 5)
+assert_true(s0 == 0xBF)
+srx(s0, 6)
+assert_true(s0 == 0xFE)
+
+load s0, 30
+srx(s0, 2)
+assert_true(s0 == 0x0C)
+slx(s0, 3)
+assert_true(s0 == 0x60)
+
+load s0, 81
+rl(s0, 2)
+assert_true(s0 == 0x06)
+rr(s0, 3)
+assert_true(s0 == 0xC0)
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

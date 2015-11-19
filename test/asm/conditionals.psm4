@@ -1,0 +1,78 @@
+include(`setup.m4')
+
+;VALIDATES: jlt, jge, jeq, jne
+
+vars(s0 is i, s1 is j, s2 is count)
+for(i := 0, i < 255, i := i + 1) {
+  load j, 00
+  load count, 00
+  jlt_loop:
+    compare j, i
+    jlt(less_than)
+    jump jlt_endl
+    less_than:
+    add count, 01
+    jlt_endl:
+    add j, 01
+    jump nz, jlt_loop
+
+  sub count, i
+  assert_true(count == 0)
+}
+
+
+for(i := 0, i < 255, i := i + 1) {
+  load j, 00
+  load count, 00
+  jge_loop:
+    compare j, i
+    jge(greater_than)
+    jump jge_endl
+    greater_than:
+    add count, 01
+    jge_endl:
+    add j, 01
+    jump nz, jge_loop
+
+  ; count = 255 - i + 1 --> 0 - i
+  load s4, 00
+  sub s4, i
+  assert_true(count == s4)
+}
+
+
+for(i := 0, i < 255, i := i + 1) {
+  load j, 00
+  load count, 00
+  jeq_loop:
+    compare j, i
+    jeq(equal_to)
+    jump jeq_endl
+    equal_to:
+    add count, 01
+    jeq_endl:
+    add j, 01
+    jump nz, jeq_loop
+
+  assert_true(count == 1)
+}
+
+for(i := 0, i < 255, i := i + 1) {
+  load j, 00
+  load count, 00
+  jne_loop:
+    compare j, i
+    jne(not_equal_to)
+    jump jne_endl
+    not_equal_to:
+    add count, 01
+    jne_endl:
+    add j, 01
+    jump nz, jne_loop
+
+  assert_true(count == 255)
+}
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

@@ -1,0 +1,12 @@
+include(`setup.m4')
+
+use_clock(50)
+use_delay_reg(s9)
+
+;:::::::::: delay_us ::::::::::
+
+delay_us(1000, s4,s5)
+; FIXME: add validation
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

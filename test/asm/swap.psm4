@@ -1,0 +1,16 @@
+include(`setup.m4')
+
+;VALIDATES: swap
+
+;:::::::::: swap ::::::::::
+
+load s0, 42
+load s1, 32
+
+swap(s0,s1)
+
+assert_true(s0 == 0x32)
+assert_true(s1 == 0x42)
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

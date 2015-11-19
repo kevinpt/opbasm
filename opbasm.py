@@ -225,15 +225,15 @@ def fail(s, loc, tokens):
 
 regex_parser = re.compile(r'''
   (?:
-    (?P<label>\w+):\s*
+    (?P<label>[.\w]+):\s*
   )?
   (?:
     (?P<cmd>[\w&@]+)\s*
     (?:
-        (?:(?P<arg1>[\w~'#$]+)\s*|(?P<arg1s>".+")\s*)
-        (?:,\s*(?P<arg2>[\w~'%#$]+)|,\s*\(\s*(?P<arg2b>\w+)\s*\)
+        (?:(?P<arg1>[.\w~'#$]+)\s*|(?P<arg1s>".+")\s*)
+        (?:,\s*(?P<arg2>[.\w~'%#$]+)|,\s*\(\s*(?P<arg2b>\w+)\s*\)
         |,\s*\[(?P<arg2t>[^\]]+\]('[db])?)|,\s*(?P<arg2s>".+"))?
-        |\(\s*(?P<addr1>[\w~']+)\s*,\s*(?P<addr2>[\w~']+)\s*\)
+        |\(\s*(?P<addr1>[.\w~']+)\s*,\s*(?P<addr2>[.\w~']+)\s*\)
     )?\s*
   )?
   (?P<cmnt>;.*)?$
@@ -335,6 +335,7 @@ class Statement(object):
     self.line = line
     self.ix_line = ix_line
     self.label = ptree['label'][0] if 'label' in ptree else None
+    self.xlabel = self.label
     self.comment = ptree['comment'][0] if 'comment' in ptree else None
 
     self.command = None
@@ -557,6 +558,7 @@ class Assembler(object):
     self.constants = self._init_constants()
     self.labels = {}
     self.removed_labels = set()
+    self.cur_context = ''
 
     self.registers = None
     self.init_registers()
@@ -645,7 +647,14 @@ class Assembler(object):
 
     self.m4_file_num += 1
 
-    m4_options = '-s' # Activate synclines so we can track original line numbers
+    m4_options = ['-s'] # Activate synclines so we can track original line numbers
+
+    source_dir = os.path.dirname(source_file)
+    if len(source_dir) > 0:
+      # Add source file directory to m4 search path for include() macros
+      m4_options.append('-I ' + os.path.dirname(source_file))
+
+    m4_options = ' '.join(m4_options)
     
     m4_defines = self.m4_defines.copy()
     # Set default defines for m4, overriding any attempt to redefine them by the user
@@ -741,6 +750,14 @@ class Assembler(object):
     ecode = re.sub(r'if\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'if(\1, `', ecode) # if statement
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*else(?:\s*;.*\n)*\s*{', r"', `", ecode) # else clause
     ecode = re.sub(r'do(?:\s*;.*\n)*\s*{', r'_dowhile2(`', ecode) # start of do-while
+
+    # proc def
+    ecode = re.sub(r'proc\s+(\w+)\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"proc(\1,`\2',`", ecode)
+    # func def
+    ecode = re.sub(r'func\s+(\w+)\s*\(([^)]*)\)\s*:?\s*(\d*)(?:\s*;.*\n)*\s*{', r"func(\1,`\2',\3,`", ecode)
+    # isr def
+    ecode = re.sub(r'isr\s+(\w+)\s*\(([^)]*)\)\s*:?\s*(\w*)(?:\s*;.*\n)*\s*{', r"isr(\1,`\2',`\3',`", ecode)
+
     # while following a block
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"')\nwhile(\1, `", ecode)
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)', r"',\1)", ecode) # end of do-while
@@ -823,10 +840,18 @@ class Assembler(object):
     for s in slist:
       # Track label sources
       if s.label is not None:
-        if s.label in self.labels:
-          raise FatalError(s, _('Redefinition of label:'), s.label)
+        if s.label.startswith('.'): # Local label
+          xlabel = self.expand_label(s.label)
+          s.xlabel = xlabel
+        else: # Global label
+          self.cur_context = s.label
+          xlabel = s.label
 
-        self.labels[s.label] = Symbol(s.label, -1, source_file=source_file, source_line=s.line)
+        if xlabel in self.labels:
+          raise FatalError(s, _('Redefinition of label:'), xlabel)
+
+        #print('### LABEL DEF:', xlabel)
+        self.labels[xlabel] = Symbol(s.label, -1, source_file=source_file, source_line=s.line)
 
       # Recursively include additional sources
       if s.command == 'include':
@@ -922,7 +947,8 @@ class Assembler(object):
   def flatten_includes(self, slist, include_stack=None):
     '''Generator function that produces a flattened list of statements
     after evaluating INCLUDE directives.
-    slist : List of statements from top-level source file
+
+    slist         : List of statements from top-level source file
     include_stack : Stack of parent source files used to detect recursive includes
     '''
     if include_stack is None: include_stack = [self.top_source_file]
@@ -946,12 +972,21 @@ class Assembler(object):
       else:
         yield s
 
+  def expand_label(self, addr_label):
+    if addr_label.startswith('.'):
+      return self.cur_context + addr_label
+    else:
+      return addr_label
+
 
   def get_address(self, addr_label):
     '''Lookup the address assigned to addr_label'''
-    if addr_label in self.labels:
-      self.labels[addr_label].in_use = True
-      return self.labels[addr_label].value
+
+    xlabel = self.expand_label(addr_label)
+    #print('## GA:', addr_label, xlabel)
+    if xlabel in self.labels:
+      self.labels[xlabel].in_use = True
+      return self.labels[xlabel].value
     else:
       return convert_literal(addr_label)
 
@@ -1062,7 +1097,19 @@ class Assembler(object):
     # Pass 2: Set instruction and label addresses
     for s in slist:
       if s.label is not None:
-        self.labels[s.label].value = cur_addr
+        if s.label.startswith('.'): # Local label
+          xlabel = s.xlabel
+        else: # Global label
+          #print('### GLOBAL:', s.label)
+          self.cur_context = s.label
+          xlabel = s.label
+
+        #print('### SET LABEL:', xlabel)
+        if xlabel not in self.labels:
+          raise FatalError(s, _('Label not found "{}". Possibly removed.').format(xlabel))
+
+        self.labels[xlabel].value = cur_addr
+        s.address = cur_addr
 
       if s.is_instruction():
         if bounds_check and cur_addr >= self.mem_size:
@@ -1073,7 +1120,7 @@ class Assembler(object):
         cur_addr += self.statement_words(s) # Move to next address. Could be > 1 if a string or table operand
 
       elif s.command == 'address':
-        cur_addr = convert_literal(s.arg1)
+        cur_addr = self.get_address(s.arg1)
         if cur_addr is None:
           raise FatalError(s, _('Invalid address:'), s.arg1)
 
@@ -1086,14 +1133,19 @@ class Assembler(object):
       if s.is_instruction():
         cur_addr = s.address
         continue
-      elif s.label or s.comment or s.command:
+      elif s.comment or s.command:
         s.address = cur_addr
 
     
 
     # Pass 3: Validate and assemble instructions
     instructions = []
+    self.cur_context = ''
     for s in slist:
+      addr_label = None
+
+      if s.label is not None and not s.label.startswith('.'):
+        self.cur_context = s.label
 
       if s.is_instruction():
         # Verify instruction is valid
@@ -1154,7 +1206,8 @@ class Assembler(object):
 
             if s.immediate is None:
               if s.arg2.endswith("'upper") or s.arg2.endswith("'lower"):
-                if s.arg2.split("'")[0] in self.removed_labels:
+                xlabel = self.expand_label(s.arg2.split("'")[0])
+                if xlabel in self.removed_labels:
                   raise FatalError(s, _('Label has been removed: {}\n       Add ";PRAGMA keep [on,off]" to preserve this label').format(s.arg2))
                 else:
                   raise FatalError(s, _('Unknown label:'), s.arg2)
@@ -1204,11 +1257,14 @@ class Assembler(object):
 
           elems = []
           if s.arg2.endswith('$'):
-            self.strings[s.arg2].in_use = True # FIXME: this should all happen in get_string()?
-            elems = [(ord(e), '"{}"'.format(e)) for e in self.strings[s.arg2].value]
+            string_data = self.get_string(s.arg2)
+            if string_data is not None:
+              elems = [(ord(e), '"{}"'.format(e)) for e in string_data]
+
           elif s.arg2.endswith('#'):
-            self.tables[s.arg2].in_use = True # FIXME: this should all happen in get_table()?
-            elems = [(e, '{:02X}'.format(e)) for e in self.tables[s.arg2].value]
+            table_data = self.get_table(s.arg2)
+            if table_data is not None:
+              elems = [(e, '{:02X}'.format(e)) for e in table_data]
 
           if len(elems) > 0:
             for i, (e, e_text) in enumerate(elems):
@@ -1246,6 +1302,7 @@ class Assembler(object):
             elems = [(e, '{:02X}'.format(e)) for e in self.tables[s.arg1].value]
 
           if len(elems) > 0: # Table or string argument
+            # Create expanded load&return instructions for each element in string or table
             for i, (e, e_text) in enumerate(elems):
               new_s = copy.deepcopy(s)
               new_s.immediate = (e << 4) + port
@@ -1349,7 +1406,7 @@ class Assembler(object):
       prev_jump = None
       for s in instructions:
         if s.label is not None:
-          cur_label = s.label
+          cur_label = s.xlabel
           prev_jump = None
         
         unconditional_jump = s.command == 'jump' and s.arg2 is None
@@ -1394,6 +1451,22 @@ class Assembler(object):
       self.default_jump = self.op_info['opcodes']['jump'] + self.default_jump
 
     return instructions
+
+
+  def remove_dead_code(self, assembled_code):
+    '''Mark unreachable code for removal'''
+    for s in assembled_code:
+      if s.removable():
+        s.comment = _('REMOVED: ') + s.format().lstrip()
+        s.command = None
+        if s.label is not None:
+          if s.xlabel in self.labels:
+            #print('### Deleting label:', s.xlabel)
+            del self.labels[s.xlabel]
+            self.removed_labels.add(s.xlabel)
+          s.label = None
+          s.xlabel = None
+
 
 
 def hex_to_int(s):
@@ -1557,6 +1630,13 @@ def build_memmap(slist, mem_size, default_jump):
           crc = gen_crc(16, 9, poly, 0x0000, xor, reflect, reflect, mmap9)
           print('### CRC: {:04X} {:04X} {:5s} = {:04X}'.format(xor, poly, str(reflect), crc))
   return mmap
+
+
+def find_dead_code(assembled_code, entry_points):
+  '''Perform dead code analysis'''
+  itable = build_instruction_table(assembled_code)
+  analyze_code_reachability(assembled_code, itable, entry_points)
+  analyze_recursive_keeps(assembled_code, itable)
 
 
 def build_instruction_table(slist):
@@ -1924,8 +2004,6 @@ def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
     for r in format_table(rows, headings, indent=3):
       printf(r)
 
-
-
 def build_xilinx_mem_init(mmap, split_data=False):
   '''Create a dict of Xilinx BRAM INIT and INITP strings'''
   minit = {}
@@ -1981,6 +2059,38 @@ def build_9_bit_mem_init(mmap, minit, bit_range):
 
     init = ''.join('{:01X}'.format(n & 0xF) for n in reversed(nibbles))
     minit['[{}]_INITP_{:02X}'.format(bit_range, a)] = init
+
+
+try:
+  from  opbasm_lib.hamming import secded_encode_num
+  
+  def build_xilinx_ecc_mem_init(mmap):
+    '''Create a dict of Xilinx BRAM INIT and INITP strings for the 7-series ECC template'''
+    minit = {}
+
+    # ECC memory is 1.5K long. We must first fold three 500-byte blocks into 64-bit words
+    folded = [(z << 40) + (y << 20) + x for x,y,z in zip(mmap[0:0x200], mmap[0x200:0x400], mmap[0x400:0x600])]
+
+    # Merge every 4 folded words into an init word
+    for a in xrange(len(folded) // 4):
+      mline = folded[a*4:(a+1)*4]
+      init = ''.join('{:016X}'.format(w) for w in reversed(mline))
+      minit['ECC_7S_1K5_INIT_{:02X}'.format(a)] = init
+
+    # Compute Hamming ECC (72,64) and store in INITPs
+    hamming = [secded_encode_num(w, 64) for w in folded]
+
+    for a in xrange(len(folded) // 32):
+      mline = hamming[a*32:(a+1)*32]
+      init = ''.join('{:02X}'.format(w) for w in reversed(mline))
+      minit['ECC_7S_1K5_INITP_{:02X}'.format(a)] = init
+
+    return minit
+
+except ImportError:
+  def build_xilinx_ecc_mem_init(mmap):
+    return {}
+
 
 
 def build_default_jump_inits(default_jump):
@@ -2041,7 +2151,8 @@ def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp, default
   # We don't support {psmname} because it is followed by a hard-coded extension in the templates which may be invalid
   hdl = hdl.replace('{name}', os.path.splitext(hdl_file)[0])
   hdl = hdl.replace('{timestamp}', timestamp)
-  # {default_jump} # Used in ROM_form_7S_1K5_with_ecc
+  # Used in ROM_form_7S_1K5_with_ecc
+  hdl = hdl.replace('{default_jump}', '{:018b}'.format(default_jump))
   # {CRC_2K}       # Used in ROM_form_7S_2K_with_error_detection
 
   with io.open(hdl_file, 'w', encoding='latin1') as fh:
@@ -2110,6 +2221,11 @@ def find_templates(template_file):
 
   return templates
 
+class TemplateDataFormat(object):
+  ROM9    = 9
+  ROM18   = 18
+  ROMBoth = 19
+  ROMECC  = 20  # Special ECC template using 7-series BRAM ECC hardware
 
 def template_data_size(template_file):
   ''''Determine the data bus width used by an HDL template
@@ -2127,25 +2243,37 @@ def template_data_size(template_file):
   init_9 = False
   init_18 = False
 
+  signatures = {'init_9': '{[8:0]_INIT_00}', 'init_18': '{INIT_00}',
+              'init_ecc': '{ECC_7S_1K5_INIT_00}'}
+
+  found_sigs = set()
+
+  # Search for a line containing each possible signature
   with io.open(template_file, 'r', encoding='latin1') as fh:
     for l in fh:
-      if '{[8:0]_INIT_00}' in l:
-        init_9 = True
-        break
+      for name, sig in signatures.iteritems():
+        if sig in l:
+          found_sigs.add(name)
+          break
 
-    fh.seek(0)
-    for l in fh:
-      if '{INIT_00}' in l:
-        init_18 = True
-        break
-        
-  if init_18 and init_9: # This is a ROM_form.vhdl file containing both memories
-    return -1
-  elif init_9:
-    return 9
+  data_format = None
+
+  # Determine which format is in use
+  if 'init_9' in found_sigs or 'init_18' in found_sigs:
+    if 'init_9' in found_sigs and 'init_18' in found_sigs:
+      data_format = TemplateDataFormat.ROMBoth
+    elif 'init_9' in found_sigs:
+      data_format = TemplateDataFormat.ROM9
+    else:
+      data_format = TemplateDataFormat.ROM18
   else:
-    return 18
-        
+    if 'init_ecc' in found_sigs:
+      data_format = TemplateDataFormat.ROMECC
+
+  if data_format is None:
+    asm_error(_('Cannot determine template data format'), exit=1)
+
+  return data_format
 
 
 import shutil
@@ -2270,9 +2398,7 @@ def main():
     printq(_('  Static analysis: searching for dead code... '), end='')
     entry_points = set((asm.default_jump & 0xFFF, 0))
     entry_points |= set(options.entry_point)
-    itable = build_instruction_table(assembled_code)
-    analyze_code_reachability(assembled_code, itable, entry_points)
-    analyze_recursive_keeps(assembled_code, itable)
+    find_dead_code(assembled_code, entry_points)
     printq(success(_('COMPLETE')))
 
     # Summarize analysis
@@ -2281,23 +2407,15 @@ def main():
     dead_instructions = len([s for s in assembled_code if s.removable()])
     printq(_('    {} dead instructions found').format(dead_instructions))
 
+
   if options.remove_dead_code:
-    # Remove dead code
-    for s in assembled_code:
-      if s.removable():
-        s.comment = _('REMOVED: ') + s.format().lstrip()
-        s.command = None
-        if s.label is not None:
-          if s.label in asm.labels:
-            #print('### Deleting label:', s.label)
-            del asm.labels[s.label]
-            asm.removed_labels.add(s.label)
-          s.label = None
+    asm.remove_dead_code(assembled_code)
 
     # Reinitialize registers to default names
     asm.init_registers()
 
     printq(_('  Removing dead code... '), end='')
+    # Reassemble code with dead code removed
     try:
       assembled_code = asm.raw_assemble(assembled_code)
     except FatalError, e:
@@ -2372,14 +2490,18 @@ def main():
 
   for hdl_name, template_file in templates.iteritems():
     # Prepare INIT strings for the memory width found in the template
-    data_size = template_data_size(templates[hdl_name])
-    if data_size < 0: # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
+    data_format = template_data_size(templates[hdl_name])
+    if data_format == TemplateDataFormat.ROMBoth: # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
       minit = minit_9.copy()
       minit.update(minit_18) # Merge the init strings together for both types
-    elif data_size == 9:
+    elif data_format == TemplateDataFormat.ROM9:
       minit = minit_9
-    else: # 18-bit only
+    elif data_format == TemplateDataFormat.ROM18:
       minit = minit_18
+    elif data_format == TemplateDataFormat.ROMECC:
+      minit = build_xilinx_ecc_mem_init(mmap)
+    else:
+      asm_error(_('Unknown template data format'), exit=1)
 
     target_file = vhdl_file if hdl_name == 'vhdl' else verilog_file
     file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')

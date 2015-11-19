@@ -60,7 +60,8 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
   JSONP("https://api.github.com/users/kevinpt/repos?type=owner&callback=?", function(response) {
     var projects = {};
     $.each(response.data, function(index, value) {
-      projects[value.name] = value.homepage;
+      if(!value.fork)
+        projects[value.name] = value.homepage;
     });
     
     insert_projects(projects);

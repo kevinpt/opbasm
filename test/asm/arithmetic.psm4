@@ -1,0 +1,94 @@
+include(`setup.m4')
+
+;VALIDATES: negate, not, abs, signex, compares
+
+;:::::::::: Arithmetic ::::::::::
+
+; negate
+load s0, 00
+do {
+  load s1, s0
+  negate(s1)
+  load s2, s1
+  negate(s2)
+  assert_true(s2 == s0)
+  add s2, s1
+  assert_true(s2 == 0)
+  
+  add s0, 01
+} while( s0 != 0 )
+
+
+; not
+load s0, 00
+do {
+  load s1, s0
+  not(s1)
+  load s2, s1
+  not(s2)
+  assert_true(s2 == s0)
+  
+  add s0, 01
+} while( s0 != 0 )
+
+
+; abs
+load s0, 00
+do {
+  load s1, s0
+  abs(s1)
+  
+  if( s0 <= 0x7F ) { ; Positive number
+    assert_true(s1 == s0)
+  } else { ; Negative number
+    add s1, s0
+    assert_true(s1 == 0)
+  }
+  
+  add s0, 01
+} while( s0 != 0 )
+
+; signex
+load s0, 00
+do {
+  load s1, s0
+  signex(s2, s1)
+  
+  if( s0 <= 0x7F ) { ; Positive number
+    assert_true(s2 == 0)
+  } else { ; Negative number
+    assert_true(s2 == 0xFF)
+  }
+  
+  add s0, 01
+} while( s0 != 0 )
+
+
+; compares
+load s0, 01
+do {
+  load s1, s0
+  load s2, 00
+  
+  if( s0 <= 0x7F ) { ; Positive number
+    compares(s1, 00)
+    assert_nc
+
+    compares(s1, s2)
+    assert_nc
+
+  } else { ; Negative number
+    compares(s1, 00)
+    assert_c
+    
+    compares(s1, s2)
+    assert_c
+  }
+  
+  add s0, 01
+} while( s0 != 0 )
+
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

@@ -324,7 +324,7 @@
 
 
         <define-regex id="label" extended="true">
-          (?&lt;![\w\.]) (\w+:) (?![\w\.])
+          (?&lt;![\w\.]) ([.\w]+:) (?![\w\.])
         </define-regex>
 
         <context id="label" style-ref="label">
