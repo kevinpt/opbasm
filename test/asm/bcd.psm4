@@ -1,0 +1,97 @@
+include(`setup.m4')
+
+;VALIDATES: use_int2bcd, use_bcd2int
+
+;:::::::::: BCD conversion ::::::::::
+jump main
+
+use_int2bcd(int2bcd, 5, s0, s1,  s2,s3,s4,s5)
+use_bcd2int(bcd2int, s0, s1,  s2,s3,s4,s5,s6)
+
+main:
+
+; Convert all 8-bit numbers
+
+load s0, 20 ; Buffer address
+load sA, 00
+do {
+  load s1, 01 ; Number of bytes
+  push(sA)
+  call int2bcd
+
+  load s1, 05 ; Length of buffer
+  call bcd2int
+
+  fetch sB, (s0)
+
+  assert_true(sA == sB)
+  add sA, 01
+} while(sA != 0)
+
+
+; Convert all 16-bit numbers
+reg16(rx, s9, sA)
+reg16(ry, sB, sC)
+
+load16(rx, 0)
+do {
+  load s1, 02 ; Number of bytes
+  push(reglower(rx), regupper(rx))
+  call int2bcd
+  
+  load s1, 05 ; Length of buffer
+  call bcd2int
+  
+  fetch reglower(ry), s0
+  add s0, 01
+  fetch regupper(ry), s0
+  sub s0, 01
+
+  assert_true(reglower(rx) == reglower(ry))
+  assert_true(regupper(rx) == regupper(ry))
+
+  add16(rx, 01)
+  load s8, regupper(rx)
+  or s8, reglower(rx)
+} while(s8 != 0)
+
+
+; Verify a single byte buffer works by converting 0-9
+load s0, 20
+load sA, 00
+do {
+  ;load s5, 00
+  ;store s5, 20
+  store sA, 20
+
+  load s1, 01 ; Length of buffer
+  call bcd2int
+  
+  fetch sB, (s0)
+  assert_true(sA == sB)
+  assert_true(s1 == 1)
+  
+  add sA, 01
+} while(sA != 10)
+
+; Verify a 2-byte buffer works by converting 0-99
+load sA, 00
+do {
+  load s0, 20 ; Buffer address
+  load s1, 01 ; Number of bytes
+  push(sA)
+  call int2bcd
+
+  load s0, 23 ; Buffer address
+  load s1, 02 ; Length of buffer
+  call bcd2int
+
+  fetch sB, (s0)
+
+  assert_true(sA == sB)
+  assert_true(s1 == 1)
+  add sA, 01
+} while(sA != 100)
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate
