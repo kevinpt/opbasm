@@ -6,6 +6,8 @@ _build/
 dist/
 
 *.pyc
+*.egg
+*.zip
 *.gen.psm
 *.log
 *.mem
