@@ -289,21 +289,21 @@ define(`iodefs', `const($2, eval($1, 16, 2))'
 ;---------------------------------
 ; Load a register with a value and output to a port
 ; Args:
-;   Arg1: Register to load with value
-;   Arg2: Value to load (constant or other register)
-;   Arg3: Port to output to
-define(`load_out', `load $1, evalx($2, 16, 2)
-output $1, $3')
+;   Arg1: Value to load (constant or other register)
+;   Arg2: Port to output to
+;   Arg3: Optional Register to load with value, uses _tempreg is omitted
+define(`load_out', `load ifelse($3,,`_tempreg',`$3'), evalx($1, 16, 2)
+output ifelse($3,,`_tempreg',`$3'), ifelse(isnum(const2m4($2)),1,evalx(const2m4($2), 16, 2),`($2)') ')
+
 
 ;---------------------------------
 ; Load a register with a value and store to scratchpad
 ; Args:
-;   Arg1: Register to load with value
-;   Arg2: Value to load (constant or other register)
-;   Arg3: Scratchpad address to output to
-
-define(`load_st', `load $1, evalx($2, 16, 2)
-store $1, $3')
+;   Arg1: Value to load (constant or other register)
+;   Arg2: Scratchpad address to output to (constant or a register)
+;   Arg3: Optional Register to load with value, uses _tempreg is omitted
+define(`load_store', `load ifelse($3,,`_tempreg',`$3'), evalx($1, 16, 2)
+store ifelse($3,,`_tempreg',`$3'), ifelse(isnum(const2m4($2)),1,evalx(const2m4($2), 16, 2),`($2)') ')
 
 
 ;---------------------------------
@@ -3060,7 +3060,7 @@ define(`use_memcopy', `; PRAGMA function $1 [$2, $3, $4] begin
 ;Args:
 ;  Arg1: Name of function to generate
 ;  Arg2: Register for first function argument,
-;        the scratchpad address of the source array
+;        the scratchpad address of the destination array
 ;  Arg3: Register for number of bytes to copy
 ;  Arg4: Register for value to set array bytes to
 ;Returns:
@@ -3068,7 +3068,7 @@ define(`use_memcopy', `; PRAGMA function $1 [$2, $3, $4] begin
 ;  preserved on the stack.
 ;Example:
 ;  use_memset(memset, s0, s1, s2)
-;  load s0, 20 ; Source address
+;  load s0, 20 ; Destination address
 ;  load s1, 05 ; Copy 5 bytes
 ;  load s2, 00 ; Set all bytes to 0
 ;  call memset
@@ -3375,7 +3375,7 @@ $1:  ; Convert a BCD number stored in a scratchpad buffer into a binary number
   push(_numend, _curbyte, _curdigit, _digit, _carry)
 
   load _curdigit, _buf
-  add _curigit, 01     ; Skip first digit
+  add _curdigit, 01     ; Skip first digit
   ; Convert buflen into the end address
   add _buflen, _buf
   load _numend, _buf
