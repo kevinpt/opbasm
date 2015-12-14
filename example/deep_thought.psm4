@@ -1,0 +1,45 @@
+constant ConsolePort, FE
+constant QuitPort, FF
+constant BCDBuf, 00
+
+use_stack(sF, 0x3F) ; Software stack in scratchpad
+
+jump main
+
+; Generate utility functions from macro package
+use_expr_mul
+use_int2bcd(int2bcd, 3, s0, s1, s2, s3, s4, s5)
+use_bcdwrite(bcdwrite, s0, s1, ConsolePort)
+
+use_strings(s0, sA,sB, write_char)
+
+proc write_char(s0) {
+  output s0, ConsolePort
+}
+
+string(msg, colorize(`The answer: ', red, bold))
+string(endl, `\n')
+
+main:
+  ; Compute the value of an expression
+  load s1, 14'd
+  expr(`s0 := s1 + 31 - 33 * 7 >> 1')
+
+  ; Convert to BCD stored in scratchpad array
+  push(s0)
+  load s0, BCDBuf
+  load s1, 01     ; 1 byte to convert
+  call int2bcd
+
+  ; Output a formatted string
+  call msg
+
+  load s0, BCDBuf
+  load s1, 03     ; 3 characters (leading 0's skipped)
+  call bcdwrite
+  call endl
+
+  ; Terminate the simulator
+  load s0, 00
+  output s0, QuitPort
+

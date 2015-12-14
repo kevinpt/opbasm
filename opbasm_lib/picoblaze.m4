@@ -152,17 +152,18 @@ define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,
 
 ;---------------------------------
 ; Return the length of a string constant, a portable string or a packed string
-; The argument is passed through the estr() macro to collapse escaped characters before counting them
+; The argument is passed through the estr() macro to collapse escaped characters
+; before counting them.
 ; Args:
 ;   Arg1: String to count length from. This is either a constant or the label to a string
 ;         defined with string() or packed_string()
 ; Example:
-;   load s0, strlen(`foobar\r\n')  ; Expands to 8
+;   load s0, strlenc(`foobar\r\n')  ; Expands to 8
 ;
 ;   packed_string(xyzzy, `This is a string')
-;   load s0, strlen(xyzzy) ; Expands to 16
-define(`strlen', `ifdef(`_$1_LENGTH', _$1_LENGTH, `_strlen(estr($1))')')
-define(`_strlen', $#)
+;   load s0, strlenc(xyzzy) ; Expands to 16
+define(`strlenc', `ifdef(`_$1_LENGTH', _$1_LENGTH, `_strlenc(estr($1))')')
+define(`_strlenc', $#)
 
 ;---------------------------------
 ; Add double quotes around a string
@@ -288,21 +289,21 @@ define(`iodefs', `const($2, eval($1, 16, 2))'
 ;---------------------------------
 ; Load a register with a value and output to a port
 ; Args:
-;   Arg1: Register to load with value
-;   Arg2: Value to load (constant or other register)
-;   Arg3: Port to output to
-define(`load_out', `load $1, evalx($2, 16, 2)
-output $1, $3')
+;   Arg1: Value to load (constant or other register)
+;   Arg2: Port to output to
+;   Arg3: Optional Register to load with value, uses _tempreg is omitted
+define(`load_out', `load ifelse($3,,`_tempreg',`$3'), evalx($1, 16, 2)
+output ifelse($3,,`_tempreg',`$3'), ifelse(isnum(const2m4($2)),1,evalx(const2m4($2), 16, 2),`($2)') ')
+
 
 ;---------------------------------
 ; Load a register with a value and store to scratchpad
 ; Args:
-;   Arg1: Register to load with value
-;   Arg2: Value to load (constant or other register)
-;   Arg3: Scratchpad address to output to
-
-define(`load_st', `load $1, evalx($2, 16, 2)
-store $1, $3')
+;   Arg1: Value to load (constant or other register)
+;   Arg2: Scratchpad address to output to (constant or a register)
+;   Arg3: Optional Register to load with value, uses _tempreg is omitted
+define(`load_store', `load ifelse($3,,`_tempreg',`$3'), evalx($1, 16, 2)
+store ifelse($3,,`_tempreg',`$3'), ifelse(isnum(const2m4($2)),1,evalx(const2m4($2), 16, 2),`($2)') ')
 
 
 ;---------------------------------
@@ -1500,7 +1501,7 @@ call _string_char_handler ; Handle the char
 add16(_saddr_msb, _saddr_lsb, 1) ; Increment address
 jump __`'$5`'_handler')'
 `define($5, `ifelse('$`'#`,0, ``$5'',
-  `define(`_'''$`'1```_LENGTH',strlen(''$`'2``))'dnl
+  `define(`_'''$`'1```_LENGTH',strlenc(''$`'2``))'dnl
   `; "''$`'2``"'
   `ifdef(`PB3', ''$`'1```: calltable($4, $1, estr('''$`'2```))dnl
   return',dnl
@@ -1559,7 +1560,7 @@ call $5 ; Handle the char
 add16(_psaddr_msb, _psaddr_lsb, 1) ; Increment address
 jump __`'$7`'_handler'
 `define($7, `ifelse('$`'#`,0, ``$7'',
-  `define(`_'''$`'1```_LENGTH',strlen(''$`'2``))'dnl
+  `define(`_'''$`'1```_LENGTH',strlenc(''$`'2``))'dnl
   `; "''$`'2``"'
   `''$`'1``: loadaddr($3, $4, _''$`'1``_STR)
   jump __`'$7`'_handler
@@ -1684,11 +1685,11 @@ setcy',`xor $1, 80')'`popdef(`_kx')')
 ; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
 ; before invoking this macro to change it.
 ; Example:
-;   multiply8x8(mul8, s0, s1, s3, s2) ; (s3, s2) = s0 * s1
+;   use_multiply8x8(mul8, s0, s1, s3, s2) ; (s3, s2) = s0 * s1
 ;   load s0, 04
 ;   load s1, 05
 ;   call mul8
-define(`multiply8x8', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
+define(`use_multiply8x8', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1:  ; ($4, $5) = $2 * $3
             $6
             vars(`$2 is _cand', `$3 is _plier', `$4 is _msb := 0', `$5 is _lsb := 0', `_tempreg is _mask := 1')
@@ -1701,13 +1702,13 @@ $1_no_add:  sra _msb
             jump nz, $1_loop ifelse(`$6',,`
             return 
             ; PRAGMA function end
-            popvars')')
+            ')popvars')
 
 
 ;---------------------------------
 ; Signed Multiply 8 x 8 subroutine
-; Same arguments as multiply8x8
-define(`multiply8x8s', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
+; Same arguments as use_multiply8x8
+define(`use_multiply8x8s', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1:  ; ($4, $5) = $2 * $3 (signed)
             $6
             vars(`$2 is _cand', `$3 is _plier', `$4 is _msb := 0', `$5 is _lsb := 0', `_tempreg is _mask := 1')
@@ -1728,12 +1729,12 @@ $1_no_correct1:
 $1_no_correct2: ifelse(`$6',,`
             return
             ; PRAGMA function end
-            popvars')')
+            ')popvars')
             
 ;---------------------------------
 ; SignedxUnsigned Multiply 8 x 8 subroutine
-; Same arguments as multiply8x8
-define(`multiply8x8su', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
+; Same arguments as use_multiply8x8
+define(`use_multiply8x8su', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1:  ; ($4, $5) = $2 * $3 (signed)
             $6
             vars(`$2 is _cand', `$3 is _plier', `$4 is _msb := 0', `$5 is _lsb := 0', `_tempreg is _mask := 1')
@@ -1750,7 +1751,7 @@ $1_no_add:  sra _msb
 $1_no_correct: ifelse(`$6',,`
             return
             ; PRAGMA function end
-            popvars')')
+            ')popvars')
 
 
 ;---------------------------------
@@ -1766,11 +1767,11 @@ $1_no_correct: ifelse(`$6',,`
 ; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
 ; before invoking this macro to change it.
 ; Example:
-;   divide8x8(div8, s0, s1, s2, s3)
+;   use_divide8x8(div8, s0, s1, s2, s3)
 ;   load s0, 20'd
 ;   load s1, 4'd
 ;   call div8
-define(`divide8x8', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
+define(`use_divide8x8', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1: ; $4 = ($2 / $3)  remainder $5
             $6
             vars(`$2 is _dend', `$3 is _visor', `$4 is _quo := 0', `$5 is _rem := 0', `_tempreg is _mask := 0x80')
@@ -1785,12 +1786,12 @@ $1_no_sub:  sr0 _mask
             jump nz, $1_loop ifelse(`$6',,`
             return
             ; PRAGMA function end
-            popvars')')
+            ')popvars')
 
 ;---------------------------------
 ; Signed Divide 8 x 8 subroutine
-; Same arguments as divide8x8
-define(`divide8x8s', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
+; Same arguments as use_divide8x8
+define(`use_divide8x8s', `; PRAGMA function $1 [$2, $3 return $4, $5] begin
             $1: ; $4 = ($2 / $3)  remainder $5
             $6
             vars(`$2 is _dend', `$3 is _visor', `$4 is _quo := 0', `$5 is _rem := 0', `_tempreg is _mask')
@@ -1819,7 +1820,7 @@ $1_no_sub:  sr0 _tempreg
             if(_tempreg & 0x01, `negate(_rem)') ifelse(`$6',,`
             return
             ; PRAGMA function end
-            popvars')')
+            ')popvars')
 
 
 ;---------------------------------
@@ -1835,11 +1836,11 @@ $1_no_sub:  sr0 _tempreg
 ; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
 ; before invoking this macro to change it. The MSB of the dividend is destroyed
 ; Example:
-;   divide16x8(div16, s0,s1, s2, s3,s4, s5)
+;   use_divide16x8(div16, s0,s1, s2, s3,s4, s5)
 ;   load s0, 20'd
 ;   load s1, 4'd
 ;   call div16
-define(`divide16x8', `; PRAGMA function $1 [$2, $3, $4 return $5, $6, $7] begin
+define(`use_divide16x8', `; PRAGMA function $1 [$2, $3, $4 return $5, $6, $7] begin
             $1: ; $5,$6 = ($2,$3 / $4)  remainder $7
             $8
             vars(`$2 is _dend_m', `$3 is _dend_l', `$4 is _visor', `$5 is _quo_m := 0', `$6 is _quo_l := 0',
@@ -1873,7 +1874,7 @@ $1_no_sub2: sr0 _mask
             jump nz, $1_loop2 ifelse(`$8',,`
             return
             ; PRAGMA function end
-            popvars')')
+            ')popvars')
 
 ;---------------------------------
 ; Signed divide 16 / 8 subroutine. Implements truncating division
@@ -1888,11 +1889,11 @@ $1_no_sub2: sr0 _mask
 ; The temp register is overwritten. It is sE by default. Call use_tempreg(reg_nam)
 ; before invoking this macro to change it. The MSB of the dividend is destroyed
 ; Example:
-;   divide16x8(div16, s0,s1, s2, s3,s4, s5)
+;   use_divide16x8s(div16, s0,s1, s2, s3,s4, s5)
 ;   load s0, 20'd
 ;   load s1, 4'd
 ;   call div16
-define(`divide16x8s', `; PRAGMA function $1 [$2, $3, $4 return $5, $6, $7] begin
+define(`use_divide16x8s', `; PRAGMA function $1 [$2, $3, $4 return $5, $6, $7] begin
             $1: ; $5,$6 = ($2,$3 / $4)  remainder $7
             $8
             vars(`$2 is _dend_m', `$3 is _dend_l', `$4 is _visor', `$5 is _quo_m := 0', `$6 is _quo_l := 0',
@@ -1941,7 +1942,7 @@ $1_no_sub2: sr0 _mask
             if(_tempreg & 0x01, `negate(_rem)') ifelse(`$8',,`
             return
             ; PRAGMA function end
-            popvars')')
+            ')popvars')
 
 
 ;---------------------------------
@@ -1952,10 +1953,10 @@ $1_no_sub2: sr0 _mask
 ;   Arg3: Constant multiplier (can be wider than 8-bits)
 ;   Arg4, Arg5: Result MSB, LSB
 ; Example:
-;   multiply8xk(mul8k5, s0, 5, s5, s4)  ; (s5, s4) = s0 * 5
+;   use_multiply8xk(mul8k5, s0, 5, s5, s4)  ; (s5, s4) = s0 * 5
 ;   load s0, 7'd
 ;   call mul8k5
-define(`multiply8xk', `; PRAGMA function $1 [$2 return $4, $5] begin
+define(`use_multiply8xk', `; PRAGMA function $1 [$2 return $4, $5] begin
 $1:  ; ($4, $5) = $2 * ($3)
 load $4, 00
 load $5, 00
@@ -1976,10 +1977,10 @@ $0($1, substr(`$2', 1), $3, $4)')')
 ;   Arg3: Constant multiplier
 ;   Arg4: Result byte
 ; Example:
-;   multiply8xk_small(mul8k5, s0, 5, s4)  ; s4 = s0 * 5
+;   use_multiply8xk_small(mul8k5, s0, 5, s4)  ; s4 = s0 * 5
 ;   load s0, 7'd
 ;   call mul8k5
-define(`multiply8xk_small', `; PRAGMA function $1 [$2 return $4] begin
+define(`use_multiply8xk_small', `; PRAGMA function $1 [$2 return $4] begin
 $1: ; $4 = $2 * ($3)
 load $4, 00
 _genmul8xk_small($2, eval($3,2), $4)return
@@ -1998,10 +1999,10 @@ $0($1, substr(`$2', 1), $3)')')
 ;   Arg3: Constant divisor (can be wider than 8-bits)
 ;   Arg4: Result quotient
 ; Example:
-;   divide8xk(div8k5, s0, 5, s4)  ; s4 = s0 / 5
+;   use_divide8xk(div8k5, s0, 5, s4)  ; s4 = s0 / 5
 ;   load s0, 25'd
 ;   call div8k5
-define(`divide8xk', `; PRAGMA function $1 [$2 return $4, $5] begin
+define(`use_divide8xk', `; PRAGMA function $1 [$2 return $4, $5] begin
 $1:  ; $4 = $2 / ($3)
 load $4, 00
 load _tempreg, 00
@@ -2230,13 +2231,13 @@ use_expr_div16s')
 ; Returns:
 ;   The result is copied to Arg1, Arg2
 define(`use_expr_mul', `define(`_mul_init',1)'dnl
- `ifelse($#,0,`multiply8x8(`expr_mul8', s8, s9, sa, sb,`push(sa,sb)')
+ `ifelse($#,0,`use_multiply8x8(`expr_mul8', s8, s9, sa, sb,`push(sa,sb)')
   define(`_mul8_msb',`s8') define(`_mul8_lsb',`s9')dnl
   load s8, sa
   load s9, sb
   pop(sa,sb)
   return
-  ; PRAGMA function end',`multiply8x8(`expr_mul8', $1, $2, $3, $4,`push($3,$4)')
+  ; PRAGMA function end',`use_multiply8x8(`expr_mul8', $1, $2, $3, $4,`push($3,$4)')
   define(`_mul8_msb',`$1') define(`_mul8_lsb',`$2')dnl
   load $1, $3
   load $2, $4
@@ -2279,13 +2280,13 @@ add $1, _mul8_lsb
 ; Returns:
 ;   The result is copied to Arg1, Arg2
 define(`use_expr_muls', `define(`_muls_init',1)'dnl
- `ifelse($#,0,`multiply8x8s(`expr_mul8s', s8, s9, sa, sb,`push(sa,sb)')
+ `ifelse($#,0,`use_multiply8x8s(`expr_mul8s', s8, s9, sa, sb,`push(sa,sb)')
   define(`_mul8s_msb',`s8') define(`_mul8s_lsb',`s9')dnl
   load s8, sa
   load s9, sb
   pop(sa,sb)
   return
-  ; PRAGMA function end',`multiply8x8s(`expr_mul8s', $1, $2, $3, $4,`push($3,$4)')
+  ; PRAGMA function end',`use_multiply8x8s(`expr_mul8s', $1, $2, $3, $4,`push($3,$4)')
   define(`_mul8s_msb',`$1') define(`_mul8s_lsb',`$2')dnl
   load $1, $3
   load $2, $4
@@ -2313,13 +2314,13 @@ load $1, _mul8s_lsb
 ; Returns:
 ;   The result is copied to Arg1, Arg2
 define(`use_expr_mulsu', `define(`_mulsu_init',1)'dnl
- `ifelse($#,0,`multiply8x8su(`expr_mul8su', s8, s9, sa, sb,`push(sa,sb)')
+ `ifelse($#,0,`use_multiply8x8su(`expr_mul8su', s8, s9, sa, sb,`push(sa,sb)')
   define(`_mul8su_msb',`s8') define(`_mul8su_lsb',`s9')dnl
   load s8, sa
   load s9, sb
   pop(sa,sb)
   return
-  ; PRAGMA function end',`multiply8x8su(`expr_mul8su', $1, $2, $3, $4,`push($3,$4)')
+  ; PRAGMA function end',`use_multiply8x8su(`expr_mul8su', $1, $2, $3, $4,`push($3,$4)')
   define(`_mul8su_msb',`$1') define(`_mul8su_lsb',`$2')dnl
   load $1, $3
   load $2, $4
@@ -2354,13 +2355,13 @@ add $1, _mul8s_lsb
 ; Returns:
 ;   The result is copied to Arg1, Arg2
 define(`use_expr_div', `define(`_div_init',1)'dnl
- `ifelse($#,0,`divide8x8(`expr_div8', s8, s9, sa, sb,`push(sa,sb)')
+ `ifelse($#,0,`use_divide8x8(`expr_div8', s8, s9, sa, sb,`push(sa,sb)')
   define(`_div8_quo',`s8') define(`_div8_rem',`s9')dnl
   load s8, sa
   load s9, sb
   pop(sa,sb)
   return
-  ; PRAGMA function end',`divide8x8(`expr_div8', $1, $2, $3, $4,`push($3,$4)')
+  ; PRAGMA function end',`use_divide8x8(`expr_div8', $1, $2, $3, $4,`push($3,$4)')
   define(`_div8_quo',`$1') define(`_div8_rem',`$2')dnl
   load $1, $3
   load $2, $4
@@ -2388,13 +2389,13 @@ load $1, _div8_quo
 ; Returns:
 ;   The result is copied to Arg1, Arg2
 define(`use_expr_divs', `define(`_divs_init',1)'dnl
- `ifelse($#,0,`divide8x8s(`expr_div8s', s8, s9, sa, sb,`push(sa,sb)')
+ `ifelse($#,0,`use_divide8x8s(`expr_div8s', s8, s9, sa, sb,`push(sa,sb)')
   define(`_div8s_quo',`s8') define(`_div8s_rem',`s9')dnl
   load s8, sa
   load s9, sb
   pop(sa,sb)
   return
-  ; PRAGMA function end',`divide8x8s(`expr_div8s', $1, $2, $3, $4,`push($3,$4)')
+  ; PRAGMA function end',`use_divide8x8s(`expr_div8s', $1, $2, $3, $4,`push($3,$4)')
   define(`_div8s_quo',`$1') define(`_div8s_rem',`$2')dnl
   load $1, $3
   load $2, $4
@@ -2424,14 +2425,14 @@ load $1, _div8s_quo
 ;
 ; The result is copied to Arg1,Arg2, Arg3
 define(`use_expr_div16', `define(`_div16_init',1)'dnl
- `ifelse($#,0,`divide16x8(`expr_div16', s7,s8, s9, sa,sb, sc, `push(sa,sb, sc)')
+ `ifelse($#,0,`use_divide16x8(`expr_div16', s7,s8, s9, sa,sb, sc, `push(sa,sb, sc)')
   define(`_div16_quo',`s7,s8') define(`_div16_rem',`s9')dnl
   load s7, sa
   load s8, sb
   load s9, sc
   pop(sa,sb, sc)
   return
-  ; PRAGMA function end',`divide16x8(`expr_div16', $1,$2, $3, $4,$5, $6, `push($4,$5, $6)')
+  ; PRAGMA function end',`use_divide16x8(`expr_div16', $1,$2, $3, $4,$5, $6, `push($4,$5, $6)')
   define(`_div16_quo',`$1,$2') define(`_div16_rem',`$3')dnl
   load $1, $4
   load $2, $5
@@ -2461,14 +2462,14 @@ load16($1,$2, _div16_quo)
 ;
 ; The result is copied to Arg1,Arg2, Arg3
 define(`use_expr_div16s', `define(`_div16s_init',1)'dnl
- `ifelse($#,0,`divide16x8s(`expr_div16s', s7,s8, s9, sa,sb, sc, `push(sa,sb, sc)')
+ `ifelse($#,0,`use_divide16x8s(`expr_div16s', s7,s8, s9, sa,sb, sc, `push(sa,sb, sc)')
   define(`_div16s_quo',`s7,s8') define(`_div16s_rem',`s9')dnl
   load s7, sa
   load s8, sb
   load s9, sc
   pop(sa,sb, sc)
   return
-  ; PRAGMA function end',`divide16x8s(`expr_div16s', $1,$2, $3, $4,$5, $6, `push($4,$5, $6)')
+  ; PRAGMA function end',`use_divide16x8s(`expr_div16s', $1,$2, $3, $4,$5, $6, `push($4,$5, $6)')
   define(`_div16s_quo',`$1,$2') define(`_div16s_rem',`$3')dnl
   load $1, $4
   load $2, $5
@@ -3059,7 +3060,7 @@ define(`use_memcopy', `; PRAGMA function $1 [$2, $3, $4] begin
 ;Args:
 ;  Arg1: Name of function to generate
 ;  Arg2: Register for first function argument,
-;        the scratchpad address of the source array
+;        the scratchpad address of the destination array
 ;  Arg3: Register for number of bytes to copy
 ;  Arg4: Register for value to set array bytes to
 ;Returns:
@@ -3067,7 +3068,7 @@ define(`use_memcopy', `; PRAGMA function $1 [$2, $3, $4] begin
 ;  preserved on the stack.
 ;Example:
 ;  use_memset(memset, s0, s1, s2)
-;  load s0, 20 ; Source address
+;  load s0, 20 ; Destination address
 ;  load s1, 05 ; Copy 5 bytes
 ;  load s2, 00 ; Set all bytes to 0
 ;  call memset
@@ -3200,13 +3201,15 @@ define(`use_hexwrite', `; PRAGMA function $1 [$2, $3] begin
 
 
 ;---------------------------------
-;Generate a function to convert an integer to BCD coded bytes
-;stored in a scratchpad buffer
-;The number to convert is passed on the stack as one or mote bytes
+;Generate a function to convert an integer to unpacked BCD coded
+;bytes stored in a scratchpad buffer.
+;The number to convert is passed on the stack as one or more bytes
 ;with the MSB pushed last. The buffer size is fixed after generating
 ;the function. You must ensure it is large enough to contain the
 ;largest integer you expect to convert. Each buffer byte corresponds to
-;one decimal digit.
+;one decimal digit. The converted BCD number is right justified within
+;the buffer with leading 0's for padding. The least significant digit
+;is always at the end of the buffer.
 ;Args:
 ;  Arg1: Name of function to generate
 ;  Arg2: Number of bytes for scratchpad buffer (fixed constant)
@@ -3291,6 +3294,158 @@ $1:  ; Convert a number on the stack into BCD stored in a scratchpad buffer of $
   popvars')
 
 
+;---------------------------------
+;Generate a function to convert an ASCII number to BCD.
+;Invalid characters are converted to "0" digits.
+;Args:
+;  Arg1: Name of function to generate
+;  Arg2: Register for first function argument,
+;        the scratchpad address of the ASCII data
+;  Arg3: Register for length of the data
+;Returns:
+;  The generated function has no return value. All registers are
+;  preserved on the stack.
+;Example:
+;  use_ascii2bcd(ascii2bcd, s0, s1)
+;  load s0, 20 ; Array address
+;  load s1, 05 ; Length
+;  call ascii2bcd
+;  ; The array now contains all BCD digits
+define(`use_ascii2bcd', `
+; PRAGMA function $1 [$2, $3] begin
+$1:  ; Convert an ASCII number stored in a scratchpad buffer into BCD
+  vars(`$2 is _buf', `$3 is _buflen')
+  push(_buf, _buflen)
+  add _buflen, _buf
+  dowhile(`_buf != _buflen',
+    `fetch _tempreg, (_buf)
+    sub _tempreg, 30 ; Convert ASCII numbers to BCD
+    if(`_tempreg > 9',
+      `; Wasnt originally a valid digit
+      load _tempreg, 00')
+    store _tempreg, (_buf)
+    add _buf, 01')
+  pop(_buf, _buflen)
+  return
+  popvars
+  ; PRAGMA function end')
+
+;---------------------------------
+;Generate a function to convert an unpacked BCD coded bytes to a
+;variable size integer. The BCD input is stored in a buffer in
+;scratchpad memory. The buffer address and length are passed as arguments.
+;The converted result is overwritten to the leftmost portion of the buffer.
+;The length register returns with the number of bytes in the result.
+;This function handles conversion to any size integer as the result is
+;guaranteed to be smaller than the initial buffer.
+;Internal temp registers must be allocated for use by the macro. They must
+;not include the _tempreg register.
+;Args:
+;  Arg1: Name of function to generate
+;  Arg2: First argument of generated function.
+;        Register with scratchpad BCD address
+;  Arg3: Register with number of bytes for scratchpad buffer
+;  Arg4: Internal temp register
+;  Arg5: Internal temp register
+;  Arg6: Internal temp register
+;  Arg7: Internal temp register
+;  Arg8: Internal temp register
+;Returns:
+;  The converted integer value is located at the start of the buffer with the LSB
+;  first, opposite to the order of the BCD digits.
+;  The number of bytes in the converted integer is returned in the second argument
+;  to the function (Arg3 of this generator macro). All other registers are preserved
+;  on the stack.
+;Example:
+;  use_bcd2int(bcd2int, s0, s1, s2,s3,s4,s5,s6)
+;  load s0, 20 ; BCD buffer
+;  load s1, 03 ; 3 BCD digits long
+;  call bcd2int
+;  ; s1 contains the number of converted bytes
+;  ; scratchpad 20 (and possibly 21) contain the binary result
+define(`use_bcd2int', `
+; PRAGMA function $1 [$2, $3] begin
+$1:  ; Convert a BCD number stored in a scratchpad buffer into a binary number
+  vars(`$2 is _buf', `$3 is _buflen', `$4 is _numend', `$5 is _curbyte', `$6 is _curdigit',
+      `$7 is _digit', `$8 is _carry')
+
+  compare _buflen, 01
+  return z ; No conversion to do
+
+  push(_numend, _curbyte, _curdigit, _digit, _carry)
+
+  load _curdigit, _buf
+  add _curdigit, 01     ; Skip first digit
+  ; Convert buflen into the end address
+  add _buflen, _buf
+  load _numend, _buf
+
+  ; Iterate over each digit from MSD to LSD
+  ; We multiply the current binary value by 10 and then add the
+  ; next BCD digit.
+  dowhile(`_curdigit != _buflen',
+    `; Multiply byte array by 10
+    load _carry, 00
+    for(`_curbyte := _buf', `_curbyte <= _numend', `_curbyte := _curbyte + 1',
+      `fetch _tempreg, (_curbyte)
+      if(`_tempreg < 26',
+        `; Product fits within a byte
+        ; N*10 --> (N * 4 + N) * 2 --> (N << 2 + N) << 1
+        expr(_digit := _tempreg << 2 + _tempreg << 1)
+        add _digit, _carry
+        load _carry, 00
+        store _digit, (_curbyte)',
+       `; Product spans two bytes
+        ; 16-bit mul by 10
+        push(_carry)  ; Save current carry
+        expr2(_carry, _digit := _tempreg << 2 + _tempreg << 1)
+        pop(_tempreg) ; Retrieve previous carry
+        add _digit, _tempreg
+        store _digit, (_curbyte)
+
+        if(`_curbyte == _numend',
+          `add _numend, 01 ; Extend byte array
+          load _tempreg, 00
+          store _tempreg, (_numend)')
+      ')
+    ')
+
+    ; Add next digit to byte array
+    load _curbyte, _buf
+    fetch _tempreg, (_curbyte)
+    fetch _digit, (_curdigit)
+    add _tempreg, _digit
+    store _tempreg, (_curbyte)
+    jump nc, $1_addition_done
+
+    ; Propagate carry through remaining bytes
+    dowhile(`_curbyte <= _numend',
+      `if(`_curbyte == _numend',
+        `add _numend, 01 ; Extend byte array
+        load _tempreg, 00
+        store _tempreg, (_numend)')
+      add _curbyte, 01 ; Advance to next byte
+      fetch _tempreg, (_curbyte)
+      add _tempreg, 01 ; Add carry from previous byte
+      store _tempreg, (_curbyte)
+      jump nc, $1_addition_done')
+
+$1_addition_done:
+
+    add _curdigit, 01')
+
+
+  ; Return number of bytes in result
+  load _buflen, _numend
+  sub _buflen, _buf
+  add _buflen, 01
+  pop(_numend, _curbyte, _curdigit, _digit, _carry)
+
+  return
+  popvars
+  ; PRAGMA function end')
+
+
 ;=============== UPPERCASE MACROS ===============
 ;================================================
 
@@ -3316,7 +3471,7 @@ define(`UNIQLABEL', `uniqlabel($@)')
 define(`REVERSE', `reverse($@)')
 define(`IODEFS', `iodefs($@)')
 define(`LOAD_OUT', `load_out($@)')
-define(`LOAD_ST', `load_st($@)')
+define(`LOAD_STORE', `load_store($@)')
 define(`VARS', `vars($@)')
 define(`USE_CLOCK', `use_clock($@)')
 define(`DELAY_CYCLES', `delay_cycles($@)')
@@ -3406,16 +3561,16 @@ define(`ABS', `abs($@)')
 define(`SIGNEX', `signex($@)')
 define(`ISNUM', `isnum($@)')
 define(`COMPARES', `compares($@)')
-define(`MULTIPLY8X8', `multiply8x8($@)')
-define(`MULTIPLY8X8S', `multiply8x8s($@)')
-define(`MULTIPLY8X8SU', `multiply8x8su($@)')
-define(`DIVIDE8X8', `divide8x8($@)')
-define(`DIVIDE8X8S', `divide8x8s($@)')
-define(`DIVIDE16X8', `divide16x8($@)')
-define(`DIVIDE16X8S', `divide16x8s($@)')
-define(`MULTIPLY8XK', `multiply8xk($@)')
-define(`MULTIPLY8XK_SMALL', `multiply8xk_small($@)')
-define(`DIVIDE8XK', `divide8xk($@)')
+define(`USE_MULTIPLY8X8', `use_multiply8x8($@)')
+define(`USE_MULTIPLY8X8S', `use_multiply8x8s($@)')
+define(`USE_MULTIPLY8X8SU', `use_multiply8x8su($@)')
+define(`USE_DIVIDE8X8', `use_divide8x8($@)')
+define(`USE_DIVIDE8X8S', `use_divide8x8s($@)')
+define(`USE_DIVIDE16X8', `use_divide16x8($@)')
+define(`USE_DIVIDE16X8S', `use_divide16x8s($@)')
+define(`USE_MULTIPLY8XK', `use_multiply8xk($@)')
+define(`USE_MULTIPLY8XK_SMALL', `use_multiply8xk_small($@)')
+define(`USE_DIVIDE8XK', `use_divide8xk($@)')
 define(`EXPR', `expr($@)')
 define(`EXPRS', `exprs($@)')
 define(`EXPR2', `expr2($@)')
@@ -3460,4 +3615,40 @@ define(`FETCH16', `fetch16($@)')
 define(`STORE16', `store16($@)')
 define(`INPUT16', `input16($@)')
 define(`OUTPUT16', `output16($@)')
+
+; New macros for v1.3
+
+define(`ANSI_BLACK', `ansi_black($@)')
+define(`ANSI_BLUE', `ansi_blue($@)')
+define(`ANSI_CYAN', `ansi_cyan($@)')
+define(`ANSI_GREEN', `ansi_green($@)')
+define(`ANSI_MAGENTA', `ansi_magenta($@)')
+define(`ANSI_RED', `ansi_red($@)')
+define(`ANSI_RESET', `ansi_reset($@)')
+define(`ANSI_WHITE', `ansi_white($@)')
+define(`ANSI_YELLOW', `ansi_yellow($@)')
+define(`ARGC', `argc($@)')
+define(`COLORIZE', `colorize($@)')
+define(`DEC2PBHEX', `dec2pbhex($@)')
+define(`FUNC', `func($@)')
+define(`ISR', `isr($@)')
+define(`LEAVE_FUNC', `leave_func($@)')
+define(`LEAVE_ISR', `leave_isr($@)')
+define(`POPVARS', `popvars($@)')
+define(`PROC', `proc($@)')
+define(`RETVALUE', `retvalue($@)')
+define(`STRHASH', `strhash($@)')
+define(`STRLENC', `strlenc($@)')
+define(`USE_ASCII2BCD', `use_ascii2bcd($@)')
+define(`USE_BCD2INT', `use_bcd2int($@)')
+define(`USE_BCDWRITE', `use_bcdwrite($@)')
+define(`USE_DELAY_REG', `use_delay_reg($@)')
+define(`USE_HEXWRITE', `use_hexwrite($@)')
+define(`USE_INT2BCD', `use_int2bcd($@)')
+define(`USE_MEMCOPY', `use_memcopy($@)')
+define(`USE_MEMSET', `use_memset($@)')
+define(`USE_MEMWRITE', `use_memwrite($@)')
+define(`USE_RANDOM16', `use_random16($@)')
+define(`USE_RANDOM8', `use_random8($@)')
+
 divert(0)dnl

@@ -2,22 +2,23 @@
 m4 support in Opbasm
 ====================
 
-The m4 preprocessor adds powerful facilities for enhanced PicoBlaze assembly. m4 is typically already present on most Linux systems. Various implementations can be installed on Windows. Opbasm will automatically run m4 if a source file has the extension ".psm4" or ".m4" or on any file if the ``--m4`` option is used. The included macro package depends on some GNU extensions so GNU m4 must be used if the built-in macros are employed.
+The m4 preprocessor adds powerful facilities for enhanced PicoBlaze assembly. m4 is typically already present on most Linux systems. A precompiled Windows binary is included with Opbasm. Opbasm will automatically run m4 if a source file has the extension ".psm4" or ".m4" or on any file if the ``--m4`` option is used. The included macro package depends on some GNU extensions so GNU m4 must be used if the built-in macros are employed.
 
 Predefined macros are provided with Opbasm covering the following areas:
 
- * `Stack operations`_
- * `Bitfield manipulations`_
- * `Shift and rotate by multiple bits`_
- * `Conditional jump, call, and return`_
- * `Conditional if-then-else`_
- * `Looping`_
- * `Delay generators`_
- * `Portable string and table operations`_
- * `16-bit arithmetic, logical, and shift operators`_
- * `16-bit I/O operations`_
- * `Multiply and divide routines`_
- * `Expressions`_
++----------------------------------------------------+------------------------------------------------------+
+| * `Stack operations`_                              | * `Portable string and table operations`_            |
+| * `Bitfield manipulations`_                        | * `Scratchpad memory operations`_                    |
+| * `Shift and rotate by multiple bits`_             | * `BCD conversion`_                                  |
+| * `Conditional jump, call, and return`_            | * `16-bit arithmetic, logical, and shift operators`_ |
+| * `Conditional if-then-else`_                      | * `16-bit I/O operations`_                           |
+| * `Looping`_                                       | * `Multiply and divide routines`_                    |
+| * `Procedures and functions`_                      | * `Expressions`_                                     |
+| * `Delay generators`_                              | * `Random numbers`_                                  |
++----------------------------------------------------+------------------------------------------------------+
+
+
+
 
 Using these macros you can write code in a higher-level style like the following Fibonacci generator.
 
@@ -72,27 +73,14 @@ Using these macros you can write code in a higher-level style like the following
 Installing m4 on Windows
 ------------------------
 
-There are a few options for installing m4 on Windows: MinGW, GnuWin32, and Cygwin.
+The current release of Opbasm includes GnuWin32 Windows binaries for `m4 <http://gnuwin32.sourceforge.net/packages/m4.htm>`_. It will be installed by the setup.py script.
 
-MinGW
-~~~~~
-
-Download the `get-mingw-setup <http://sourceforge.net/projects/mingw/files/Installer/>`_ graphical installer. Run it and select the "msys-base" package and either "msys-m4" binary package (under All packages|MSYS|MSYS Base System) or "mingw-developer-toolkit". Add "C:\\MinGW\\msys\\1.0\\bin" to your system PATH environment variable.
-
-GnuWin32
-~~~~~~~~
-
-To install the GnuWin32 version of m4, download the `m4 <http://gnuwin32.sourceforge.net/packages/m4.htm>`_ and `regex <http://gnuwin32.sourceforge.net/packages/regex.htm>`_ packages. Unzip them and put regex2.dll into the same directory as m4.exe. Add the installation directory to your system PATH environment variable.
-
-Cygwin
-~~~~~~
-
-This option is best if you've installed Opbasm into a Cygwin environment. In the `Cygwin installer <http://cygwin.com/install.html>`_ select the m4 package (under Interpreters) for installation. Opbasm will be able to use m4 immediately within a Cygwin shell.
+In the Cygwin environment, the included binary will not be executed and you must install the Cygwin version of m4. In the `Cygwin installer <http://cygwin.com/install.html>`_ select the m4 package (under Interpreters) for installation. Opbasm will be able to use m4 immediately within a Cygwin shell.
 
 Overview of m4
 --------------
 
-m4 performs text based string manipulation by performing expansion of previously defined macros. The preprocessor has a number of built in macros and provides a means to define your own. Macros have a name that contains letters, digits, and underscores. Any arguments are enclosed in parentheses and delimited by commas. Expansion is suppressed by enclosing text in quote characters which are ```'`` by default. Comments start with "#" by default but have been changed to use ";" to match PicoBlaze syntax.
+m4 it a general purpose macro preprocessor. It performs text based string manipulation through repeated expansion of previously defined macros including support for recursion. The preprocessor has a number of built in macros and provides a means to define your own. Macros have a name that contains letters, digits, and underscores. Any arguments are enclosed in parentheses and delimited by commas. Expansion is suppressed by enclosing text in quote characters which are ```'`` by default. Comments start with "#" by default but have been changed to use ";" to match PicoBlaze syntax.
 
 m4 uses different syntax from PicoBlaze assembly to represent different types of literals. It is important to know what context you are operating in to determine which type of literal to put in your source.
 
@@ -189,7 +177,7 @@ The ``words_le()`` and ``words_be()`` macros convert a list of 16-bit numbers in
 General purpose macros
 ----------------------
 
-A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to `sE` by default. You can change it to another register by calling ``use_tempreg(<reg>)``. The temp register can be accessed in your own macros by using the ``"_tempreg"`` macro.
+A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to `sE` by default. You can change it to another register by calling ``use_tempreg(<reg>)``. The temp register can be accessed in your own macros by using the ``"_tempreg"`` macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros. 
 
 .. code-block:: picoblaze
 
@@ -197,10 +185,12 @@ A few of the macros depend on modifying a temporary register. To simplify the ma
 
 The following macros use the temp register:
 
-=========  ==========  ===========  ============  =============
-setcy      expr2s      multiply8x8  multiply8x8s  multiply8x8su 
-divide8x8  divide8x8s  divide16x8   divide16x8s   divide8xk    
-=========  ==========  ===========  ============  ============= 
+================  =================  =============  ==============  ===============
+expr2s            load_out           load_store     setcy           use_multiply8x8
+use_multiply8x8s  use_multiply8x8su  use_divide8x8  use_divide8x8s  use_divide16x8
+use_divide16x8s   use_divide8xk      use_random8    use_memcopy     use_memwrite
+use_bcdwrite      use_hexwrite       use_int2bcd    use_ascii2bcd   use_bcd2int
+================  =================  =============  ==============  =============== 
 
 The other ``expr()`` macros use the temp register indirectly when the mul and div operations are invoked.
 
@@ -220,12 +210,12 @@ The ``vars([<reg> is <alias> [:= <init>]]+)`` macro allows you to associate alia
 
 .. code-block:: picoblaze
 
-  vars(s0 is count := 0, s1 is sum)
+  vars(`s0 is count := 0', `s1 is sum')
 
   ; Expands to:
     load s0, 00
 
-Symbols "count" and "sum" can now be used in place of s0 and s1.
+Symbols "count" and "sum" can now be used in place of s0 and s1. You should quote each variable declaration to avoid macro expansion errors when redefining an existing variable. Use the ``popvars`` macro to remove all variables defined in the previous call to ``vars()``. 
 
 
 Stack operations
@@ -245,7 +235,7 @@ A set of macros are available to simulate a stack using the scratchpad RAM. You 
     pop(s0, s1)
     return
 
-The ``getstack()``, ``getstackat()``, and ``dropstack()`` macros can be used to retrieve and drop values from a stack frame. This provides a facility for passing function arguments on the stack and is particularly useful for writing functions that take a variable number of arguments. Use the ``dropstackreg()`` macro to drop a variable number of arguments stored in a register.
+The ``getstack()``, ``getstackat()``, and ``dropstack()`` macros can be used to retrieve and drop values from a stack frame. This provides a facility for passing function arguments on the stack and is particularly useful for writing functions that take a variable number of arguments. The argument to ``dropstack()`` can be a register to drop a variable number of arguments.
 
 .. code-block:: picoblaze
 
@@ -272,7 +262,7 @@ You can use the ``getstackat()`` macro to retrieve values from the stack one at 
     dropstack(2)         ; Remove arguments from the stack
     return
 
-You may wish to allocate temporary space on the stack for local variables in a function. Use the ``addstack()`` and ``addstackreg()`` macros to accomplish this. ``putstack()`` and ``putstackat()`` are used to store register values on the stack.
+You may wish to allocate temporary space on the stack for local variables in a function. Use the ``addstack()`` macro to accomplish this. ``putstack()`` and ``putstackat()`` are used to store register values on the stack without altering the stack pointer.
 
 .. code-block:: picoblaze
 
@@ -323,6 +313,11 @@ Shifts and rotates are inconvenient in PicoBlaze assembly because they must be p
   sr1(s0, 3)  ; Shift right by 3 bits with 1's inserted  s0 = 11100010'b
 
 All 10 of the PicoBlaze shift and rotate instructions have macro equivalents. The original instructions can still be used as usual.
+
+=== === === === ==
+sl0 sl1 sla slx rl
+sr0 sr1 sra srx rr
+=== === === === ==
 
 .. _Conditional jump, call, and return:
 
@@ -376,7 +371,7 @@ In addition, the & operator can be used to generate a ``TEST`` instruction inste
   ; Check if MSB is set
   if(s0 & 0x80, `load s1, 00')
 
-You can invoke signed comparison using the ``comapres()`` macro by wrapping the expression in ``signed()``:
+You can invoke signed comparison using the ``compares()`` macro by wrapping the expression in ``signed()``:
 
 .. code-block:: picoblaze
 
@@ -392,6 +387,12 @@ Macros can be used within the code blocks including nested ``if()`` macros:
   ; else
     `if(s2 >= s3,`<something else>')'
   )
+
+.. note::
+  
+  The ``>`` and ``<=`` operators have to be simulated because the limited Picoblaze ALU flags don't permit them to be implemented directly. If both operands are registers they are swapped and the reverse comparison operation (``<`` or ``>=`` ) is performed. If the right operand is a constant it has to be adjusted by adding one to its value and swapping the true and false conditional blocks. For instance "s0 > 0x20" is converted to "s0 <= 0x21" with the false condition (originally true) executed when s0 is greater than 0x20.
+  
+  This can lead to problems when doing comparisons with 0xFF because the 0x100 can't be used as an immediate instruction value. You may have to find alternate ways to express comparison logic when dealing with the 0xFF and 0x00 boundary values. Consider a loop counter that you want to terminate after passing 0xFF. Instead of testing for "sN > 0xFF" you should test for "sN != 0" and ensure that this won't cause early termination at the start of the loop.
 
 C-style syntax
 ~~~~~~~~~~~~~~
@@ -438,7 +439,7 @@ This expands to the following:
 Looping
 -------
 
-Similarly to ``if()`` there are a set of high level looping macros ``for()``, ``while()``, and ``dowhile()``. They implement the corresponding looping constructs using the syntax ``for(<init>,<expr>,<update>,<loop body>)`` and ``[do]while(<expr>,<loop body>)``. Signed comparison is supported just as with ``if()`` using the ``signed()`` macro as a modifier. The for loop macro uses the ``expr()`` macro syntax for the *init* and *update* fields.
+Similarly to ``if()`` there are a set of high level looping macros ``for()``, ``while()``, and ``dowhile()``. They implement the corresponding looping constructs using the syntax ``for(<init>,<expr>,<update>,<loop body>)`` and ``[do]while(<expr>,<loop body>)``. Signed comparison is supported just as with ``if()`` using the ``signed()`` macro as a modifier. The for loop macro uses the ``expr()`` :ref:`macro syntax<expression-parser>` for the *init* and *update* fields.
 
 .. code-block:: picoblaze
 
@@ -489,10 +490,111 @@ Two macros, ``break`` and ``continue``, are available to exit the current loop a
   }
   ; "break" resumes execution here
 
+
+Procedures and Functions
+------------------------
+
+A set of macros are available that can streamline the creation of procedures, functions, and interrupt service routines. All of these macros have a C-style block syntax which is the preferred way to invoke them.
+
+The most basic is the ``proc()`` macro which is a convenience routine creating a labeled code block with an included ``vars()`` macro for variable definitions, a final ``return`` instruction, and automatic ";PRAGMA" comments identifying it as a function.
+
+.. code-block:: picoblaze
+
+  proc addinc(s0 is count, s1 is inc) {
+    add count, inc
+  }
+  ...
+  
+  call addinc
+  
+  ; Expands to:
+  
+          ;PRAGMA function addinc [s0 is count, s1 is inc] begin
+  addinc:
+          ADD s0, s1
+          RETURN
+          ;PRAGMA function addinc end
+  
+  CALL addinc
+  
+The "argument" list to proc also includes local variables used by the procedure. You are responsible for loading arguments into registers and cleaning up temporary registers. The 
+
+The ``func()`` macro provides a more elaborate function generator that takes care of handling arguments by passing them on the stack. A dynamically generated macro is created for calling each defined function. ``func()`` takes a list of registers to pass as arguments as well as an optional number of bytes for values returned on the stack. those registers are placed on the stack and then popped into local registers that are saved and restored after the function completes. The argument list is in the same "Sn is Y" syntax used by the ``vars()`` macro but you can also just list register names without providing an alias.
+
+.. code-block:: picoblaze
+
+  ; func <funcname>(<vars>) : <optional return bytes> {}
+  
+  func addinc(s0 is count, s1 is inc): 1 {
+    add count, inc
+    retvalue(count, 1) ; Save the return value on the stack
+  }
+  ...
+
+  ; Call function with s3 and s4 as args
+  addinc(s3, s4)
+  pop(s5)       ; Get the return value
+
+  ; Expands to:  
+                ;PRAGMA function addinc [stack(s0 is count, s1 is inc : 1)] begin
+        addinc:
+                <Save registers and retrieve arguments from stack frame>
+
+                ADD s0, s1
+                <Put the result on the stack>
+
+  LEAVE_addinc:
+                <Restore saved registers and remove stack frame>
+                RETURN
+                ;PRAGMA function addinc end
+
+                ; Call function with s3 and s4 as args
+                ; Push arguments:
+                STORE s3, (sf)                 ; Push
+                SUB sf, 01
+                STORE s4, (sf)                 ; Push
+                SUB sf, 01
+                CALL addinc
+                ADD sf, 01
+                FETCH s5, (sf)                 ; Pop
+
+After the function call the registers will be in the same state they were before the function call and any return values will be on the stack. Unlike with ``proc()`` the parameter list is only used to define arguments. You are responsible for preserving any registers used internally for local variables. The ``retvalue()`` macro takes a register for its first argument and the index of the return byte from the top of the stack starting from 1.
+
+You cannot use a ``return`` instruction inside the code body of a ``func()`` macro because the stack cleanup code will not be executed. Instead you must call the ``leave_func`` macro whenever you want to exit early. It will ensure the cleanup code is executed.
+
+A variant of the ``func()`` macro is available for defining ISRs. The ``isr()`` macro is similar to ``func()`` but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.
+
+.. code-block:: picoblaze
+
+  ; isr <address>(<vars>) : [enable | disable] {}
+  
+  isr 0x3FF(s0) : enable {
+    output s0, FF
+  }
+  
+  ; Expands to:
+  
+         __ISR:
+                ADDRESS 3ff                    ; 0x3FF
+                JUMP __ISR
+                ADDRESS __ISR
+                ;PRAGMA function __ISR begin
+                <Save registers on stack>
+                OUTPUT s0, FF
+
+   LEAVE___ISR:
+                <Restore registers from stack>
+
+                RETURNI enable
+                ;PRAGMA function __ISR end
+  
+ISRs take no arguments and the variable list only serves to identify which registers are used in the ISR so that they can be saved on the stack. There can only be one ``isr()`` macro call in a program. You can use ``leave_func`` or the equivalent ``leave_isr`` macro to exit early from an ISR. Do not call ``returni`` directly within the ISR code block as that will leave saved registers on the stack without cleaning up.
+
+
 Delay generators
 ----------------
 
-A set of delay generator macros are available to implement software delays. The simplest is ``delay_cycles()`` which delays by a number of instruction cycles (each being two clock cycles). It is implemented with recursive loops and requires no registers to function.
+A set of delay generator macros are available to implement software delays. The simplest is ``delay_cycles()`` which delays by a number of instruction cycles (each being two clock cycles). By default it is implemented with recursive loops and requires no registers to function.
 
 .. code-block:: picoblaze
 
@@ -521,11 +623,14 @@ This expands to the following recursive code implemented in 13 instructions:
 
 The delay can be from 0 to approximately 100e9 but a practical limit would be to keep the delay less than 200 cycles to restrict the amount of generated code. You must ensure that there is enough space on the call stack to perform the recursive calls. In the example above the 33-cycle delay block extends five calls deep.
 
+An alternate implementation of ``delay_cycles()`` can be invoked by first configuring it with the ``use_delay_reg()`` macro. You call it with a single register to use for a delay counter. This register must be different than the ones used for the long period delay macros described next. With a delay register configured, the ``delay_cycles()`` macro will be implemented as a small loop for delays of 511 cycles or less. Longer delays will fall back to using recursive delay trees.
+
 Delays by microseconds and milliseconds are implemented with the ``delay_us()`` and ``delay_ms()`` macros. Before using these you must establish the system clock frequency with the ``use_clock()`` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay by a certain number of instructions if needed.
 
 .. code-block:: picoblaze
 
   use_clock(100)                     ; 100 MHz system clock
+  use_delay_reg(s6)                  ; Use compact internal delay loop
 
   ; 10 ms delay subroutine
   delay_10ms: delay_ms(10, s4,s5, 2) ; Adjust delay by 2 instructions for call and return
@@ -539,7 +644,15 @@ Delays by microseconds and milliseconds are implemented with the ``delay_us()`` 
   delay_ms(10, s4, s5)               ; Inline delay by 10 ms
   ; Exactly 10 ms have passed here
 
-The ``delay_*()`` macros take a delay value, a pair of registers and an optional adjustment as arguments. The delay value is the amount of delay in the associated units. The upper limit depends on the clock frequency. At 100 MHz the maximum delay is 214 ms. The registers are used for an internal 16-bit counter. The internal delay loop is automatically adjusted to ensure the count value fits within 16-bits. When implementing a delay as a subroutine an adjustment can be added to account for the ``CALL`` and ``RETURN`` instructions.
+The ``delay_*()`` macros take a delay value, a pair of registers and an optional adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that can't be easily expressed. You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:
+
+=======  =======
+50 MHz   429 ms
+100 MHz  214 ms
+150 MHz  143 ms
+=======  =======
+
+The registers are used for an internal 16-bit counter. The internal delay loop is automatically adjusted to ensure the count value fits within 16-bits. When implementing a delay as a subroutine an adjustment can be added to account for the ``CALL`` and ``RETURN`` instructions.
 
 If you need to use multiple delays it may be desirable to have a common delay routine that supports variable delay counts. This is provided by the ``var_delay_us()`` and ``var_delay_ms()`` macros. They are similar to the fixed delays but are not cycle accurate and have no provision for adjustment.
 
@@ -669,39 +782,47 @@ On PicoBlaze-6 you can apply the output of these macros directly in a ``TABLE`` 
 
 For PicoBlaze-3 you can pass the output of ``estr()`` and ``cstr()`` to the ``call/store/outputtable()`` macros or use the portable string macros described next.
 
-If you need know the length of a string constant you can use ``strlen()`` to generate that value. It takes a single string argument that can contain escaped characters. It is passed through ``estr()`` before characters are counted.
+If you need know the length of a string constant you can use ``strlenc()`` to generate that value. It takes a single string argument that can contain escaped characters. It is passed through ``estr()`` to remove escapes before characters are counted. ``strlenc()`` only works at compile time when passed a string literal or a named portable/packed string. It does not work at runtime on dynamic string buffers.
 
 .. code-block:: picoblaze
 
-  load s0, strlen(`foobar\r\n') ; Expands to 8
-  
+  load s0, strlenc(`foobar\r\n') ; Expands to 8
+
 You can also pass the label to a string defined with ``string()`` or ``packed_string()`` to retrieve their length.
 
 .. code-block:: picoblaze
 
   packed_string(my_string, `This is a string')
-  load s0, strlen(my_string) ; Expands to 16
+  load s0, strlenc(my_string) ; Expands to 16
 
-Note that m4 has a builtin macro ``len()`` that also returns the length of strings. However, it does not account for escape characters and will include blackslashes in its count.
-  
+
+.. note::
+
+  m4 has a builtin macro ``len()`` that also returns the length of strings. However, it does not account for escape characters and will include blackslashes in its count.
+
+
 Portable strings
 ~~~~~~~~~~~~~~~~
 
-A simplified system for generating efficient, portable strings is provided by the macro package. With this you can create string handling code that will expand into the most efficient form for PicoBlaze-3 or PicoBlaze-6. You must configure the portable string system with the ``use_strings()`` macro. It configures the registers and a character handling routine used when processing a string.
+A simplified system for generating efficient, portable strings is provided by the macro package. With this you can create string handling code that will expand into the most efficient form for PicoBlaze-3 or PicoBlaze-6 allowing you to easily migrate between platforms. You must first setup the portable string system with the ``use_strings()`` macro. It configures the registers and a character handling routine used when processing a string.
+
+``use_strings()`` takes the following arguments:
 
 *  Arg1: Register loaded with each character
 *  Arg2, Arg3: MSB, LSB of string address (Only used on PB6. Use dummy registers for PB3)
 *  Arg4: Label of a user provided function called to process each character
+*  Arg5: Optional name of the macro to define new strings (default is "string")
 
-After configuring string handling with ``use_strings()`` you must define each string using the ``string()`` macro. It takes two arguments. The first is a label to identify the string and the second is the escaped string value. Strings are reproduced by calling them with the label used in their definition. Labels should not end with a "$" like with the ``STRING`` directive.
+After configuring string handling with ``use_strings()`` you must define each string using the ``string()`` macro. It takes two arguments. The first is a label to identify the string and the second is the string. You can use any of the escapes supported by ``estr()`` and ``cstr()`` in a string. Strings are reproduced by calling them with the label used in their definition. Labels should not end with a "$" like with the ``STRING`` directive.
 
 .. code-block:: picoblaze
 
   jump main
   use_strings(s0, s5,s6, write_char)
   
-  write_char: output s0, 00
-              return
+  proc write_char(s0) {
+    output s0, 00
+  }
   
   string(hello, `Hello world\r\n') ; Define a string called "hello"
 
@@ -722,9 +843,12 @@ This expands to the following when targeting PB6:
                       ADD s6, 01                     ; 1
                       ADDCY s5, 00                   ; Increment address
                       JUMP __string_handler
-
-          write_char: OUTPUT s0, 00                  ; Our character handler
+                      
+                      ;PRAGMA function write_char [s0] begin
+          write_char:
+                      OUTPUT s0, 00
                       RETURN
+                      ;PRAGMA function write_char end
 
                       ; "Hello world\r\n"
                       TABLE hello#, [48, 65, 6c, 6c, 6f, 20, 77, 6f, 72, 6c, 64, 0d, 0a, 00]
@@ -738,7 +862,7 @@ This expands to the following when targeting PB6:
                       CALL hello                     ; Call write_char on each character in the "hello" string
 
 
-Note that a common string processing routine ``__string_handler`` is generated and the escaped string is implemented with ``load&return`` instructions.
+Note that a common string processing routine ``__string_handler`` is generated after the call to ``jump main`` and the escaped string is implemented with ``load&return`` instructions.
 
 When targeting PB3 the following expansion results:
 
@@ -746,8 +870,11 @@ When targeting PB3 the following expansion results:
 
                       JUMP main
 
-          write_char: OUTPUT s0, 00                  ; Our character handler
+                      ;PRAGMA function write_char [s0] begin
+          write_char:
+                      OUTPUT s0, 00
                       RETURN
+                      ;PRAGMA function write_char end
 
                       ; "Hello world\r\n"
                hello: LOAD s0, 48
@@ -777,7 +904,7 @@ You are limited to a single user provided function for processing each character
 Packed strings
 ~~~~~~~~~~~~~~
 
-A set of macros for handling packed strings is available for use. These work similarly to the portable string macros but rely on character data packed with ``INST`` directives. This is the most efficient way to store uncompressed strings in PicoBlaze memory. Access to the data must be implemented with external hardware that can read instruction memory through a second port. The same code is generated for both PB3 and PB6.
+A set of macros for handling packed strings is available for use. These work similarly to the portable string macros but rely on character data packed with ``INST`` directives. This is the most efficient way to store uncompressed strings in PicoBlaze memory. Access to the data must be implemented with external hardware that can read instruction memory through a second port. The ``picoblaze_dp_rom`` component defined in `picoblaze_rom.vhdl <https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl>`_ shows a way to accomplish that. The same code is generated for both PB3 and PB6.
 
 To configure packed strings you need to call the ``use_packed_strings()`` macro. It is similar to ``use_strings()`` but you also need to provide a function that retrieves character pairs from an address in memory. Its arguments are the following:
 
@@ -786,8 +913,11 @@ To configure packed strings you need to call the ``use_packed_strings()`` macro.
 * Arg3, Arg4: Registers for MSB, LSB of address to string
 * Arg5: Label of user provided function called to process each character (Only needs to handle the even char register)
 * Arg6: Label of user provided function called to read pairs of characters from memory
+* Arg7: Optional name of the macro to define new strings (default is "packed_string")
 
-Character pairs are stored in big-endian order. The read routine needs to place the upper byte in the even register and the lower byte in the odd register. A common handler routine ``__packed_string_handler`` is generated so you must ensure the execution path bypasses the generated code.
+Character pairs are stored in big-endian order. The first character in a string is stored in the upper byte of an ``INST`` directive. The read routine takes a set of registers for the address of a packed character pair. It must retrieve the ``INST`` data at that location and load the upper byte into the even character register and lower byte in the odd character register.
+
+A common handler routine ``__packed_string_handler`` is generated so you must ensure the execution path bypasses the generated code.
 
 After configuration you define strings with the ``packed_string()`` macro just as with the ``string()`` macro.
 
@@ -797,14 +927,15 @@ After configuration you define strings with the ``packed_string()`` macro just a
   mem16(P_ROM, 0x0b,0x0a)            ; Define 16-bit port addresses for dual-ported ROM
   use_packed_strings(s0,s1, s5,s6, write_char, read_next_chars)
 
-  write_char: output s0, 00          ; Using register for even chars
-              return
+  proc write_char(s0) {
+    output s0, 00                    ; Using register for even chars
+  }
 
-  read_next_chars:
+  proc read_next_chars(s0,s1, s5,s6) {
               output16(s5,s6, P_ROM) ; Select next address from second port
               nop
               input16(s0,s1, P_ROM)  ; Read back upper and lower byte
-              return
+  }
 
   packed_string(hello, `Hello world\r\n') ; Define a packed string called "hello"
 
@@ -812,11 +943,184 @@ After configuration you define strings with the ``packed_string()`` macro just a
   ...
   call hello ; Call write_char on each character in the "hello" string
 
-If you have existing code using the portable string macros, you can convert it to use packed strings by redefining the ``string()`` macro:
+If you have existing code using the portable string macros, you can convert it to use packed strings by changing the macro name with the optional seventh argument:
 
 .. code-block:: picoblaze
 
-  define(`string', `packed_string($@)')
+  use_packed_strings(s0,s1, s5,s6, write_char, read_next_chars, string)
+
+
+  
+.. _Scratchpad memory operations:  
+
+Scratchpad memory operations
+----------------------------
+
+A set of rroutines are available for manipulating arrays in scratchpad memory. They are accessed by involing a ``use_XXX()`` generator macro to create the functions with register allocations of your choice. All of these macros take an intial argument that is the name of the generated function. All of these macros preserve their input and temporary registers on the stack unless they are reused for a return value.
+
+memset
+~~~~~~
+
+The ``use_memset()`` macro creates a function that can set an array to a fixed value.
+
+.. code-block:: picoblaze
+
+  ;                 <dest> <len> <init value>
+  use_memset(memset, s0,     s1,     s2)
+  ...
+  
+  load s0, 20  ; Destination at 0x20 in scratchpad
+  load s1, 05  ; 5 bytes in the array
+  load s2, "A" ; Value to initialize with
+  call memset
+  
+After the call every byte of the array will be initialized to the contents of the value register.
+
+
+memcopy
+~~~~~~~
+
+``use_memcopy()`` creates a function to copy an array from one location to another in scratchpad.
+
+.. code-block:: picoblaze
+
+  ;                  <source> <dest> <len>
+  use_memcopy(memcopy, s0,      s1,   s2)
+  ...
+  
+  load s0, 20 ; Source at 0x20
+  load s1, 10 ; Destination at 0x10
+  load s2, 05 ; Copy 5 bytes
+  call memcopy
+  
+After the call the bytes from 0x10 to 0x14 contain the data copied from 0x20 to 0x24.
+
+memwrite
+~~~~~~~~
+
+The ``use_memwrite()`` macro scans an array in scratchpad and writes the raw bytes to a fixed output port.
+
+.. code-block:: picoblaze
+
+  constant ConsolePort, FE
+  ;                    <source> <len> <output port>
+  use_memwrite(memwrite, s0,      s1,   ConsolePort)
+  
+  load s0, 20 ; Source array
+  load s1, 05 ; Writing 5 bytes
+  call memwrite
+
+This performs an output to port 0xFE for each of the bytes from 0x20 to 0x24.
+
+hexwrite
+~~~~~~~~
+
+Similar to ``memwrite`` is the ``use_hexwrite()`` macro. It writes an array of bytes converted to ASCII hex values. This macro destructively modifies the global _tempreg register.
+
+.. code-block:: picoblaze
+
+  ;                    <source> <len> <output port>
+  use_hexwrite(hexwrite, s0,      s1,  ConsolePort)
+  ...
+  
+  load_store(0x5A, 0x20)
+  load_store(0x11, 0x21)
+  load_store(0x42, 0x22)
+  
+  load s0, 20
+  load s1, 03
+  call hexwrite
+  
+This writes the string "5A1142" to the output port. Every byte expands into two hex digits.
+
+
+bcdwrite
+~~~~~~~~
+
+Another similar output routine is the ``use_bcdwrite()`` macro. It writes an array to an output port but treats the bytes
+as unpacked BCD digits. Each digit is converted to an ASCII digit before writing to the port. Any leading 0 digits
+are skipped. Invalid BCD digits are not detected.
+
+.. code-block:: picoblaze
+
+  ;                    <source> <len> <output port>
+  use_bcdwrite(bcdwrite, s0,      s1 , ConsolePort)
+  ...
+  
+  load_store(0x00, 0x20)
+  load_store(0x01, 0x21)
+  load_store(0x05, 0x22)
+  
+  load s0, 20 ; Source array
+  load s1, 03 ; Writing 3 bytes
+  call bcdwrite
+
+This converts the array to ASCII characters and sends "15" to the output port. This is useful for printg the output from ``int2bcd`` described below.
+
+ 
+  
+.. _BCD conversion:
+
+BCD conversion
+--------------
+
+A pair of generator macros create functions for converting between unsigned integers and unpacked BCD. They are designed to work with arbitrary sized integers consisting of one or more bytes.
+
+.. code-block:: picoblaze
+
+  ;             <fixed array len> <dest> <integer bytes> <temp regs>
+  use_int2bcd(int2bcd, 5,           s0,       s1,        s2,s3,s4,s5)
+  ...
+  
+  load s0, 20  ; Use buffer from 0x20 to 0x24
+  load s1, 02  ; Convert 16-bit integer
+  load16(s4,s3, 30789)
+  push(s3, s4) ; Place integer on stack low byte first, high byte last
+  call int2bcd
+  
+After conversion the array at 0x20 contains the hex values ``[03 00 07 08 09]``. This result can then be processed by ``bcdwrite`` to write an integer value out to a port. The result is right justified in the array with leading 0's for any unused digits. No error detection is performed if the result requires more digits than the array was defined for.
+
+.. code-block:: picoblaze
+
+  load16(s4,s3, 512)
+  push(s3, s4)
+  call int2bcd
+  
+The result is ``[00 00 05 01 12]`` at 0x20.
+
+For handling numeric string inputs there are a pair of generator macros that can be used. First is ``use_ascii2bcd()`` which will convert a numeric ASCII string into BCD format.
+
+.. code-block:: picoblaze
+
+  ;                    <Array addr> <len>
+  use_ascii2bcd(ascii2bcd, s0,        s1)
+  
+  load_store("0", 0x20) ; Simulate text input
+  load_store("1", 0x21)
+  load_store("2", 0x22)
+  load_store("4", 0x23)
+  load_store("9", 0x24)
+    
+  load s0, 20 ; Use array at 0x20
+  load s1, 05 ; Convert 5 characters from 0x20 to 0x24
+  call ascii2bcd
+  
+The resulting array contains BCD: ``[00 01 02 04 09]``. Any non-digit characters are converted to 0.
+
+The ``use_bcd2int()`` macro is used to convert from BCD to an integer. This finishes the conversion of numeric string input into a usable integer value after first converting ASCII to BCD using ``ascii2bcd``.
+  
+.. code-block::  picoblaze
+
+  ;                <Array addr> <len> <temp regs>
+  use_bcd2int(bcd2int, s0,       s1,   s2,s3,s4,s5,s6)
+  
+  load s0, 20 ; Use array at 0x20
+  load s1, 05 ; Convert 5 digits from 0x20 to 0x24
+  call bcd2int
+  
+The converted integer value is overwritten into the array from left to right, destroying some of the BCD digits. The first byte in the array is the least significant. The total number of integer bytes is returned in the length register (s1 in this case). After conversion the array contains ``[E1 04 02 04 09]``. 0x04E1 is 1249 from the original ASCII string. The integer result is guaranteed to always be smaller than the largest BCD number that will fit in an array (999...) so an overflow is impossible.
+  
+
 
 8-bit arithmetic
 ----------------
@@ -925,18 +1229,18 @@ Multiply and divide
 
 The general purpose PicoBlaze 8x8 multiply and divide routines are made available with arbitrary register allocations to suit your needs. A set of constant multiply and divide routines can also be generated for faster results than the general purpose functions. The following macros are available:
 
-=================  =======================================
-multiply8x8        8x8-bit unsigned 
-multiply8x8s       8x8-bit signed 
-multiply8x8su      8-bit signed x 8-bit unsigned 
-divide8x8          8/8-bit unsigned 
-divide8x8s         8/8-bit signed 
-divide16x8         16/8-bit unsigned 
-divide16x8s        16/8-bit signed 
-multiply8xk        8-bit x constant 
-multiply8xk_small  8-bit x constant (result less than 256) 
-divide8xk          8-bit / constant 
-=================  =======================================
+=====================  =======================================
+use_multiply8x8        8x8-bit unsigned 
+use_multiply8x8s       8x8-bit signed 
+use_multiply8x8su      8-bit signed x 8-bit unsigned 
+use_divide8x8          8/8-bit unsigned 
+use_divide8x8s         8/8-bit signed 
+use_divide16x8         16/8-bit unsigned 
+use_divide16x8s        16/8-bit signed 
+use_multiply8xk        8-bit x constant 
+use_multiply8xk_small  8-bit x constant (result less than 256) 
+use_divide8xk          8-bit / constant 
+=====================  =======================================
 
 
 .. code-block:: picoblaze
@@ -947,15 +1251,15 @@ divide8xk          8-bit / constant
 
     ; Configure multiply and divide functions (sE is a temp register)
     reg16(rx, s5, s4)
-    multiply8x8(mul8, s0, s1, rx)     ; rx = s0 * s1
+    use_multiply8x8(mul8, s0, s1, rx)     ; rx = s0 * s1
 
-    divide8x8(div8, s0, s1, s6, s7)   ; s6 = s0 / s1  rem. s7
+    use_divide8x8(div8, s0, s1, s6, s7)   ; s6 = s0 / s1  rem. s7
 
-    multiply8xk(mul8k7, s0, 7, rx)        ; rx = s0 * 7 (Multiplier can be greater than 255)
+    use_multiply8xk(mul8k7, s0, 7, rx)        ; rx = s0 * 7 (Multiplier can be greater than 255)
 
-    multiply8xk_small(mul8k7s, s0, 7, s1) ; s1 = s0 * 7 (Result must fit in one byte)
+    use_multiply8xk_small(mul8k7s, s0, 7, s1) ; s1 = s0 * 7 (Result must fit in one byte)
 
-    divide8xk(div8k, s0, 7, s1)       ; s1 = s0 / 7 (No remainder)
+    use_divide8xk(div8k, s0, 7, s1)       ; s1 = s0 / 7 (No remainder)
 
   main:
 
@@ -970,6 +1274,9 @@ divide8xk          8-bit / constant
     call mul8k7s ; s1 = 20 * 7
 
     call div8k   ; s1 = 20 / 7
+
+
+.. _expression-parser:
 
 Expressions
 -----------
@@ -1092,26 +1399,59 @@ An example of signed expressions applied to converting temperatures:
 
   start:
     ...
+    
+Random numbers
+--------------
+
+A pair of simple pseudo-random number generators are included in the macro package. They are implemented using the xorshift algorithm with coefficients selected for minimal code on PicoBlaze. They generate a full cycle of every value in their range except 0. One generates 8-bit numbers and the other 16-bit. You must set a non-zero seed value to initialize the PRNGs.
+
+.. code-block:: picoblaze
+
+  namereg sA, SEED
+  use_random8(random, SEED)
+  ...
+  load SEED, 5A    ; You should use an entropy source to set the initial seed
+  call random
+  ...
+  call random
+  
+The new random value is in the ``SEED`` register after each call to ``random``.
+  
+The 16-bit PRNG is similar but you must provide two additional registers for temporary values. Their contents are not preserved across calls.
+  
+.. code-block:: picoblaze
+
+  namereg sA, SEEDH
+  namereg sB, SEEDL
+  reg16(SEED, SEEDH,SEEDL)
+  use_random16(random, SEED, sC,sD)
+  ...
+  load16(SEED, 0x1234)    ; You should use an entropy source to set the initial seed
+  call random
+  ...
+  call random
+
+
 
 Miscellaneous
 -------------
 
 A few miscellaneous utility macros are included:
 
-=========  ============================  ==============================
-Macro      Description                   Example
-=========  ============================  ==============================
-nop        No-operation              
-clearcy    Clear the carry flag      
-setcy      Set the carry flag            ``setcy or setcy(<tmpreg>)``
-isnum      Test if a string is a number 
-load_out   Load and output value         ``load_out(s0, 0x01, P_uart)`` 
-load_st    Load and store value          ``load_st(s0, 0x01, M_var)``   
-reverse    Reverse arguments             ``reverse(1,2,3)``             
-swap       Swap registers                ``swap(s0, s1)``               
-randlabel  Random label name             ``randlabel(PREFIX_)``        
-uniqlabel  Unique label name             ``uniqlabel(PREFIX_)``
-=========  ============================  ==============================
+==========  ============================  ==============================
+Macro       Description                   Example
+==========  ============================  ==============================
+nop         No-operation              
+clearcy     Clear the carry flag      
+setcy       Set the carry flag            ``setcy or setcy(<tmpreg>)``
+isnum       Test if a string is a number 
+load_out    Load and output value         ``load_out(0x01, P_uart)`` 
+load_store  Load and store value          ``load_store(0x01, M_var)``   
+reverse     Reverse arguments             ``reverse(1,2,3)``             
+swap        Swap registers                ``swap(s0, s1)``               
+randlabel   Random label name             ``randlabel(PREFIX_)``        
+uniqlabel   Unique label name             ``uniqlabel(PREFIX_)``
+==========  ============================  ==============================
 
 Manually running m4
 -------------------

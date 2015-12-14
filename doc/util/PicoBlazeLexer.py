@@ -15,7 +15,7 @@ class PicoBlazeLexer(RegexLexer):
             (r'[\t ]+', Text),
             (r'[{}]', Punctuation),
             (r'<.+>', Generic.Emph),
-            (r'\w+:', Name.Label),
+            (r'[.\w]+:', Name.Label),
             (r'pbhex\(', Name.Builtin, 'pbhex'),
             (r'\w+\(', Name.Builtin, 'macro'),
             (r'(if|for|do|while) *\(', Name.Builtin, 'macro'),
@@ -36,7 +36,7 @@ class PicoBlazeLexer(RegexLexer):
             (r"[01]+'b", Number.Bin),
             (r'[0-9a-f]+(?!\w)', Number.Hex),
             (r'"[^"]"', String.Char),
-            (r'\w+[#$%]?', Name),
+            (r'[.\w]+[#$%]?', Name),
             (r"'(upper|lower)", Operator),
             (r';.*\n', Comment, '#pop'),
             (r'.*\n', Text, '#pop')

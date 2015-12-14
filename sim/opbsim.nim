@@ -71,6 +71,7 @@ type
     listPeriphs : bool
     usePB3: bool
     usePB6: bool
+    version: bool
 
 type
   simTermination = enum
@@ -942,6 +943,7 @@ Options:
   -p            --list-periphs  Print peripheral information
   --pb3                         Simulate PicoBlase-3 code
   --pb6                         Simulate PicoBlaze-6 code [default]
+  --version                     Report version information
 """
 
 
@@ -969,9 +971,12 @@ proc main() =
       of "list-periphs", "p": options.listPeriphs = true
       of "pb3"         : options.usePB3 = true
       of "pb6"         : options.usePB6 = true
+      of "version"     : options.version = true
       else             : discard
     else: discard
     
+  if options.version: echo "OPBSIM version 1.3"; return
+
   if options.memFile == "" or options.memFile == nil: echo usageString; return
   if options.usePB3 and options.usePB6:
     echo "Invalid options: Select only one PicoBlaze architecture"

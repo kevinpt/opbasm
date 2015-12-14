@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.2.13'
+__version__ = '1.2.14'
 
 
 class FatalError(Exception):
@@ -1819,11 +1819,11 @@ def write_mif_file(fname, mmap):
     print('DATA_RADIX = HEX;     -- Data radix', file=fh)
     print('CONTENT', file=fh)
     print('BEGIN', file=fh)
-    # write data lines -> 'Address : Content'
-    address = 0
-    for m in mmap:
-      print('{:04X} : {:05X};'.format(address, m), file=fh)
-      address += 1
+    # write data lines -> 'Address : Content' in multiples of 8
+    for a in xrange(len(mmap) // 8):
+      d = ' '.join('{:05X}'.format(w) for w in mmap[a:a+8])
+      print('{:04X} : {};'.format(a*8, d), file=fh)
+
     # write MIF footer
     print('END;', file=fh)
 
