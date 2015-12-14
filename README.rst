@@ -7,7 +7,7 @@ Open PicoBlaze Assembler
 Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and
 PicoBlaze-6 (PB6) microcontrollers `provided by Xilinx
 <http://www.xilinx.com/products/intellectual-property/picoblaze.htm>`_. It will
-run readily on any platform with a functional Python interpreter. Opbasm
+run readily on any platform with a Python interpreter. Opbasm
 provides a better performing solution to assembling PicoBlaze code without
 resorting to DOS or Windows emulation to run the native KCPSM assemblers.
 
@@ -31,12 +31,14 @@ resorting to DOS or Windows emulation to run the native KCPSM assemblers.
       return
 
 
- * `Static code analysis
+ * Includes an optimizer that performs `static code analysis
    <http://kevinpt.github.io/opbasm/#static-code-analysis>`_ to identify dead
    code and optionally remove it. This permits the development of code
    libraries that can be included without wasting memory on unused functions.
 
  * Code block annotations with `user defined PRAGMA meta-comments <http://kevinpt.github.io/opbasm/#user-defined-pragma-meta-comments>`_.
+ 
+ * A basic `command line simulator Opbsim <http://kevinpt.github.io/opbasm/rst/opbsim.html>`_ is included.
 
 
 Support for the full PicoBlaze-6 syntax is provided as well as `enabling most

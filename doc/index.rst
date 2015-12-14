@@ -7,14 +7,11 @@
 Open PicoBlaze Assembler
 ========================
 
-.. toctree::
-   :maxdepth: 1
-   :hidden:
+Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers `provided by Xilinx <http://www.xilinx.com/products/intellectual-property/picoblaze.htm>`_. It will run readily on any platform with a Python interpreter. Opbasm provides a better performing solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.
 
-   rst/m4
+.. raw:: html
 
-Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers `provided by Xilinx <http://www.xilinx.com/products/intellectual-property/picoblaze.htm>`_. It will run readily on any platform with a functional Python interpreter. Opbasm provides a better performing solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.
-
+  <tty-player autoplay loop controls src="_static/tty/demo.ttyrec"></tty-player>
 
 **Special features of Opbasm:**
 
@@ -31,9 +28,11 @@ Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaz
       return
 
 
- * `Static code analysis`_ to identify dead code and optionally remove it. This permits the development of code libraries that can be included without wasting memory on unused functions.
+ * Includes an optimizer that performs `static code analysis`_ to identify dead code and optionally remove it. This permits the development of code libraries that can be included without wasting memory on unused functions.
 
  * Code block annotations with `user defined PRAGMA meta-comments`_.
+ 
+ * A basic :doc:`command line simulator Opbsim <rst/opbsim>` is included.
 
 
 Support for the full PicoBlaze-6 syntax is provided as well as `enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code`_. The original templating system for ROM components is supported as well as a more flexible `generic ROM component`_ that can read *.mem* and *.hex* files directly during synthesis and simulation. A utility script is included that permits `updating the ROM contents of a bitstream file`_ without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
@@ -59,7 +58,7 @@ Installation
 
 You must have Python installed first. Most modern Linux distributions and OS/X have it available by default. There are a number of options available for Windows. If you don't already have a favorite, I recommend getting one of the `"full-stack" Python distros <http://www.scipy.org/install.html>`_ that are geared toward scientific computing such as Anaconda or Python(x,y).
 
-If your OS has a package manager, it may be preferable to install Python setuptools and pyparsing through that tool before attempting to install Opbasm. Otherwise, the installation script will install these packages directly without registering them with the OS package manager.
+If your OS has a package manager, it may be preferable to install Python setuptools through that tool before attempting to install Opbasm. Otherwise, the installation script will install these packages directly without registering them with the OS package manager.
 
 The easiest way to install Opbasm is from `PyPI <https://pypi.python.org/pypi/opbasm>`_.
 
@@ -81,7 +80,7 @@ If you manually downloaded a source package or created a clone with Git you can 
 
 On Linux systems you may need to install with root privileges using the *sudo* command.
 
-After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the *<Python root>\Scripts* directory is in your %PATH% environment variable.
+After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the ``<Python root>\Scripts`` directory is in your %PATH% environment variable.
 
 If you can't use the installer script, it is possible to run *opbasm.py* directly without installation.
 
@@ -123,6 +122,42 @@ PicoBlaze-6 enhancements
 
 The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory. Opbasm provides -m to do the same as well as -s to limit the scratchpad memory size to 64 or 128 bytes. MEM format files are output by default. KCPSM6-style HEX format is activated with *-x*.
 
+Syntax extensions
+-----------------
+
+Two non-standard syntax extension have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a ".". Local labels do not have to be gloabally unique making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately predeeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.
+
+.. code-block:: picoblaze
+
+  my_proc:
+    load s0, 04
+  .loop:            ; Local label for this procedure
+    add s1, s0
+    sub s0, 01
+    compare s0, 00
+    jump nz, .loop  ; Jump to local loop label
+    return
+    
+  my_proc2:
+    <something else>
+  .loop:            ; This is a different loop label
+    <something else>
+    return
+    
+  jump my_proc.loop ; Access the local label by referring to its expanded name
+  
+Another small extension to the syntax is that the ADDRESS directive can take a label as a parameter as well as a numeric address. This is most useful when defining an ISR by inserting a ``jump`` instruction at the vector address and then returning back to a labeled address to resume assembling code from the the next point in memory.
+
+.. code-block:: picoblaze
+
+  my_isr:
+    address 3FF
+    jump my_isr     ; Assemble instruction at interupt vector location
+    address my_isr  ; Resume assembly at address previously captured in "my_isr"
+    <ISR code>
+    returni
+
+
 m4 preprocessor
 ---------------
 
@@ -159,7 +194,7 @@ The assembler is invoked with the *opbasm* script. It supports the following com
 
   Usage: opbasm [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
                 [-d] [-r] [-e <address>]
-                [-o <output dir>] [-q] [--m4] [--pyparsing]
+                [-o <output dir>] [-q] [--m4]
                 [--debug-preproc <file>]
          opbasm -g
 
@@ -191,9 +226,13 @@ The assembler is invoked with the *opbasm* script. It supports the following com
     -v, --version         Show OPBASM version
     -q, --quiet           Quiet output
     --m4                  Use m4 preprocessor on all source files
+    -D NAME[=VALUE], --define=NAME[=VALUE]
+                          Define m4 macro NAME as having VALUE or empty
     --debug-preproc=FILE  Transformed source file after initial preprocessing
 
-Opbasm defaults to using PicoBlaze-3 as the target processor. Beginning with version 1.4 the default will change to the PicoBlaze-6. You should apply the optional *-3* switch when writing PB3 build scripts to guard against this future change.
+.. note::
+
+  Opbasm currently defaults to using PicoBlaze-3 as the target processor. **Beginning with version 1.4 the default will change to PicoBlaze-6.** You should apply the optional ``-3`` switch when writing PB3 build scripts to guard against this future change.
 
 To compile to PicoBlaze-3 opcodes, use the following:
 
@@ -259,7 +298,9 @@ Generic ROM component
 
 As an alternative to the templating system, a generic, synthesizable VHDL ROM is provided in the `picoblaze_rom.vhdl <https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl>`_  file. This component uses XSTs limited support for textio during synthesis to read a *.mem* or *.hex* file directly without the use of a template file. It takes advantage of XSTs support for automatically partitioning memories that exceed the maximum size of a BRAM. This provides a simplification of the synthesis flow and you do not need to manually switch to different template files if you change the size of the ROM for PicoBlaze-6 designs. For simulation, this component has the advantage that it doesn't have to be recompiled for every change to the PicoBlaze source code in a design and is portable across Xilinx families. It automatically re-reads the latest *.mem* or *.hex* whenever the simulation is reset. A generic can be set to select the implementation as BRAM or distributed RAM.
 
-XST doesn't infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The "``ROM_form_S6_4K_<date>.vhd``" template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.
+.. note::
+
+ XST doesn't infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The "``ROM_form_S6_4K_<date>.vhd``" template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.
 
 A dual-ported ``picoblaze_dp_rom`` component is also included in this package. It provides a second read/write port that can be connected to internal logic to facilitate use of packed ROM data stored with ``INST`` directives or to use a portion of the BRAM as general purpose RAM. The :ref:`insttable m4 macros <string and table ops>` are included to simplify the creation of ``INST`` directives containing packed byte data.
 
@@ -269,7 +310,7 @@ It is not necessary to have an HDL template file present if you are using the ge
 User defined PRAGMA meta-comments
 ---------------------------------
 
-To facilitate post processing of assembled output, Opbasm includes a facility to annotate blocks of code using PRAGMA meta-comments. It uses a flexible syntax that provides considerable freedom in how you annotate your code.
+To assist with post processing of assembled output, Opbasm includes a facility to annotate blocks of code using PRAGMA meta-comments. It uses a flexible syntax that provides considerable freedom in how you annotate your code.
 
 .. code-block:: picoblaze
 
@@ -387,6 +428,14 @@ PicoBlaze syntax highlighting rules for Gedit and Notepad++ have been included i
 
  * Gedit install: Copy ``picoblaze.lang`` to "~/.local/share/gtksourceview-3.0/language-specs". Create the directories if they do not exist.
  * Notepad++ install: Select "Language|Define your language...". Click "Import..." and select the ``picoblaze.xml`` file.
+
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   rst/m4
+   rst/opbsim
 
 
 Licensing

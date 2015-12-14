@@ -5,6 +5,11 @@ include opbasm_lib/*.m4
 recursive-include opbasm_lib/lang *
 recursive-include opbasm_lib/m4 *
 prune opbasm_lib/lang/tools
+include test/asm/*.psm4
+include test/asm/*.m4
+include sim/*.nim
+recursive-include doc *
+prune doc/_build
 include README.rst
 include ChangeLog.txt
 include CONTRIBUTING

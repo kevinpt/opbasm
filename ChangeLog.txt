@@ -12,7 +12,7 @@ v1.x / 2015-??-??
   * New syntax: local labels starting with a "." and use of labels in
     address directives
   * New macros for handling scratchpad arrays: memcopy, memset, memwrite, hexwrite, bcdwrite
-  * General purpose BCD conversion macro int2bcd
+  * General purpose BCD conversion macros ascii2bcd, int2bcd, and bcd2int
   * Added multilingual support with German and French translations
   * More efficient 16-bit shifts and rotates when the shift is greater than 8.
   * Improved reporting of error line numbers when macros have been expanded in the original source.
@@ -38,6 +38,7 @@ v1.x / 2015-??-??
   * Support for KCPSM6 ECC template for 7-series devices
   * Support reading input source from stdin
   * New more compact delay_cycles() macro
+  * Windows m4 binary is included
     
   Bug fixes
   ---------

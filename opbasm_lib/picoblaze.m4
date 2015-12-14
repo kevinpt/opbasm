@@ -158,12 +158,12 @@ define(`_echar', `ifelse(eval($1==92),1,92, eval($1==110),1,10, eval($1==114),1,
 ;   Arg1: String to count length from. This is either a constant or the label to a string
 ;         defined with string() or packed_string()
 ; Example:
-;   load s0, strlen(`foobar\r\n')  ; Expands to 8
+;   load s0, strlenc(`foobar\r\n')  ; Expands to 8
 ;
 ;   packed_string(xyzzy, `This is a string')
-;   load s0, strlen(xyzzy) ; Expands to 16
-define(`strlen', `ifdef(`_$1_LENGTH', _$1_LENGTH, `_strlen(estr($1))')')
-define(`_strlen', $#)
+;   load s0, strlenc(xyzzy) ; Expands to 16
+define(`strlenc', `ifdef(`_$1_LENGTH', _$1_LENGTH, `_strlenc(estr($1))')')
+define(`_strlenc', $#)
 
 ;---------------------------------
 ; Add double quotes around a string
@@ -1501,7 +1501,7 @@ call _string_char_handler ; Handle the char
 add16(_saddr_msb, _saddr_lsb, 1) ; Increment address
 jump __`'$5`'_handler')'
 `define($5, `ifelse('$`'#`,0, ``$5'',
-  `define(`_'''$`'1```_LENGTH',strlen(''$`'2``))'dnl
+  `define(`_'''$`'1```_LENGTH',strlenc(''$`'2``))'dnl
   `; "''$`'2``"'
   `ifdef(`PB3', ''$`'1```: calltable($4, $1, estr('''$`'2```))dnl
   return',dnl
@@ -1560,7 +1560,7 @@ call $5 ; Handle the char
 add16(_psaddr_msb, _psaddr_lsb, 1) ; Increment address
 jump __`'$7`'_handler'
 `define($7, `ifelse('$`'#`,0, ``$7'',
-  `define(`_'''$`'1```_LENGTH',strlen(''$`'2``))'dnl
+  `define(`_'''$`'1```_LENGTH',strlenc(''$`'2``))'dnl
   `; "''$`'2``"'
   `''$`'1``: loadaddr($3, $4, _''$`'1``_STR)
   jump __`'$7`'_handler
@@ -3471,7 +3471,7 @@ define(`UNIQLABEL', `uniqlabel($@)')
 define(`REVERSE', `reverse($@)')
 define(`IODEFS', `iodefs($@)')
 define(`LOAD_OUT', `load_out($@)')
-define(`LOAD_ST', `load_st($@)')
+define(`LOAD_STORE', `load_store($@)')
 define(`VARS', `vars($@)')
 define(`USE_CLOCK', `use_clock($@)')
 define(`DELAY_CYCLES', `delay_cycles($@)')
@@ -3615,4 +3615,40 @@ define(`FETCH16', `fetch16($@)')
 define(`STORE16', `store16($@)')
 define(`INPUT16', `input16($@)')
 define(`OUTPUT16', `output16($@)')
+
+; New macros for v1.3
+
+define(`ANSI_BLACK', `ansi_black($@)')
+define(`ANSI_BLUE', `ansi_blue($@)')
+define(`ANSI_CYAN', `ansi_cyan($@)')
+define(`ANSI_GREEN', `ansi_green($@)')
+define(`ANSI_MAGENTA', `ansi_magenta($@)')
+define(`ANSI_RED', `ansi_red($@)')
+define(`ANSI_RESET', `ansi_reset($@)')
+define(`ANSI_WHITE', `ansi_white($@)')
+define(`ANSI_YELLOW', `ansi_yellow($@)')
+define(`ARGC', `argc($@)')
+define(`COLORIZE', `colorize($@)')
+define(`DEC2PBHEX', `dec2pbhex($@)')
+define(`FUNC', `func($@)')
+define(`ISR', `isr($@)')
+define(`LEAVE_FUNC', `leave_func($@)')
+define(`LEAVE_ISR', `leave_isr($@)')
+define(`POPVARS', `popvars($@)')
+define(`PROC', `proc($@)')
+define(`RETVALUE', `retvalue($@)')
+define(`STRHASH', `strhash($@)')
+define(`STRLENC', `strlenc($@)')
+define(`USE_ASCII2BCD', `use_ascii2bcd($@)')
+define(`USE_BCD2INT', `use_bcd2int($@)')
+define(`USE_BCDWRITE', `use_bcdwrite($@)')
+define(`USE_DELAY_REG', `use_delay_reg($@)')
+define(`USE_HEXWRITE', `use_hexwrite($@)')
+define(`USE_INT2BCD', `use_int2bcd($@)')
+define(`USE_MEMCOPY', `use_memcopy($@)')
+define(`USE_MEMSET', `use_memset($@)')
+define(`USE_MEMWRITE', `use_memwrite($@)')
+define(`USE_RANDOM16', `use_random16($@)')
+define(`USE_RANDOM8', `use_random8($@)')
+
 divert(0)dnl

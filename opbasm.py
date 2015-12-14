@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.2.13'
+__version__ = '1.2.14'
 
 
 class FatalError(Exception):

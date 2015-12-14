@@ -1,15 +1,15 @@
 include(`setup.m4')
 
-;VALIDATES: load_out, load_st
+;VALIDATES: load_out, load_store
 
 for(s2 := 1, s2 < 255, s2 := s2 + 1) {
-  load_out(s0, s2, 0x01)
+  load_out(s2, 0x01, s0)
   input s1, 01
   assert_true(s0 == s1)
 }
 
 for(s2 := 1, s2 < 255, s2 := s2 + 1) {
-  load_st(s0, s2, 0x01)
+  load_store(s2, 0x01, s0)
   fetch s1, 01
   assert_true(s0 == s1)
 }
