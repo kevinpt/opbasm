@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="../_static/project.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/tty/tty-player.min.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
@@ -24,11 +25,27 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link href='http://fonts.googleapis.com/css?family=Kreon:400,300,700' rel='stylesheet' type='text/css'>
+    <link href='fonts.googleapis.com/css?family=Kreon:400,300,700' rel='stylesheet' type='text/css'>
+
 
    
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/0.7.5/webcomponents-lite.min.js"></script>
+<script src="_static/tty/term.min.js"></script>
+<script src="_static/tty/tty-player.min.js"></script>
+
+<style>
+	.terminal-cursor {
+		color: #000;
+		background: green;
+	}
+	.terminal, .title {
+		font-size:x-small;
+	}
+</style>
+
 
   </head>
   <body>  
@@ -40,24 +57,39 @@
             
   <div class="section" id="m4-support-in-opbasm">
 <h1>m4 support in Opbasm<a class="headerlink" href="#m4-support-in-opbasm" title="Permalink to this headline">¶</a></h1>
-<p>The m4 preprocessor adds powerful facilities for enhanced PicoBlaze assembly. m4 is typically already present on most Linux systems. Various implementations can be installed on Windows. Opbasm will automatically run m4 if a source file has the extension &#8221;.psm4&#8221; or &#8221;.m4&#8221; or on any file if the <tt class="docutils literal"><span class="pre">--m4</span></tt> option is used. The included macro package depends on some GNU extensions so GNU m4 must be used if the built-in macros are employed.</p>
+<p>The m4 preprocessor adds powerful facilities for enhanced PicoBlaze assembly. m4 is typically already present on most Linux systems. A precompiled Windows binary is included with Opbasm. Opbasm will automatically run m4 if a source file has the extension &#8221;.psm4&#8221; or &#8221;.m4&#8221; or on any file if the <tt class="docutils literal"><span class="pre">--m4</span></tt> option is used. The included macro package depends on some GNU extensions so GNU m4 must be used if the built-in macros are employed.</p>
 <p>Predefined macros are provided with Opbasm covering the following areas:</p>
-<blockquote>
-<div><ul class="simple">
+<table border="1" class="docutils">
+<colgroup>
+<col width="49%" />
+<col width="51%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><ul class="first last simple">
 <li><a class="reference internal" href="#stack-operations">Stack operations</a></li>
 <li><a class="reference internal" href="#bitfield-manipulations">Bitfield manipulations</a></li>
 <li><a class="reference internal" href="#shift-and-rotate-by-multiple-bits">Shift and rotate by multiple bits</a></li>
 <li><a class="reference internal" href="#conditional-jump-call-and-return">Conditional jump, call, and return</a></li>
 <li><a class="reference internal" href="#conditional-if-then-else">Conditional if-then-else</a></li>
 <li><a class="reference internal" href="#looping">Looping</a></li>
+<li><a class="reference internal" href="#procedures-and-functions">Procedures and functions</a></li>
 <li><a class="reference internal" href="#delay-generators">Delay generators</a></li>
+</ul>
+</td>
+<td><ul class="first last simple">
 <li><a class="reference internal" href="#portable-string-and-table-operations">Portable string and table operations</a></li>
+<li><a class="reference internal" href="#scratchpad-memory-operations">Scratchpad memory operations</a></li>
+<li><a class="reference internal" href="#bcd-conversion">BCD conversion</a></li>
 <li><a class="reference internal" href="#bit-arithmetic-logical-and-shift-operators">16-bit arithmetic, logical, and shift operators</a></li>
 <li><a class="reference internal" href="#bit-i-o-operations">16-bit I/O operations</a></li>
 <li><a class="reference internal" href="#multiply-and-divide-routines">Multiply and divide routines</a></li>
 <li><a class="reference internal" href="#expressions">Expressions</a></li>
+<li><a class="reference internal" href="#random-numbers">Random numbers</a></li>
 </ul>
-</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
 <p>Using these macros you can write code in a higher-level style like the following Fibonacci generator.</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -136,23 +168,12 @@
 </table>
 <div class="section" id="installing-m4-on-windows">
 <span id="guidance-on-installing-m4-under-windows"></span><h2>Installing m4 on Windows<a class="headerlink" href="#installing-m4-on-windows" title="Permalink to this headline">¶</a></h2>
-<p>There are a few options for installing m4 on Windows: MinGW, GnuWin32, and Cygwin.</p>
-<div class="section" id="mingw">
-<h3>MinGW<a class="headerlink" href="#mingw" title="Permalink to this headline">¶</a></h3>
-<p>Download the <a class="reference external" href="http://sourceforge.net/projects/mingw/files/Installer/">get-mingw-setup</a> graphical installer. Run it and select the &#8220;msys-base&#8221; package and either &#8220;msys-m4&#8221; binary package (under All packages|MSYS|MSYS Base System) or &#8220;mingw-developer-toolkit&#8221;. Add &#8220;C:\MinGW\msys\1.0\bin&#8221; to your system PATH environment variable.</p>
-</div>
-<div class="section" id="gnuwin32">
-<h3>GnuWin32<a class="headerlink" href="#gnuwin32" title="Permalink to this headline">¶</a></h3>
-<p>To install the GnuWin32 version of m4, download the <a class="reference external" href="http://gnuwin32.sourceforge.net/packages/m4.htm">m4</a> and <a class="reference external" href="http://gnuwin32.sourceforge.net/packages/regex.htm">regex</a> packages. Unzip them and put regex2.dll into the same directory as m4.exe. Add the installation directory to your system PATH environment variable.</p>
-</div>
-<div class="section" id="cygwin">
-<h3>Cygwin<a class="headerlink" href="#cygwin" title="Permalink to this headline">¶</a></h3>
-<p>This option is best if you&#8217;ve installed Opbasm into a Cygwin environment. In the <a class="reference external" href="http://cygwin.com/install.html">Cygwin installer</a> select the m4 package (under Interpreters) for installation. Opbasm will be able to use m4 immediately within a Cygwin shell.</p>
-</div>
+<p>The current release of Opbasm includes GnuWin32 Windows binaries for <a class="reference external" href="http://gnuwin32.sourceforge.net/packages/m4.htm">m4</a>. It will be installed by the setup.py script.</p>
+<p>In the Cygwin environment, the included binary will not be executed and you must install the Cygwin version of m4. In the <a class="reference external" href="http://cygwin.com/install.html">Cygwin installer</a> select the m4 package (under Interpreters) for installation. Opbasm will be able to use m4 immediately within a Cygwin shell.</p>
 </div>
 <div class="section" id="overview-of-m4">
 <h2>Overview of m4<a class="headerlink" href="#overview-of-m4" title="Permalink to this headline">¶</a></h2>
-<p>m4 performs text based string manipulation by performing expansion of previously defined macros. The preprocessor has a number of built in macros and provides a means to define your own. Macros have a name that contains letters, digits, and underscores. Any arguments are enclosed in parentheses and delimited by commas. Expansion is suppressed by enclosing text in quote characters which are <tt class="docutils literal"><span class="pre">`'</span></tt> by default. Comments start with &#8220;#&#8221; by default but have been changed to use &#8221;;&#8221; to match PicoBlaze syntax.</p>
+<p>m4 it a general purpose macro preprocessor. It performs text based string manipulation through repeated expansion of previously defined macros including support for recursion. The preprocessor has a number of built in macros and provides a means to define your own. Macros have a name that contains letters, digits, and underscores. Any arguments are enclosed in parentheses and delimited by commas. Expansion is suppressed by enclosing text in quote characters which are <tt class="docutils literal"><span class="pre">`'</span></tt> by default. Comments start with &#8220;#&#8221; by default but have been changed to use &#8221;;&#8221; to match PicoBlaze syntax.</p>
 <p>m4 uses different syntax from PicoBlaze assembly to represent different types of literals. It is important to know what context you are operating in to determine which type of literal to put in your source.</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -244,31 +265,43 @@
 </div>
 <div class="section" id="general-purpose-macros">
 <h2>General purpose macros<a class="headerlink" href="#general-purpose-macros" title="Permalink to this headline">¶</a></h2>
-<p>A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to <cite>sE</cite> by default. You can change it to another register by calling <tt class="docutils literal"><span class="pre">use_tempreg(&lt;reg&gt;)</span></tt>. The temp register can be accessed in your own macros by using the <tt class="docutils literal"><span class="pre">&quot;_tempreg&quot;</span></tt> macro.</p>
+<p>A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to <cite>sE</cite> by default. You can change it to another register by calling <tt class="docutils literal"><span class="pre">use_tempreg(&lt;reg&gt;)</span></tt>. The temp register can be accessed in your own macros by using the <tt class="docutils literal"><span class="pre">&quot;_tempreg&quot;</span></tt> macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">use_tempreg(</span><span class="s">sA</span><span class="nb">)</span>    <span class="c">; Switch to sA for the temp register</span>
 </pre></div>
 </div>
 <p>The following macros use the temp register:</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="16%" />
-<col width="18%" />
+<col width="21%" />
+<col width="23%" />
+<col width="17%" />
+<col width="19%" />
 <col width="20%" />
-<col width="22%" />
-<col width="24%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td>setcy</td>
-<td>expr2s</td>
-<td>multiply8x8</td>
-<td>multiply8x8s</td>
-<td>multiply8x8su</td>
+<tr class="row-odd"><td>expr2s</td>
+<td>load_out</td>
+<td>load_store</td>
+<td>setcy</td>
+<td>use_multiply8x8</td>
 </tr>
-<tr class="row-even"><td>divide8x8</td>
-<td>divide8x8s</td>
-<td>divide16x8</td>
-<td>divide16x8s</td>
-<td>divide8xk</td>
+<tr class="row-even"><td>use_multiply8x8s</td>
+<td>use_multiply8x8su</td>
+<td>use_divide8x8</td>
+<td>use_divide8x8s</td>
+<td>use_divide16x8</td>
+</tr>
+<tr class="row-odd"><td>use_divide16x8s</td>
+<td>use_divide8xk</td>
+<td>use_random8</td>
+<td>use_memcopy</td>
+<td>use_memwrite</td>
+</tr>
+<tr class="row-even"><td>use_bcdwrite</td>
+<td>use_hexwrite</td>
+<td>use_int2bcd</td>
+<td>use_ascii2bcd</td>
+<td>use_bcd2int</td>
 </tr>
 </tbody>
 </table>
@@ -283,13 +316,13 @@
 </pre></div>
 </div>
 <p>The <tt class="docutils literal"><span class="pre">vars([&lt;reg&gt;</span> <span class="pre">is</span> <span class="pre">&lt;alias&gt;</span> <span class="pre">[:=</span> <span class="pre">&lt;init&gt;]]+)</span></tt> macro allows you to associate alias names with a register. Unlike the <tt class="docutils literal"><span class="pre">NAMEREG</span></tt> directive, the original register name is still available. An optional initial value can be provided:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">vars(</span><span class="s">s0</span> <span class="s">is</span> <span class="s">count</span> <span class="o">:=</span> <span class="m">0</span><span class="p">,</span> <span class="s">s1</span> <span class="s">is</span> <span class="s">sum</span><span class="nb">)</span>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">vars(</span><span class="s">`s0</span> <span class="s">is</span> <span class="s">count</span> <span class="o">:=</span> <span class="m">0</span><span class="s">&#39;</span><span class="p">,</span> <span class="s">`s1</span> <span class="s">is</span> <span class="s">sum&#39;</span><span class="nb">)</span>
 
 <span class="c">; Expands to:</span>
   <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
 </pre></div>
 </div>
-<p>Symbols &#8220;count&#8221; and &#8220;sum&#8221; can now be used in place of s0 and s1.</p>
+<p>Symbols &#8220;count&#8221; and &#8220;sum&#8221; can now be used in place of s0 and s1. You should quote each variable declaration to avoid macro expansion errors when redefining an existing variable. Use the <tt class="docutils literal"><span class="pre">popvars</span></tt> macro to remove all variables defined in the previous call to <tt class="docutils literal"><span class="pre">vars()</span></tt>.</p>
 </div>
 <div class="section" id="stack-operations">
 <h2>Stack operations<a class="headerlink" href="#stack-operations" title="Permalink to this headline">¶</a></h2>
@@ -305,7 +338,7 @@
   <span class="k">return</span>
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">getstack()</span></tt>, <tt class="docutils literal"><span class="pre">getstackat()</span></tt>, and <tt class="docutils literal"><span class="pre">dropstack()</span></tt> macros can be used to retrieve and drop values from a stack frame. This provides a facility for passing function arguments on the stack and is particularly useful for writing functions that take a variable number of arguments. Use the <tt class="docutils literal"><span class="pre">dropstackreg()</span></tt> macro to drop a variable number of arguments stored in a register.</p>
+<p>The <tt class="docutils literal"><span class="pre">getstack()</span></tt>, <tt class="docutils literal"><span class="pre">getstackat()</span></tt>, and <tt class="docutils literal"><span class="pre">dropstack()</span></tt> macros can be used to retrieve and drop values from a stack frame. This provides a facility for passing function arguments on the stack and is particularly useful for writing functions that take a variable number of arguments. The argument to <tt class="docutils literal"><span class="pre">dropstack()</span></tt> can be a register to drop a variable number of arguments.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre>  <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">BE</span>
   <span class="nb">push(</span><span class="s">s0</span><span class="nb">)</span>    <span class="c">; First argument</span>
   <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">EF</span>
@@ -328,7 +361,7 @@
   <span class="k">return</span>
 </pre></div>
 </div>
-<p>You may wish to allocate temporary space on the stack for local variables in a function. Use the <tt class="docutils literal"><span class="pre">addstack()</span></tt> and <tt class="docutils literal"><span class="pre">addstackreg()</span></tt> macros to accomplish this. <tt class="docutils literal"><span class="pre">putstack()</span></tt> and <tt class="docutils literal"><span class="pre">putstackat()</span></tt> are used to store register values on the stack.</p>
+<p>You may wish to allocate temporary space on the stack for local variables in a function. Use the <tt class="docutils literal"><span class="pre">addstack()</span></tt> macro to accomplish this. <tt class="docutils literal"><span class="pre">putstack()</span></tt> and <tt class="docutils literal"><span class="pre">putstackat()</span></tt> are used to store register values on the stack without altering the stack pointer.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_func4:</span>
   <span class="nb">addstack(</span><span class="m">4</span><span class="nb">)</span>              <span class="c">; Add 4 bytes to the stack to work with</span>
   <span class="nb">putstack(</span><span class="s">s0</span><span class="p">,</span> <span class="s">s1</span><span class="p">,</span> <span class="s">s2</span><span class="p">,</span> <span class="s">s3</span><span class="nb">)</span>
@@ -366,6 +399,29 @@
 </pre></div>
 </div>
 <p>All 10 of the PicoBlaze shift and rotate instructions have macro equivalents. The original instructions can still be used as usual.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="21%" />
+<col width="21%" />
+<col width="21%" />
+<col width="21%" />
+<col width="14%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>sl0</td>
+<td>sl1</td>
+<td>sla</td>
+<td>slx</td>
+<td>rl</td>
+</tr>
+<tr class="row-even"><td>sr0</td>
+<td>sr1</td>
+<td>sra</td>
+<td>srx</td>
+<td>rr</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section" id="conditional-jump-call-and-return">
 <span id="id1"></span><h2>Conditional jump call and return<a class="headerlink" href="#conditional-jump-call-and-return" title="Permalink to this headline">¶</a></h2>
@@ -410,7 +466,7 @@
 <span class="nb">if(</span><span class="s">s0</span> <span class="s">&amp;</span> <span class="mh">0x80</span><span class="p">,</span> <span class="s">`load</span> <span class="s">s1</span><span class="p">,</span> <span class="m">00</span><span class="s">&#39;</span><span class="nb">)</span>
 </pre></div>
 </div>
-<p>You can invoke signed comparison using the <tt class="docutils literal"><span class="pre">comapres()</span></tt> macro by wrapping the expression in <tt class="docutils literal"><span class="pre">signed()</span></tt>:</p>
+<p>You can invoke signed comparison using the <tt class="docutils literal"><span class="pre">compares()</span></tt> macro by wrapping the expression in <tt class="docutils literal"><span class="pre">signed()</span></tt>:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span> <span class="nb">evalh(</span><span class="o">-</span><span class="m">10</span><span class="nb">)</span> <span class="c">; -10 = 0xF6 which evaluates as &gt; 5 in unsigned comparison</span>
 <span class="nb">if(signed(</span><span class="s">s0</span> <span class="o">&lt;</span> <span class="m">5</span><span class="nb">)</span><span class="p">,</span><span class="s">`load</span> <span class="s">s1</span><span class="p">,</span> <span class="m">00</span><span class="s">&#39;</span><span class="nb">)</span> <span class="c">; evaluate as &lt; 5 using signed comparison</span>
 </pre></div>
@@ -422,6 +478,11 @@
   <span class="s">`if(s2</span> <span class="o">&gt;</span><span class="s">=</span> <span class="s">s3</span><span class="p">,</span><span class="s">`&lt;something</span> <span class="s">else</span><span class="o">&gt;</span><span class="s">&#39;</span><span class="nb">)</span>&#39;
 )
 </pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>The <tt class="docutils literal"><span class="pre">&gt;</span></tt> and <tt class="docutils literal"><span class="pre">&lt;=</span></tt> operators have to be simulated because the limited Picoblaze ALU flags don&#8217;t permit them to be implemented directly. If both operands are registers they are swapped and the reverse comparison operation (<tt class="docutils literal"><span class="pre">&lt;</span></tt> or <tt class="docutils literal"><span class="pre">&gt;=</span></tt> ) is performed. If the right operand is a constant it has to be adjusted by adding one to its value and swapping the true and false conditional blocks. For instance &#8220;s0 &gt; 0x20&#8221; is converted to &#8220;s0 &lt;= 0x21&#8221; with the false condition (originally true) executed when s0 is greater than 0x20.</p>
+<p class="last">This can lead to problems when doing comparisons with 0xFF because the 0x100 can&#8217;t be used as an immediate instruction value. You may have to find alternate ways to express comparison logic when dealing with the 0xFF and 0x00 boundary values. Consider a loop counter that you want to terminate after passing 0xFF. Instead of testing for &#8220;sN &gt; 0xFF&#8221; you should test for &#8220;sN != 0&#8221; and ensure that this won&#8217;t cause early termination at the start of the loop.</p>
 </div>
 <div class="section" id="c-style-syntax">
 <h3>C-style syntax<a class="headerlink" href="#c-style-syntax" title="Permalink to this headline">¶</a></h3>
@@ -462,7 +523,7 @@
 </div>
 <div class="section" id="looping">
 <h2>Looping<a class="headerlink" href="#looping" title="Permalink to this headline">¶</a></h2>
-<p>Similarly to <tt class="docutils literal"><span class="pre">if()</span></tt> there are a set of high level looping macros <tt class="docutils literal"><span class="pre">for()</span></tt>, <tt class="docutils literal"><span class="pre">while()</span></tt>, and <tt class="docutils literal"><span class="pre">dowhile()</span></tt>. They implement the corresponding looping constructs using the syntax <tt class="docutils literal"><span class="pre">for(&lt;init&gt;,&lt;expr&gt;,&lt;update&gt;,&lt;loop</span> <span class="pre">body&gt;)</span></tt> and <tt class="docutils literal"><span class="pre">[do]while(&lt;expr&gt;,&lt;loop</span> <span class="pre">body&gt;)</span></tt>. Signed comparison is supported just as with <tt class="docutils literal"><span class="pre">if()</span></tt> using the <tt class="docutils literal"><span class="pre">signed()</span></tt> macro as a modifier. The for loop macro uses the <tt class="docutils literal"><span class="pre">expr()</span></tt> macro syntax for the <em>init</em> and <em>update</em> fields.</p>
+<p>Similarly to <tt class="docutils literal"><span class="pre">if()</span></tt> there are a set of high level looping macros <tt class="docutils literal"><span class="pre">for()</span></tt>, <tt class="docutils literal"><span class="pre">while()</span></tt>, and <tt class="docutils literal"><span class="pre">dowhile()</span></tt>. They implement the corresponding looping constructs using the syntax <tt class="docutils literal"><span class="pre">for(&lt;init&gt;,&lt;expr&gt;,&lt;update&gt;,&lt;loop</span> <span class="pre">body&gt;)</span></tt> and <tt class="docutils literal"><span class="pre">[do]while(&lt;expr&gt;,&lt;loop</span> <span class="pre">body&gt;)</span></tt>. Signed comparison is supported just as with <tt class="docutils literal"><span class="pre">if()</span></tt> using the <tt class="docutils literal"><span class="pre">signed()</span></tt> macro as a modifier. The for loop macro uses the <tt class="docutils literal"><span class="pre">expr()</span></tt> <a class="reference internal" href="#expression-parser"><em>macro syntax</em></a> for the <em>init</em> and <em>update</em> fields.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">for(</span><span class="s">s0</span> <span class="o">:=</span> <span class="o">-</span><span class="m">10</span><span class="p">,</span> <span class="nb">signed(</span><span class="s">s0</span> <span class="o">&lt;</span> <span class="m">10</span><span class="nb">)</span><span class="p">,</span> <span class="s">s0</span> <span class="o">:=</span> <span class="s">s0</span> <span class="o">+</span> <span class="m">1</span><span class="p">,</span>
   <span class="s">`output</span> <span class="s">s1</span><span class="p">,</span> <span class="s">P_FOO&#39;</span>
 <span class="nb">)</span>
@@ -507,9 +568,97 @@
 </div>
 </div>
 </div>
+<div class="section" id="procedures-and-functions">
+<h2>Procedures and Functions<a class="headerlink" href="#procedures-and-functions" title="Permalink to this headline">¶</a></h2>
+<p>A set of macros are available that can streamline the creation of procedures, functions, and interrupt service routines. All of these macros have a C-style block syntax which is the preferred way to invoke them.</p>
+<p>The most basic is the <tt class="docutils literal"><span class="pre">proc()</span></tt> macro which is a convenience routine creating a labeled code block with an included <tt class="docutils literal"><span class="pre">vars()</span></tt> macro for variable definitions, a final <tt class="docutils literal"><span class="pre">return</span></tt> instruction, and automatic &#8221;;PRAGMA&#8221; comments identifying it as a function.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">proc</span> <span class="nb">addinc(</span><span class="s">s0</span> <span class="s">is</span> <span class="s">count</span><span class="p">,</span> <span class="s">s1</span> <span class="s">is</span> <span class="s">inc</span><span class="nb">)</span> {
+  <span class="k">add</span> <span class="n">count</span><span class="p">,</span> <span class="n">inc</span>
+<span class="p">}</span>
+...
+
+<span class="k">call</span> <span class="n">addinc</span>
+
+<span class="c">; Expands to:</span>
+
+        <span class="cs">;PRAGMA function addinc [s0 is count, s1 is inc] begin</span>
+<span class="nl">addinc:</span>
+        <span class="k">ADD</span> <span class="n">s0</span><span class="p">,</span> <span class="n">s1</span>
+        <span class="k">RETURN</span>
+        <span class="cs">;PRAGMA function addinc end</span>
+
+<span class="k">CALL</span> <span class="n">addinc</span>
+</pre></div>
+</div>
+<p>The &#8220;argument&#8221; list to proc also includes local variables used by the procedure. You are responsible for loading arguments into registers and cleaning up temporary registers. The</p>
+<p>The <tt class="docutils literal"><span class="pre">func()</span></tt> macro provides a more elaborate function generator that takes care of handling arguments by passing them on the stack. A dynamically generated macro is created for calling each defined function. <tt class="docutils literal"><span class="pre">func()</span></tt> takes a list of registers to pass as arguments as well as an optional number of bytes for values returned on the stack. those registers are placed on the stack and then popped into local registers that are saved and restored after the function completes. The argument list is in the same &#8220;Sn is Y&#8221; syntax used by the <tt class="docutils literal"><span class="pre">vars()</span></tt> macro but you can also just list register names without providing an alias.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; func &lt;funcname&gt;(&lt;vars&gt;) : &lt;optional return bytes&gt; {}</span>
+
+<span class="k">func</span> <span class="nb">addinc(</span><span class="s">s0</span> <span class="s">is</span> <span class="s">count</span><span class="p">,</span> <span class="s">s1</span> <span class="s">is</span> <span class="s">inc</span><span class="nb">)</span>: 1 {
+  <span class="k">add</span> <span class="n">count</span><span class="p">,</span> <span class="n">inc</span>
+  <span class="nb">retvalue(</span><span class="s">count</span><span class="p">,</span> <span class="m">1</span><span class="nb">)</span> <span class="c">; Save the return value on the stack</span>
+<span class="p">}</span>
+...
+
+<span class="c">; Call function with s3 and s4 as args</span>
+<span class="nb">addinc(</span><span class="s">s3</span><span class="p">,</span> <span class="s">s4</span><span class="nb">)</span>
+<span class="nb">pop(</span><span class="s">s5</span><span class="nb">)</span>       <span class="c">; Get the return value</span>
+
+<span class="c">; Expands to:</span>
+              <span class="cs">;PRAGMA function addinc [stack(s0 is count, s1 is inc : 1)] begin</span>
+      <span class="nl">addinc:</span>
+              <span class="ge">&lt;Save registers and retrieve arguments from stack frame&gt;</span>
+
+              <span class="k">ADD</span> <span class="n">s0</span><span class="p">,</span> <span class="n">s1</span>
+              <span class="ge">&lt;Put the result on the stack&gt;</span>
+
+<span class="nl">LEAVE_addinc:</span>
+              <span class="ge">&lt;Restore saved registers and remove stack frame&gt;</span>
+              <span class="k">RETURN</span>
+              <span class="cs">;PRAGMA function addinc end</span>
+
+              <span class="c">; Call function with s3 and s4 as args</span>
+              <span class="c">; Push arguments:</span>
+              <span class="k">STORE</span> <span class="n">s3</span><span class="p">,</span> <span class="p">(</span><span class="n">sf</span><span class="p">)</span>                 <span class="c">; Push</span>
+              <span class="k">SUB</span> <span class="n">sf</span><span class="p">,</span> <span class="mh">01</span>
+              <span class="k">STORE</span> <span class="n">s4</span><span class="p">,</span> <span class="p">(</span><span class="n">sf</span><span class="p">)</span>                 <span class="c">; Push</span>
+              <span class="k">SUB</span> <span class="n">sf</span><span class="p">,</span> <span class="mh">01</span>
+              <span class="k">CALL</span> <span class="n">addinc</span>
+              <span class="k">ADD</span> <span class="n">sf</span><span class="p">,</span> <span class="mh">01</span>
+              <span class="k">FETCH</span> <span class="n">s5</span><span class="p">,</span> <span class="p">(</span><span class="n">sf</span><span class="p">)</span>                 <span class="c">; Pop</span>
+</pre></div>
+</div>
+<p>After the function call the registers will be in the same state they were before the function call and any return values will be on the stack. Unlike with <tt class="docutils literal"><span class="pre">proc()</span></tt> the parameter list is only used to define arguments. You are responsible for preserving any registers used internally for local variables. The <tt class="docutils literal"><span class="pre">retvalue()</span></tt> macro takes a register for its first argument and the index of the return byte from the top of the stack starting from 1.</p>
+<p>You cannot use a <tt class="docutils literal"><span class="pre">return</span></tt> instruction inside the code body of a <tt class="docutils literal"><span class="pre">func()</span></tt> macro because the stack cleanup code will not be executed. Instead you must call the <tt class="docutils literal"><span class="pre">leave_func</span></tt> macro whenever you want to exit early. It will ensure the cleanup code is executed.</p>
+<p>A variant of the <tt class="docutils literal"><span class="pre">func()</span></tt> macro is available for defining ISRs. The <tt class="docutils literal"><span class="pre">isr()</span></tt> macro is similar to <tt class="docutils literal"><span class="pre">func()</span></tt> but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; isr &lt;address&gt;(&lt;vars&gt;) : [enable | disable] {}</span>
+
+<span class="k">isr</span> <span class="nb">0x3FF(</span><span class="s">s0</span><span class="nb">)</span> : enable {
+  <span class="k">output</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">FF</span>
+<span class="p">}</span>
+
+<span class="c">; Expands to:</span>
+
+       <span class="nl">__ISR:</span>
+              <span class="k">ADDRESS</span> <span class="mh">3ff</span>                    <span class="c">; 0x3FF</span>
+              <span class="k">JUMP</span> <span class="n">__ISR</span>
+              <span class="k">ADDRESS</span> <span class="n">__ISR</span>
+              <span class="cs">;PRAGMA function __ISR begin</span>
+              <span class="ge">&lt;Save registers on stack&gt;</span>
+              <span class="k">OUTPUT</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">FF</span>
+
+ <span class="nl">LEAVE___ISR:</span>
+              <span class="ge">&lt;Restore registers from stack&gt;</span>
+
+              <span class="k">RETURNI</span> <span class="n">enable</span>
+              <span class="cs">;PRAGMA function __ISR end</span>
+</pre></div>
+</div>
+<p>ISRs take no arguments and the variable list only serves to identify which registers are used in the ISR so that they can be saved on the stack. There can only be one <tt class="docutils literal"><span class="pre">isr()</span></tt> macro call in a program. You can use <tt class="docutils literal"><span class="pre">leave_func</span></tt> or the equivalent <tt class="docutils literal"><span class="pre">leave_isr</span></tt> macro to exit early from an ISR. Do not call <tt class="docutils literal"><span class="pre">returni</span></tt> directly within the ISR code block as that will leave saved registers on the stack without cleaning up.</p>
+</div>
 <div class="section" id="delay-generators">
 <h2>Delay generators<a class="headerlink" href="#delay-generators" title="Permalink to this headline">¶</a></h2>
-<p>A set of delay generator macros are available to implement software delays. The simplest is <tt class="docutils literal"><span class="pre">delay_cycles()</span></tt> which delays by a number of instruction cycles (each being two clock cycles). It is implemented with recursive loops and requires no registers to function.</p>
+<p>A set of delay generator macros are available to implement software delays. The simplest is <tt class="docutils literal"><span class="pre">delay_cycles()</span></tt> which delays by a number of instruction cycles (each being two clock cycles). By default it is implemented with recursive loops and requires no registers to function.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">delay_cycles(</span><span class="m">40</span><span class="nb">)</span>   <span class="c">; Delay for 40 instructions (80 clock periods)</span>
 </pre></div>
 </div>
@@ -532,8 +681,10 @@
 </pre></div>
 </div>
 <p>The delay can be from 0 to approximately 100e9 but a practical limit would be to keep the delay less than 200 cycles to restrict the amount of generated code. You must ensure that there is enough space on the call stack to perform the recursive calls. In the example above the 33-cycle delay block extends five calls deep.</p>
+<p>An alternate implementation of <tt class="docutils literal"><span class="pre">delay_cycles()</span></tt> can be invoked by first configuring it with the <tt class="docutils literal"><span class="pre">use_delay_reg()</span></tt> macro. You call it with a single register to use for a delay counter. This register must be different than the ones used for the long period delay macros described next. With a delay register configured, the <tt class="docutils literal"><span class="pre">delay_cycles()</span></tt> macro will be implemented as a small loop for delays of 511 cycles or less. Longer delays will fall back to using recursive delay trees.</p>
 <p>Delays by microseconds and milliseconds are implemented with the <tt class="docutils literal"><span class="pre">delay_us()</span></tt> and <tt class="docutils literal"><span class="pre">delay_ms()</span></tt> macros. Before using these you must establish the system clock frequency with the <tt class="docutils literal"><span class="pre">use_clock()</span></tt> macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay by a certain number of instructions if needed.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">use_clock(</span><span class="m">100</span><span class="nb">)</span>                     <span class="c">; 100 MHz system clock</span>
+<span class="nb">use_delay_reg(</span><span class="s">s6</span><span class="nb">)</span>                  <span class="c">; Use compact internal delay loop</span>
 
 <span class="c">; 10 ms delay subroutine</span>
 <span class="nl">delay_10ms:</span> <span class="nb">delay_ms(</span><span class="m">10</span><span class="p">,</span> <span class="s">s4</span><span class="p">,</span><span class="s">s5</span><span class="p">,</span> <span class="m">2</span><span class="nb">)</span> <span class="c">; Adjust delay by 2 instructions for call and return</span>
@@ -548,7 +699,25 @@
 <span class="c">; Exactly 10 ms have passed here</span>
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">delay_*()</span></tt> macros take a delay value, a pair of registers and an optional adjustment as arguments. The delay value is the amount of delay in the associated units. The upper limit depends on the clock frequency. At 100 MHz the maximum delay is 214 ms. The registers are used for an internal 16-bit counter. The internal delay loop is automatically adjusted to ensure the count value fits within 16-bits. When implementing a delay as a subroutine an adjustment can be added to account for the <tt class="docutils literal"><span class="pre">CALL</span></tt> and <tt class="docutils literal"><span class="pre">RETURN</span></tt> instructions.</p>
+<p>The <tt class="docutils literal"><span class="pre">delay_*()</span></tt> macros take a delay value, a pair of registers and an optional adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that can&#8217;t be easily expressed. You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="50%" />
+<col width="50%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>50 MHz</td>
+<td>429 ms</td>
+</tr>
+<tr class="row-even"><td>100 MHz</td>
+<td>214 ms</td>
+</tr>
+<tr class="row-odd"><td>150 MHz</td>
+<td>143 ms</td>
+</tr>
+</tbody>
+</table>
+<p>The registers are used for an internal 16-bit counter. The internal delay loop is automatically adjusted to ensure the count value fits within 16-bits. When implementing a delay as a subroutine an adjustment can be added to account for the <tt class="docutils literal"><span class="pre">CALL</span></tt> and <tt class="docutils literal"><span class="pre">RETURN</span></tt> instructions.</p>
 <p>If you need to use multiple delays it may be desirable to have a common delay routine that supports variable delay counts. This is provided by the <tt class="docutils literal"><span class="pre">var_delay_us()</span></tt> and <tt class="docutils literal"><span class="pre">var_delay_ms()</span></tt> macros. They are similar to the fixed delays but are not cycle accurate and have no provision for adjustment.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">use_clock(</span><span class="m">50</span><span class="nb">)</span>            <span class="c">; 50 MHz system clock</span>
 
@@ -691,31 +860,37 @@
 </pre></div>
 </div>
 <p>For PicoBlaze-3 you can pass the output of <tt class="docutils literal"><span class="pre">estr()</span></tt> and <tt class="docutils literal"><span class="pre">cstr()</span></tt> to the <tt class="docutils literal"><span class="pre">call/store/outputtable()</span></tt> macros or use the portable string macros described next.</p>
-<p>If you need know the length of a string constant you can use <tt class="docutils literal"><span class="pre">strlen()</span></tt> to generate that value. It takes a single string argument that can contain escaped characters. It is passed through <tt class="docutils literal"><span class="pre">estr()</span></tt> before characters are counted.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="nb">strlen(</span><span class="s">`foobar\r\n&#39;</span><span class="nb">)</span> <span class="c">; Expands to 8</span>
+<p>If you need know the length of a string constant you can use <tt class="docutils literal"><span class="pre">strlenc()</span></tt> to generate that value. It takes a single string argument that can contain escaped characters. It is passed through <tt class="docutils literal"><span class="pre">estr()</span></tt> to remove escapes before characters are counted. <tt class="docutils literal"><span class="pre">strlenc()</span></tt> only works at compile time when passed a string literal or a named portable/packed string. It does not work at runtime on dynamic string buffers.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="nb">strlenc(</span><span class="s">`foobar\r\n&#39;</span><span class="nb">)</span> <span class="c">; Expands to 8</span>
 </pre></div>
 </div>
 <p>You can also pass the label to a string defined with <tt class="docutils literal"><span class="pre">string()</span></tt> or <tt class="docutils literal"><span class="pre">packed_string()</span></tt> to retrieve their length.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">packed_string(</span><span class="s">my_string</span><span class="p">,</span> <span class="s">`This</span> <span class="s">is</span> <span class="s">a</span> <span class="s">string&#39;</span><span class="nb">)</span>
-<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="nb">strlen(</span><span class="s">my_string</span><span class="nb">)</span> <span class="c">; Expands to 16</span>
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="nb">strlenc(</span><span class="s">my_string</span><span class="nb">)</span> <span class="c">; Expands to 16</span>
 </pre></div>
 </div>
-<p>Note that m4 has a builtin macro <tt class="docutils literal"><span class="pre">len()</span></tt> that also returns the length of strings. However, it does not account for escape characters and will include blackslashes in its count.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">m4 has a builtin macro <tt class="docutils literal"><span class="pre">len()</span></tt> that also returns the length of strings. However, it does not account for escape characters and will include blackslashes in its count.</p>
+</div>
 </div>
 <div class="section" id="portable-strings">
 <h3>Portable strings<a class="headerlink" href="#portable-strings" title="Permalink to this headline">¶</a></h3>
-<p>A simplified system for generating efficient, portable strings is provided by the macro package. With this you can create string handling code that will expand into the most efficient form for PicoBlaze-3 or PicoBlaze-6. You must configure the portable string system with the <tt class="docutils literal"><span class="pre">use_strings()</span></tt> macro. It configures the registers and a character handling routine used when processing a string.</p>
+<p>A simplified system for generating efficient, portable strings is provided by the macro package. With this you can create string handling code that will expand into the most efficient form for PicoBlaze-3 or PicoBlaze-6 allowing you to easily migrate between platforms. You must first setup the portable string system with the <tt class="docutils literal"><span class="pre">use_strings()</span></tt> macro. It configures the registers and a character handling routine used when processing a string.</p>
+<p><tt class="docutils literal"><span class="pre">use_strings()</span></tt> takes the following arguments:</p>
 <ul class="simple">
 <li>Arg1: Register loaded with each character</li>
 <li>Arg2, Arg3: MSB, LSB of string address (Only used on PB6. Use dummy registers for PB3)</li>
 <li>Arg4: Label of a user provided function called to process each character</li>
+<li>Arg5: Optional name of the macro to define new strings (default is &#8220;string&#8221;)</li>
 </ul>
-<p>After configuring string handling with <tt class="docutils literal"><span class="pre">use_strings()</span></tt> you must define each string using the <tt class="docutils literal"><span class="pre">string()</span></tt> macro. It takes two arguments. The first is a label to identify the string and the second is the escaped string value. Strings are reproduced by calling them with the label used in their definition. Labels should not end with a &#8220;$&#8221; like with the <tt class="docutils literal"><span class="pre">STRING</span></tt> directive.</p>
+<p>After configuring string handling with <tt class="docutils literal"><span class="pre">use_strings()</span></tt> you must define each string using the <tt class="docutils literal"><span class="pre">string()</span></tt> macro. It takes two arguments. The first is a label to identify the string and the second is the string. You can use any of the escapes supported by <tt class="docutils literal"><span class="pre">estr()</span></tt> and <tt class="docutils literal"><span class="pre">cstr()</span></tt> in a string. Strings are reproduced by calling them with the label used in their definition. Labels should not end with a &#8220;$&#8221; like with the <tt class="docutils literal"><span class="pre">STRING</span></tt> directive.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">jump</span> <span class="n">main</span>
 <span class="nb">use_strings(</span><span class="s">s0</span><span class="p">,</span> <span class="s">s5</span><span class="p">,</span><span class="s">s6</span><span class="p">,</span> <span class="s">write_char</span><span class="nb">)</span>
 
-<span class="nl">write_char:</span> <span class="k">output</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
-            <span class="k">return</span>
+<span class="k">proc</span> <span class="nb">write_char(</span><span class="s">s0</span><span class="nb">)</span> {
+  <span class="k">output</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
+<span class="p">}</span>
 
 <span class="nb">string(</span><span class="s">hello</span><span class="p">,</span> <span class="s">`Hello</span> <span class="s">world\r\n&#39;</span><span class="nb">)</span> <span class="c">; Define a string called &quot;hello&quot;</span>
 
@@ -735,8 +910,11 @@
                   <span class="k">ADDCY</span> <span class="n">s5</span><span class="p">,</span> <span class="mh">00</span>                   <span class="c">; Increment address</span>
                   <span class="k">JUMP</span> <span class="n">__string_handler</span>
 
-      <span class="nl">write_char:</span> <span class="k">OUTPUT</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>                  <span class="c">; Our character handler</span>
+                  <span class="cs">;PRAGMA function write_char [s0] begin</span>
+      <span class="nl">write_char:</span>
+                  <span class="k">OUTPUT</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
                   <span class="k">RETURN</span>
+                  <span class="cs">;PRAGMA function write_char end</span>
 
                   <span class="c">; &quot;Hello world\r\n&quot;</span>
                   <span class="k">TABLE</span> <span class="n">hello#</span><span class="p">,</span> <span class="mh">[48, 65, 6c, 6c, 6f, 20, 77, 6f, 72, 6c, 64, 0d, 0a, 00]</span>
@@ -750,12 +928,15 @@
                   <span class="k">CALL</span> <span class="n">hello</span>                     <span class="c">; Call write_char on each character in the &quot;hello&quot; string</span>
 </pre></div>
 </div>
-<p>Note that a common string processing routine <tt class="docutils literal"><span class="pre">__string_handler</span></tt> is generated and the escaped string is implemented with <tt class="docutils literal"><span class="pre">load&amp;return</span></tt> instructions.</p>
+<p>Note that a common string processing routine <tt class="docutils literal"><span class="pre">__string_handler</span></tt> is generated after the call to <tt class="docutils literal"><span class="pre">jump</span> <span class="pre">main</span></tt> and the escaped string is implemented with <tt class="docutils literal"><span class="pre">load&amp;return</span></tt> instructions.</p>
 <p>When targeting PB3 the following expansion results:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre>            <span class="k">JUMP</span> <span class="n">main</span>
 
-<span class="nl">write_char:</span> <span class="k">OUTPUT</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>                  <span class="c">; Our character handler</span>
+            <span class="cs">;PRAGMA function write_char [s0] begin</span>
+<span class="nl">write_char:</span>
+            <span class="k">OUTPUT</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
             <span class="k">RETURN</span>
+            <span class="cs">;PRAGMA function write_char end</span>
 
             <span class="c">; &quot;Hello world\r\n&quot;</span>
      <span class="nl">hello:</span> <span class="k">LOAD</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">48</span>
@@ -783,7 +964,7 @@
 </div>
 <div class="section" id="packed-strings">
 <h3>Packed strings<a class="headerlink" href="#packed-strings" title="Permalink to this headline">¶</a></h3>
-<p>A set of macros for handling packed strings is available for use. These work similarly to the portable string macros but rely on character data packed with <tt class="docutils literal"><span class="pre">INST</span></tt> directives. This is the most efficient way to store uncompressed strings in PicoBlaze memory. Access to the data must be implemented with external hardware that can read instruction memory through a second port. The same code is generated for both PB3 and PB6.</p>
+<p>A set of macros for handling packed strings is available for use. These work similarly to the portable string macros but rely on character data packed with <tt class="docutils literal"><span class="pre">INST</span></tt> directives. This is the most efficient way to store uncompressed strings in PicoBlaze memory. Access to the data must be implemented with external hardware that can read instruction memory through a second port. The <tt class="docutils literal"><span class="pre">picoblaze_dp_rom</span></tt> component defined in <a class="reference external" href="https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl">picoblaze_rom.vhdl</a> shows a way to accomplish that. The same code is generated for both PB3 and PB6.</p>
 <p>To configure packed strings you need to call the <tt class="docutils literal"><span class="pre">use_packed_strings()</span></tt> macro. It is similar to <tt class="docutils literal"><span class="pre">use_strings()</span></tt> but you also need to provide a function that retrieves character pairs from an address in memory. Its arguments are the following:</p>
 <ul class="simple">
 <li>Arg1: Register to store even characters (0, 2, 4, ...)</li>
@@ -791,21 +972,24 @@
 <li>Arg3, Arg4: Registers for MSB, LSB of address to string</li>
 <li>Arg5: Label of user provided function called to process each character (Only needs to handle the even char register)</li>
 <li>Arg6: Label of user provided function called to read pairs of characters from memory</li>
+<li>Arg7: Optional name of the macro to define new strings (default is &#8220;packed_string&#8221;)</li>
 </ul>
-<p>Character pairs are stored in big-endian order. The read routine needs to place the upper byte in the even register and the lower byte in the odd register. A common handler routine <tt class="docutils literal"><span class="pre">__packed_string_handler</span></tt> is generated so you must ensure the execution path bypasses the generated code.</p>
+<p>Character pairs are stored in big-endian order. The first character in a string is stored in the upper byte of an <tt class="docutils literal"><span class="pre">INST</span></tt> directive. The read routine takes a set of registers for the address of a packed character pair. It must retrieve the <tt class="docutils literal"><span class="pre">INST</span></tt> data at that location and load the upper byte into the even character register and lower byte in the odd character register.</p>
+<p>A common handler routine <tt class="docutils literal"><span class="pre">__packed_string_handler</span></tt> is generated so you must ensure the execution path bypasses the generated code.</p>
 <p>After configuration you define strings with the <tt class="docutils literal"><span class="pre">packed_string()</span></tt> macro just as with the <tt class="docutils literal"><span class="pre">string()</span></tt> macro.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">jump</span> <span class="n">main</span>
 <span class="nb">mem16(</span><span class="s">P_ROM</span><span class="p">,</span> <span class="mh">0x0b</span><span class="p">,</span><span class="mh">0x0a</span><span class="nb">)</span>            <span class="c">; Define 16-bit port addresses for dual-ported ROM</span>
 <span class="nb">use_packed_strings(</span><span class="s">s0</span><span class="p">,</span><span class="s">s1</span><span class="p">,</span> <span class="s">s5</span><span class="p">,</span><span class="s">s6</span><span class="p">,</span> <span class="s">write_char</span><span class="p">,</span> <span class="s">read_next_chars</span><span class="nb">)</span>
 
-<span class="nl">write_char:</span> <span class="k">output</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>          <span class="c">; Using register for even chars</span>
-            <span class="k">return</span>
+<span class="k">proc</span> <span class="nb">write_char(</span><span class="s">s0</span><span class="nb">)</span> {
+  <span class="k">output</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>                    <span class="c">; Using register for even chars</span>
+<span class="p">}</span>
 
-<span class="nl">read_next_chars:</span>
+<span class="k">proc</span> <span class="nb">read_next_chars(</span><span class="s">s0</span><span class="p">,</span><span class="s">s1</span><span class="p">,</span> <span class="s">s5</span><span class="p">,</span><span class="s">s6</span><span class="nb">)</span> {
             <span class="nb">output16(</span><span class="s">s5</span><span class="p">,</span><span class="s">s6</span><span class="p">,</span> <span class="s">P_ROM</span><span class="nb">)</span> <span class="c">; Select next address from second port</span>
             <span class="k">nop</span>
             <span class="nb">input16(</span><span class="s">s0</span><span class="p">,</span><span class="s">s1</span><span class="p">,</span> <span class="s">P_ROM</span><span class="nb">)</span>  <span class="c">; Read back upper and lower byte</span>
-            <span class="k">return</span>
+<span class="p">}</span>
 
 <span class="nb">packed_string(</span><span class="s">hello</span><span class="p">,</span> <span class="s">`Hello</span> <span class="s">world\r\n&#39;</span><span class="nb">)</span> <span class="c">; Define a packed string called &quot;hello&quot;</span>
 
@@ -814,11 +998,145 @@
 <span class="k">call</span> <span class="n">hello</span> <span class="c">; Call write_char on each character in the &quot;hello&quot; string</span>
 </pre></div>
 </div>
-<p>If you have existing code using the portable string macros, you can convert it to use packed strings by redefining the <tt class="docutils literal"><span class="pre">string()</span></tt> macro:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">define(</span><span class="s">`string&#39;</span><span class="p">,</span> <span class="s">`packed_string($@</span><span class="nb">)</span>&#39;)
+<p>If you have existing code using the portable string macros, you can convert it to use packed strings by changing the macro name with the optional seventh argument:</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">use_packed_strings(</span><span class="s">s0</span><span class="p">,</span><span class="s">s1</span><span class="p">,</span> <span class="s">s5</span><span class="p">,</span><span class="s">s6</span><span class="p">,</span> <span class="s">write_char</span><span class="p">,</span> <span class="s">read_next_chars</span><span class="p">,</span> <span class="s">string</span><span class="nb">)</span>
 </pre></div>
 </div>
 </div>
+</div>
+<div class="section" id="scratchpad-memory-operations">
+<span id="id4"></span><h2>Scratchpad memory operations<a class="headerlink" href="#scratchpad-memory-operations" title="Permalink to this headline">¶</a></h2>
+<p>A set of rroutines are available for manipulating arrays in scratchpad memory. They are accessed by involing a <tt class="docutils literal"><span class="pre">use_XXX()</span></tt> generator macro to create the functions with register allocations of your choice. All of these macros take an intial argument that is the name of the generated function. All of these macros preserve their input and temporary registers on the stack unless they are reused for a return value.</p>
+<div class="section" id="memset">
+<h3>memset<a class="headerlink" href="#memset" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">use_memset()</span></tt> macro creates a function that can set an array to a fixed value.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;                 &lt;dest&gt; &lt;len&gt; &lt;init value&gt;</span>
+<span class="nb">use_memset(</span><span class="s">memset</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span>     <span class="s">s1</span><span class="p">,</span>     <span class="s">s2</span><span class="nb">)</span>
+...
+
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">20</span>  <span class="c">; Destination at 0x20 in scratchpad</span>
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">05</span>  <span class="c">; 5 bytes in the array</span>
+<span class="k">load</span> <span class="n">s2</span><span class="p">,</span> <span class="sc">&quot;A&quot;</span> <span class="c">; Value to initialize with</span>
+<span class="k">call</span> <span class="n">memset</span>
+</pre></div>
+</div>
+<p>After the call every byte of the array will be initialized to the contents of the value register.</p>
+</div>
+<div class="section" id="memcopy">
+<h3>memcopy<a class="headerlink" href="#memcopy" title="Permalink to this headline">¶</a></h3>
+<p><tt class="docutils literal"><span class="pre">use_memcopy()</span></tt> creates a function to copy an array from one location to another in scratchpad.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;                  &lt;source&gt; &lt;dest&gt; &lt;len&gt;</span>
+<span class="nb">use_memcopy(</span><span class="s">memcopy</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span>      <span class="s">s1</span><span class="p">,</span>   <span class="s">s2</span><span class="nb">)</span>
+...
+
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">20</span> <span class="c">; Source at 0x20</span>
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">10</span> <span class="c">; Destination at 0x10</span>
+<span class="k">load</span> <span class="n">s2</span><span class="p">,</span> <span class="mh">05</span> <span class="c">; Copy 5 bytes</span>
+<span class="k">call</span> <span class="n">memcopy</span>
+</pre></div>
+</div>
+<p>After the call the bytes from 0x10 to 0x14 contain the data copied from 0x20 to 0x24.</p>
+</div>
+<div class="section" id="memwrite">
+<h3>memwrite<a class="headerlink" href="#memwrite" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">use_memwrite()</span></tt> macro scans an array in scratchpad and writes the raw bytes to a fixed output port.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">constant</span> <span class="n">ConsolePort</span><span class="p">,</span> <span class="mh">FE</span>
+<span class="c">;                    &lt;source&gt; &lt;len&gt; &lt;output port&gt;</span>
+<span class="nb">use_memwrite(</span><span class="s">memwrite</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span>      <span class="s">s1</span><span class="p">,</span>   <span class="s">ConsolePort</span><span class="nb">)</span>
+
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">20</span> <span class="c">; Source array</span>
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">05</span> <span class="c">; Writing 5 bytes</span>
+<span class="k">call</span> <span class="n">memwrite</span>
+</pre></div>
+</div>
+<p>This performs an output to port 0xFE for each of the bytes from 0x20 to 0x24.</p>
+</div>
+<div class="section" id="hexwrite">
+<h3>hexwrite<a class="headerlink" href="#hexwrite" title="Permalink to this headline">¶</a></h3>
+<p>Similar to <tt class="docutils literal"><span class="pre">memwrite</span></tt> is the <tt class="docutils literal"><span class="pre">use_hexwrite()</span></tt> macro. It writes an array of bytes converted to ASCII hex values. This macro destructively modifies the global _tempreg register.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;                    &lt;source&gt; &lt;len&gt; &lt;output port&gt;</span>
+<span class="nb">use_hexwrite(</span><span class="s">hexwrite</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span>      <span class="s">s1</span><span class="p">,</span>  <span class="s">ConsolePort</span><span class="nb">)</span>
+...
+
+<span class="nb">load_store(</span><span class="mh">0x5A</span><span class="p">,</span> <span class="mh">0x20</span><span class="nb">)</span>
+<span class="nb">load_store(</span><span class="mh">0x11</span><span class="p">,</span> <span class="mh">0x21</span><span class="nb">)</span>
+<span class="nb">load_store(</span><span class="mh">0x42</span><span class="p">,</span> <span class="mh">0x22</span><span class="nb">)</span>
+
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">20</span>
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">03</span>
+<span class="k">call</span> <span class="n">hexwrite</span>
+</pre></div>
+</div>
+<p>This writes the string &#8220;5A1142&#8221; to the output port. Every byte expands into two hex digits.</p>
+</div>
+<div class="section" id="bcdwrite">
+<h3>bcdwrite<a class="headerlink" href="#bcdwrite" title="Permalink to this headline">¶</a></h3>
+<p>Another similar output routine is the <tt class="docutils literal"><span class="pre">use_bcdwrite()</span></tt> macro. It writes an array to an output port but treats the bytes
+as unpacked BCD digits. Each digit is converted to an ASCII digit before writing to the port. Any leading 0 digits
+are skipped. Invalid BCD digits are not detected.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;                    &lt;source&gt; &lt;len&gt; &lt;output port&gt;</span>
+<span class="nb">use_bcdwrite(</span><span class="s">bcdwrite</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span>      <span class="s">s1</span> <span class="p">,</span> <span class="s">ConsolePort</span><span class="nb">)</span>
+...
+
+<span class="nb">load_store(</span><span class="mh">0x00</span><span class="p">,</span> <span class="mh">0x20</span><span class="nb">)</span>
+<span class="nb">load_store(</span><span class="mh">0x01</span><span class="p">,</span> <span class="mh">0x21</span><span class="nb">)</span>
+<span class="nb">load_store(</span><span class="mh">0x05</span><span class="p">,</span> <span class="mh">0x22</span><span class="nb">)</span>
+
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">20</span> <span class="c">; Source array</span>
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">03</span> <span class="c">; Writing 3 bytes</span>
+<span class="k">call</span> <span class="n">bcdwrite</span>
+</pre></div>
+</div>
+<p>This converts the array to ASCII characters and sends &#8220;15&#8221; to the output port. This is useful for printg the output from <tt class="docutils literal"><span class="pre">int2bcd</span></tt> described below.</p>
+</div>
+</div>
+<div class="section" id="bcd-conversion">
+<span id="id5"></span><h2>BCD conversion<a class="headerlink" href="#bcd-conversion" title="Permalink to this headline">¶</a></h2>
+<p>A pair of generator macros create functions for converting between unsigned integers and unpacked BCD. They are designed to work with arbitrary sized integers consisting of one or more bytes.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;             &lt;fixed array len&gt; &lt;dest&gt; &lt;integer bytes&gt; &lt;temp regs&gt;</span>
+<span class="nb">use_int2bcd(</span><span class="s">int2bcd</span><span class="p">,</span> <span class="m">5</span><span class="p">,</span>           <span class="s">s0</span><span class="p">,</span>       <span class="s">s1</span><span class="p">,</span>        <span class="s">s2</span><span class="p">,</span><span class="s">s3</span><span class="p">,</span><span class="s">s4</span><span class="p">,</span><span class="s">s5</span><span class="nb">)</span>
+...
+
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">20</span>  <span class="c">; Use buffer from 0x20 to 0x24</span>
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">02</span>  <span class="c">; Convert 16-bit integer</span>
+<span class="nb">load16(</span><span class="s">s4</span><span class="p">,</span><span class="s">s3</span><span class="p">,</span> <span class="m">30789</span><span class="nb">)</span>
+<span class="nb">push(</span><span class="s">s3</span><span class="p">,</span> <span class="s">s4</span><span class="nb">)</span> <span class="c">; Place integer on stack low byte first, high byte last</span>
+<span class="k">call</span> <span class="n">int2bcd</span>
+</pre></div>
+</div>
+<p>After conversion the array at 0x20 contains the hex values <tt class="docutils literal"><span class="pre">[03</span> <span class="pre">00</span> <span class="pre">07</span> <span class="pre">08</span> <span class="pre">09]</span></tt>. This result can then be processed by <tt class="docutils literal"><span class="pre">bcdwrite</span></tt> to write an integer value out to a port. The result is right justified in the array with leading 0&#8217;s for any unused digits. No error detection is performed if the result requires more digits than the array was defined for.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">load16(</span><span class="s">s4</span><span class="p">,</span><span class="s">s3</span><span class="p">,</span> <span class="m">512</span><span class="nb">)</span>
+<span class="nb">push(</span><span class="s">s3</span><span class="p">,</span> <span class="s">s4</span><span class="nb">)</span>
+<span class="k">call</span> <span class="n">int2bcd</span>
+</pre></div>
+</div>
+<p>The result is <tt class="docutils literal"><span class="pre">[00</span> <span class="pre">00</span> <span class="pre">05</span> <span class="pre">01</span> <span class="pre">12]</span></tt> at 0x20.</p>
+<p>For handling numeric string inputs there are a pair of generator macros that can be used. First is <tt class="docutils literal"><span class="pre">use_ascii2bcd()</span></tt> which will convert a numeric ASCII string into BCD format.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;                    &lt;Array addr&gt; &lt;len&gt;</span>
+<span class="nb">use_ascii2bcd(</span><span class="s">ascii2bcd</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span>        <span class="s">s1</span><span class="nb">)</span>
+
+<span class="nb">load_store(</span><span class="s">&quot;0&quot;</span><span class="p">,</span> <span class="mh">0x20</span><span class="nb">)</span> <span class="c">; Simulate text input</span>
+<span class="nb">load_store(</span><span class="s">&quot;1&quot;</span><span class="p">,</span> <span class="mh">0x21</span><span class="nb">)</span>
+<span class="nb">load_store(</span><span class="s">&quot;2&quot;</span><span class="p">,</span> <span class="mh">0x22</span><span class="nb">)</span>
+<span class="nb">load_store(</span><span class="s">&quot;4&quot;</span><span class="p">,</span> <span class="mh">0x23</span><span class="nb">)</span>
+<span class="nb">load_store(</span><span class="s">&quot;9&quot;</span><span class="p">,</span> <span class="mh">0x24</span><span class="nb">)</span>
+
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">20</span> <span class="c">; Use array at 0x20</span>
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">05</span> <span class="c">; Convert 5 characters from 0x20 to 0x24</span>
+<span class="k">call</span> <span class="n">ascii2bcd</span>
+</pre></div>
+</div>
+<p>The resulting array contains BCD: <tt class="docutils literal"><span class="pre">[00</span> <span class="pre">01</span> <span class="pre">02</span> <span class="pre">04</span> <span class="pre">09]</span></tt>. Any non-digit characters are converted to 0.</p>
+<p>The <tt class="docutils literal"><span class="pre">use_bcd2int()</span></tt> macro is used to convert from BCD to an integer. This finishes the conversion of numeric string input into a usable integer value after first converting ASCII to BCD using <tt class="docutils literal"><span class="pre">ascii2bcd</span></tt>.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;                &lt;Array addr&gt; &lt;len&gt; &lt;temp regs&gt;</span>
+<span class="nb">use_bcd2int(</span><span class="s">bcd2int</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span>       <span class="s">s1</span><span class="p">,</span>   <span class="s">s2</span><span class="p">,</span><span class="s">s3</span><span class="p">,</span><span class="s">s4</span><span class="p">,</span><span class="s">s5</span><span class="p">,</span><span class="s">s6</span><span class="nb">)</span>
+
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">20</span> <span class="c">; Use array at 0x20</span>
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">05</span> <span class="c">; Convert 5 digits from 0x20 to 0x24</span>
+<span class="k">call</span> <span class="n">bcd2int</span>
+</pre></div>
+</div>
+<p>The converted integer value is overwritten into the array from left to right, destroying some of the BCD digits. The first byte in the array is the least significant. The total number of integer bytes is returned in the length register (s1 in this case). After conversion the array contains <tt class="docutils literal"><span class="pre">[E1</span> <span class="pre">04</span> <span class="pre">02</span> <span class="pre">04</span> <span class="pre">09]</span></tt>. 0x04E1 is 1249 from the original ASCII string. The integer result is guaranteed to always be smaller than the largest BCD number that will fit in an array (999...) so an overflow is impossible.</p>
 </div>
 <div class="section" id="bit-arithmetic">
 <h2>8-bit arithmetic<a class="headerlink" href="#bit-arithmetic" title="Permalink to this headline">¶</a></h2>
@@ -827,7 +1145,7 @@
 <p>If you need to convert an 8-bit signed value to 16-bit, use the <tt class="docutils literal"><span class="pre">signex(&lt;MSB&gt;,</span> <span class="pre">&lt;LSB&gt;)</span></tt> macro to extend the sign bit onto the upper register. The 8-bit register to be extended is passed in as the LSB argument.</p>
 </div>
 <div class="section" id="bit-arithmetic-logical-and-shift-operators">
-<span id="id3"></span><h2>16-bit arithmetic<a class="headerlink" href="#bit-arithmetic-logical-and-shift-operators" title="Permalink to this headline">¶</a></h2>
+<span id="id6"></span><h2>16-bit arithmetic<a class="headerlink" href="#bit-arithmetic-logical-and-shift-operators" title="Permalink to this headline">¶</a></h2>
 <p>Consider that you need to do some 16-bit arithmetic. You can define aliases for
 pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg16()</span></tt> and then pass them into the 16-bit arithmetic macros:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">reg16(</span><span class="s">rx</span><span class="p">,</span> <span class="s">s4</span><span class="p">,</span> <span class="s">s3</span><span class="nb">)</span>      <span class="c">; Virtual 16-bit register rx is composed of (s4, s3)</span>
@@ -952,38 +1270,38 @@ pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg
 <p>The general purpose PicoBlaze 8x8 multiply and divide routines are made available with arbitrary register allocations to suit your needs. A set of constant multiply and divide routines can also be generated for faster results than the general purpose functions. The following macros are available:</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="30%" />
-<col width="70%" />
+<col width="35%" />
+<col width="65%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td>multiply8x8</td>
+<tr class="row-odd"><td>use_multiply8x8</td>
 <td>8x8-bit unsigned</td>
 </tr>
-<tr class="row-even"><td>multiply8x8s</td>
+<tr class="row-even"><td>use_multiply8x8s</td>
 <td>8x8-bit signed</td>
 </tr>
-<tr class="row-odd"><td>multiply8x8su</td>
+<tr class="row-odd"><td>use_multiply8x8su</td>
 <td>8-bit signed x 8-bit unsigned</td>
 </tr>
-<tr class="row-even"><td>divide8x8</td>
+<tr class="row-even"><td>use_divide8x8</td>
 <td>8/8-bit unsigned</td>
 </tr>
-<tr class="row-odd"><td>divide8x8s</td>
+<tr class="row-odd"><td>use_divide8x8s</td>
 <td>8/8-bit signed</td>
 </tr>
-<tr class="row-even"><td>divide16x8</td>
+<tr class="row-even"><td>use_divide16x8</td>
 <td>16/8-bit unsigned</td>
 </tr>
-<tr class="row-odd"><td>divide16x8s</td>
+<tr class="row-odd"><td>use_divide16x8s</td>
 <td>16/8-bit signed</td>
 </tr>
-<tr class="row-even"><td>multiply8xk</td>
+<tr class="row-even"><td>use_multiply8xk</td>
 <td>8-bit x constant</td>
 </tr>
-<tr class="row-odd"><td>multiply8xk_small</td>
+<tr class="row-odd"><td>use_multiply8xk_small</td>
 <td>8-bit x constant (result less than 256)</td>
 </tr>
-<tr class="row-even"><td>divide8xk</td>
+<tr class="row-even"><td>use_divide8xk</td>
 <td>8-bit / constant</td>
 </tr>
 </tbody>
@@ -994,15 +1312,15 @@ pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg
 
   <span class="c">; Configure multiply and divide functions (sE is a temp register)</span>
   <span class="nb">reg16(</span><span class="s">rx</span><span class="p">,</span> <span class="s">s5</span><span class="p">,</span> <span class="s">s4</span><span class="nb">)</span>
-  <span class="nb">multiply8x8(</span><span class="s">mul8</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="s">s1</span><span class="p">,</span> <span class="s">rx</span><span class="nb">)</span>     <span class="c">; rx = s0 * s1</span>
+  <span class="nb">use_multiply8x8(</span><span class="s">mul8</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="s">s1</span><span class="p">,</span> <span class="s">rx</span><span class="nb">)</span>     <span class="c">; rx = s0 * s1</span>
 
-  <span class="nb">divide8x8(</span><span class="s">div8</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="s">s1</span><span class="p">,</span> <span class="s">s6</span><span class="p">,</span> <span class="s">s7</span><span class="nb">)</span>   <span class="c">; s6 = s0 / s1  rem. s7</span>
+  <span class="nb">use_divide8x8(</span><span class="s">div8</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="s">s1</span><span class="p">,</span> <span class="s">s6</span><span class="p">,</span> <span class="s">s7</span><span class="nb">)</span>   <span class="c">; s6 = s0 / s1  rem. s7</span>
 
-  <span class="nb">multiply8xk(</span><span class="s">mul8k7</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="m">7</span><span class="p">,</span> <span class="s">rx</span><span class="nb">)</span>        <span class="c">; rx = s0 * 7 (Multiplier can be greater than 255)</span>
+  <span class="nb">use_multiply8xk(</span><span class="s">mul8k7</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="m">7</span><span class="p">,</span> <span class="s">rx</span><span class="nb">)</span>        <span class="c">; rx = s0 * 7 (Multiplier can be greater than 255)</span>
 
-  <span class="nb">multiply8xk_small(</span><span class="s">mul8k7s</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="m">7</span><span class="p">,</span> <span class="s">s1</span><span class="nb">)</span> <span class="c">; s1 = s0 * 7 (Result must fit in one byte)</span>
+  <span class="nb">use_multiply8xk_small(</span><span class="s">mul8k7s</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="m">7</span><span class="p">,</span> <span class="s">s1</span><span class="nb">)</span> <span class="c">; s1 = s0 * 7 (Result must fit in one byte)</span>
 
-  <span class="nb">divide8xk(</span><span class="s">div8k</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="m">7</span><span class="p">,</span> <span class="s">s1</span><span class="nb">)</span>       <span class="c">; s1 = s0 / 7 (No remainder)</span>
+  <span class="nb">use_divide8xk(</span><span class="s">div8k</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="m">7</span><span class="p">,</span> <span class="s">s1</span><span class="nb">)</span>       <span class="c">; s1 = s0 / 7 (No remainder)</span>
 
 <span class="nl">main:</span>
 
@@ -1021,7 +1339,7 @@ pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg
 </div>
 </div>
 <div class="section" id="expressions">
-<h2>Expressions<a class="headerlink" href="#expressions" title="Permalink to this headline">¶</a></h2>
+<span id="expression-parser"></span><h2>Expressions<a class="headerlink" href="#expressions" title="Permalink to this headline">¶</a></h2>
 <p>A family of expression evaluator macros are provided that can implement arithmetic and other operations using pseudo-infix notation. The basic principle is borrowed from the PL360 high level assembler. You can write an assignment expression of the form <tt class="docutils literal"><span class="pre">expr(&lt;target</span> <span class="pre">register&gt;</span> <span class="pre">:=</span> <span class="pre">&lt;val&gt;</span> <span class="pre">op</span> <span class="pre">&lt;val&gt;</span> <span class="pre">[op</span> <span class="pre">&lt;val&gt;]*)</span></tt>. Spaces are required between all symbols.</p>
 <p><tt class="docutils literal"><span class="pre">val</span></tt> is one of:</p>
 <table border="1" class="docutils">
@@ -1199,14 +1517,40 @@ pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg
 </pre></div>
 </div>
 </div>
+<div class="section" id="random-numbers">
+<h2>Random numbers<a class="headerlink" href="#random-numbers" title="Permalink to this headline">¶</a></h2>
+<p>A pair of simple pseudo-random number generators are included in the macro package. They are implemented using the xorshift algorithm with coefficients selected for minimal code on PicoBlaze. They generate a full cycle of every value in their range except 0. One generates 8-bit numbers and the other 16-bit. You must set a non-zero seed value to initialize the PRNGs.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">namereg</span> <span class="n">sA</span><span class="p">,</span> <span class="n">SEED</span>
+<span class="nb">use_random8(</span><span class="s">random</span><span class="p">,</span> <span class="s">SEED</span><span class="nb">)</span>
+...
+<span class="k">load</span> <span class="n">SEED</span><span class="p">,</span> <span class="mh">5A</span>    <span class="c">; You should use an entropy source to set the initial seed</span>
+<span class="k">call</span> <span class="n">random</span>
+...
+<span class="k">call</span> <span class="n">random</span>
+</pre></div>
+</div>
+<p>The new random value is in the <tt class="docutils literal"><span class="pre">SEED</span></tt> register after each call to <tt class="docutils literal"><span class="pre">random</span></tt>.</p>
+<p>The 16-bit PRNG is similar but you must provide two additional registers for temporary values. Their contents are not preserved across calls.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">namereg</span> <span class="n">sA</span><span class="p">,</span> <span class="n">SEEDH</span>
+<span class="k">namereg</span> <span class="n">sB</span><span class="p">,</span> <span class="n">SEEDL</span>
+<span class="nb">reg16(</span><span class="s">SEED</span><span class="p">,</span> <span class="s">SEEDH</span><span class="p">,</span><span class="s">SEEDL</span><span class="nb">)</span>
+<span class="nb">use_random16(</span><span class="s">random</span><span class="p">,</span> <span class="s">SEED</span><span class="p">,</span> <span class="s">sC</span><span class="p">,</span><span class="s">sD</span><span class="nb">)</span>
+...
+<span class="nb">load16(</span><span class="s">SEED</span><span class="p">,</span> <span class="mh">0x1234</span><span class="nb">)</span>    <span class="c">; You should use an entropy source to set the initial seed</span>
+<span class="k">call</span> <span class="n">random</span>
+...
+<span class="k">call</span> <span class="n">random</span>
+</pre></div>
+</div>
+</div>
 <div class="section" id="miscellaneous">
 <h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Permalink to this headline">¶</a></h2>
 <p>A few miscellaneous utility macros are included:</p>
 <table border="1" class="docutils">
 <colgroup>
-<col width="13%" />
-<col width="42%" />
-<col width="45%" />
+<col width="15%" />
+<col width="41%" />
+<col width="44%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Macro</th>
@@ -1233,11 +1577,11 @@ pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg
 </tr>
 <tr class="row-even"><td>load_out</td>
 <td>Load and output value</td>
-<td><tt class="docutils literal"><span class="pre">load_out(s0,</span> <span class="pre">0x01,</span> <span class="pre">P_uart)</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">load_out(0x01,</span> <span class="pre">P_uart)</span></tt></td>
 </tr>
-<tr class="row-odd"><td>load_st</td>
+<tr class="row-odd"><td>load_store</td>
 <td>Load and store value</td>
-<td><tt class="docutils literal"><span class="pre">load_st(s0,</span> <span class="pre">0x01,</span> <span class="pre">M_var)</span></tt></td>
+<td><tt class="docutils literal"><span class="pre">load_store(0x01,</span> <span class="pre">M_var)</span></tt></td>
 </tr>
 <tr class="row-even"><td>reverse</td>
 <td>Reverse arguments</td>
@@ -1296,18 +1640,14 @@ pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
       <li>Previous: <a href="../index.html" title="previous chapter">Open PicoBlaze Assembler</a></li>
+      <li>Next: <a href="opbsim.html" title="next chapter">Opbsim</a></li>
   </ul></li>
 </ul>
 </div>
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">m4 support in Opbasm</a><ul>
-<li><a class="reference internal" href="#installing-m4-on-windows">Installing m4 on Windows</a><ul>
-<li><a class="reference internal" href="#mingw">MinGW</a></li>
-<li><a class="reference internal" href="#gnuwin32">GnuWin32</a></li>
-<li><a class="reference internal" href="#cygwin">Cygwin</a></li>
-</ul>
-</li>
+<li><a class="reference internal" href="#installing-m4-on-windows">Installing m4 on Windows</a></li>
 <li><a class="reference internal" href="#overview-of-m4">Overview of m4</a></li>
 <li><a class="reference internal" href="#type-conversions">Type conversions</a></li>
 <li><a class="reference internal" href="#general-purpose-macros">General purpose macros</a></li>
@@ -1323,6 +1663,7 @@ pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg
 <li><a class="reference internal" href="#id2">C-style syntax</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#procedures-and-functions">Procedures and Functions</a></li>
 <li><a class="reference internal" href="#delay-generators">Delay generators</a></li>
 <li><a class="reference internal" href="#string-and-table-operations">String and table operations</a><ul>
 <li><a class="reference internal" href="#escaped-strings">Escaped strings</a></li>
@@ -1330,11 +1671,21 @@ pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg
 <li><a class="reference internal" href="#packed-strings">Packed strings</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#scratchpad-memory-operations">Scratchpad memory operations</a><ul>
+<li><a class="reference internal" href="#memset">memset</a></li>
+<li><a class="reference internal" href="#memcopy">memcopy</a></li>
+<li><a class="reference internal" href="#memwrite">memwrite</a></li>
+<li><a class="reference internal" href="#hexwrite">hexwrite</a></li>
+<li><a class="reference internal" href="#bcdwrite">bcdwrite</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#bcd-conversion">BCD conversion</a></li>
 <li><a class="reference internal" href="#bit-arithmetic">8-bit arithmetic</a></li>
 <li><a class="reference internal" href="#bit-arithmetic-logical-and-shift-operators">16-bit arithmetic</a></li>
 <li><a class="reference internal" href="#bit-io">16-bit IO</a></li>
 <li><a class="reference internal" href="#multiply-and-divide">Multiply and divide</a></li>
 <li><a class="reference internal" href="#expressions">Expressions</a></li>
+<li><a class="reference internal" href="#random-numbers">Random numbers</a></li>
 <li><a class="reference internal" href="#miscellaneous">Miscellaneous</a></li>
 <li><a class="reference internal" href="#manually-running-m4">Manually running m4</a></li>
 </ul>

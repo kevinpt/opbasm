@@ -1,0 +1,296 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Opbsim &mdash; Opbasm 1.3 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/project.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/tty/tty-player.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link href='fonts.googleapis.com/css?family=Kreon:400,300,700' rel='stylesheet' type='text/css'>
+
+
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/0.7.5/webcomponents-lite.min.js"></script>
+<script src="_static/tty/term.min.js"></script>
+<script src="_static/tty/tty-player.min.js"></script>
+
+<style>
+	.terminal-cursor {
+		color: #000;
+		background: green;
+	}
+	.terminal, .title {
+		font-size:x-small;
+	}
+</style>
+
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="opbsim">
+<h1>Opbsim<a class="headerlink" href="#opbsim" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Opbsim is slated for official release in v1.3. Until then it is only available for download through a Git clone.</p>
+</div>
+<p>Opbsim is a command line simulator for PicoBlaze-3 and PicoBlaze-6. The full instruction set for both targets is supported. The primary purpose of Opbsim is to run the automated test suite that validates the macro library. However, it is designed to be simple and run fast to permit testing of long running programs and, as such, may be of of general use as well. Opbsim can run faster than real-time when it is built in release mode. The simulator is simple enough to permit easy modifications and a modular object system is in place to simulate various external peripherals.</p>
+<div class="section" id="building-opbsim">
+<h2>Building Opbsim<a class="headerlink" href="#building-opbsim" title="Permalink to this headline">¶</a></h2>
+<p>Opbsim is implemented in the <a class="reference external" href="http://nim-lang.org/">Nim</a> programming language. To build it you will have to have the nim compiler <a class="reference external" href="http://nim-lang.org/download.html">installed</a> and working. The Opbasm installation script does not build it for you. Its sources are located in the &#8220;sim&#8221; directory. The test suite expects to find the compiled executable in the same location.</p>
+<p>Opbsim is built with the Nim compiler using the following command:</p>
+<div class="highlight-sh"><div class="highlight"><pre>&gt; nim c -d:release opbsim.nim
+</pre></div>
+</div>
+<p>This will produce an executable <tt class="docutils literal"><span class="pre">opbsim</span></tt> program that should be placed at a location on your search path.</p>
+</div>
+<div class="section" id="using-opbsim">
+<h2>Using Opbsim<a class="headerlink" href="#using-opbsim" title="Permalink to this headline">¶</a></h2>
+<p>Opbsim is run with the following options:</p>
+<div class="highlight-python"><div class="highlight"><pre>Open PicoBlaze simulator
+Usage: opbsim [OPTIONS]
+
+Options:
+  -m:MEM_FILE --mem:MEM_FILE    Input mem file
+  -i:JSON_IN  --input:JSON_IN   JSON input string
+  --log:LOG_FILE                Log file with symbol table
+  -L:NUM        --limit:NUM     Limit to NUM instructions executed
+  -v            --verbose       Verbose output
+  -t            --trace         Print execution trace
+  -q            --quiet         Quiet output
+  -j            --json          JSON report [forces quiet too]
+  -p            --list-periphs  Print peripheral information
+  --pb3                         Simulate PicoBlase-3 code
+  --pb6                         Simulate PicoBlaze-6 code [default]
+</pre></div>
+</div>
+<p>You have to provide a MEM file with the <tt class="docutils literal"><span class="pre">-m</span></tt> option. As a guard against infinite loops, there is a default execution limit of 100 million instructions (4 seconds of simulation time at 50 MHz). You can increase or decrease this limit with <tt class="docutils literal"><span class="pre">-L</span></tt>. PB6 is the default processor target. You have to use the <tt class="docutils literal"><span class="pre">--pb3</span></tt> option to simulate PB3 code. Note that Opbsim cannot detect the difference between PB3 and PB6 code and will produce erroneous results if you simulate with the wrong target.</p>
+<p>The JSON output mode is used for automated testing. Once simulation ends, a dictionary is output containing the final state of registers, ports, simulated console output, and additional information. You can read this data into any tool that can parse JSON to evaluate the simulation results. Quiet mode is forced on when JSON mode is selected.</p>
+<p>When run manually, Opbsim will provide basic information about the program executed. You can use <tt class="docutils literal"><span class="pre">--verbose</span></tt> to get more detailed output and <tt class="docutils literal"><span class="pre">--trace</span></tt> to get a trace of all instructions executed. The latter will slow down simulation significantly in long programs due to the large amount of text output so it is best used to debug short code snippets. Opbsim will look for a log file with the same base name as the MEM file. When found, it will load all of the address symbols and display these names next to JUMP and CALL instructions.</p>
+<p>The Opbsim program returns zero on success and one when an unrecoverable internal error occurs. Non-fatal errors in simulation are reported through the &#8220;termination&#8221; status value and the simulator returns zero.</p>
+<p>You can provide input data by passing a JSON array with the <tt class="docutils literal"><span class="pre">-i</span></tt> option. The first 256 values will be assigned to the input ports during initialization. No other interactive behavior is provided.</p>
+</div>
+<div class="section" id="peripherals">
+<h2>Peripherals<a class="headerlink" href="#peripherals" title="Permalink to this headline">¶</a></h2>
+<p>PicoBlaze firmware eventually needs to interact with external hardware and Opbsim provides a mechanism to simulate attached peripherals.</p>
+<p>Included with Opbsim are a number of basic peripherals that have general purpose utility:</p>
+<dl class="docutils">
+<dt>console</dt>
+<dd>This is a simulated terminal that collects ASCII characters written to port 0xFE into a buffer. When a newline character is
+received the buffer is written to stdout. The entire log of console data is captured and reported when JSON mode is active.</dd>
+<dt>quit</dt>
+<dd>This is a special peripheral used to terminate the simulation. A write to port 0xFF ends execution. The value written is reported
+to the output as the number of testbench errors.</dd>
+<dt>loopback</dt>
+<dd>A range of output ports from 0x00 to 0x0F are setup to copy whatever is written to them back to the corresponding input port.</dd>
+<dt>ROM</dt>
+<dd>To access INST directive data packed in the program memory, a dual ported ROM is simulated. An address to read is written to
+0xFA (high byte), 0xFB (low byte) and the low 16-bits of program memory are read back through the same input ports.</dd>
+<dt>IntGen</dt>
+<dd>Simulated interrupts can be generated by writing to port 0xFC. This will trigger the ISR for testing.</dd>
+</dl>
+<div class="section" id="peripheral-interface">
+<h3>Peripheral Interface<a class="headerlink" href="#peripheral-interface" title="Permalink to this headline">¶</a></h3>
+<p>You can add your own peripherals by modifying the Opbsim source. They are implemented as objects that have a sequence of input and putput ports they are attached to. Whenever an <tt class="docutils literal"><span class="pre">input</span></tt> or <tt class="docutils literal"><span class="pre">output</span></tt> instruction is executed, the associated port is checked for attached peripherals and an associated portRead or portWrite method is called. The methods have access to the processor state and can modify port values as needed. Multiple peripherals can be attached to a single port. They will be called in the order that they were definied during initialization of the processor state.</p>
+</div>
+</div>
+<div class="section" id="test-suite">
+<h2>Test suite<a class="headerlink" href="#test-suite" title="Permalink to this headline">¶</a></h2>
+<p>Opbsim is used as part of an automated test suite. The tests are designed to run using the Python unittest framework with auto test discovery. If necessary, each test runs Opbasm to assemble a program for both PB6 and PB3 targets. The assembled code is then run in the simulator and the result is checked for any failures. You need to have Opbasm installed and accessible from your command line search path. Opbsim must be compiled and available from the /sim directory of the project. Run the tests from the root directory of the project with the following command:</p>
+<div class="highlight-sh"><div class="highlight"><pre>&gt; python -m unittest discover -v
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/opbasm_logo.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">Opbasm</a></h1>
+
+
+
+<p class="blurb">Advanced PicoBlaze Assembler</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=kevinpt&repo=opbasm&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="m4.html" title="previous chapter">m4 support in Opbasm</a></li>
+  </ul></li>
+</ul>
+</div>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Opbsim</a><ul>
+<li><a class="reference internal" href="#building-opbsim">Building Opbsim</a></li>
+<li><a class="reference internal" href="#using-opbsim">Using Opbsim</a></li>
+<li><a class="reference internal" href="#peripherals">Peripherals</a><ul>
+<li><a class="reference internal" href="#peripheral-interface">Peripheral Interface</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#test-suite">Test suite</a></li>
+</ul>
+</li>
+</ul>
+<h3>Other projects</h3>
+
+<div id="proj_list">
+<p>
+
+<a href="http://kevinpt.github.io/ripyl/">Ripyl</a><br>
+<a href="http://code.google.com/p/vertcl">Vertcl</a><br>
+<a href="http://code.google.com/p/vhdl-extras">Vhdl-extras</a><br>
+<a href="http://kevinpt.github.io/lecroy-colorizer/">Lecroy-colorizer</a>
+</p>
+</div>
+
+<script>
+$(function() { // Retrieve list of repositories from Github and dynamically insert them into sidebar
+
+if(!window.sessionStorage || !JSON) { return; } // Punt on crusty browsers (looking at you IE10)
+
+function JSONP( url, callback ) {
+	var id = ( 'jsonp' + Math.random() * new Date() ).replace('.', '');
+	var script = document.createElement('script');
+	script.src = url.replace( 'callback=?', 'callback=' + id );
+	document.body.appendChild( script );
+	window[ id ] = function( data ) {
+		if (callback) {
+			callback( data );
+		}
+	};
+}
+
+// Build dictionary indexing lower cased project names with their preferred format
+var knownProjects = ["VHDL-extras", "Ripyl", "VerTcl", "LeCroy-colorizer", "Opbasm"];
+var projectDict = {};
+$.each(knownProjects, function(index, v) {
+  projectDict[v.toLowerCase()] = v;
+});
+
+function insert_projects(projects) {
+    var links = [];
+    var cur_proj = "Opbasm".toLowerCase();
+    
+    $.each(projects, function(key, value) {
+      if(key != cur_proj) {
+        var title;
+        if(key in projectDict) {
+          title = projectDict[key];
+        } else { // Capitalize first char
+          title = key.replace(/^./, function(match) {return match.toUpperCase()});
+        }
+        links.push("<a href='"+ value +"'>" + title + "</a>");
+      }
+    });
+    
+    $("#proj_list").html("<p>"+ links.join("<br>") +"</p>");
+}
+
+var now = new Date().getTime();
+if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) { // Use cached values (5 min. expiry)
+  insert_projects(JSON.parse(sessionStorage.KTprojects));
+} else { // Retrieve current projects
+  JSONP("https://api.github.com/users/kevinpt/repos?type=owner&callback=?", function(response) {
+    var projects = {};
+    $.each(response.data, function(index, value) {
+      if(!value.fork)
+        projects[value.name] = value.homepage;
+    });
+    
+    insert_projects(projects);
+    
+    // Store data in session cache
+    sessionStorage.KTprojects = JSON.stringify(projects);
+    var now = new Date().getTime();
+    sessionStorage.KTcacheTime = now;
+  });  
+}
+
+});
+</script>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+
+    <div class="footer">
+      &copy;2015, Kevin Thibedeau.
+      
+      |
+      <a href="../_sources/rst/opbsim.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-52148206-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+  </body>
+</html>

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="_static/project.css" type="text/css" />
+    <link rel="stylesheet" href="_static/tty/tty-player.min.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
@@ -24,11 +25,27 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link href='http://fonts.googleapis.com/css?family=Kreon:400,300,700' rel='stylesheet' type='text/css'>
+    <link href='fonts.googleapis.com/css?family=Kreon:400,300,700' rel='stylesheet' type='text/css'>
+
 
    
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/0.7.5/webcomponents-lite.min.js"></script>
+<script src="_static/tty/term.min.js"></script>
+<script src="_static/tty/tty-player.min.js"></script>
+
+<style>
+	.terminal-cursor {
+		color: #000;
+		background: green;
+	}
+	.terminal, .title {
+		font-size:x-small;
+	}
+</style>
+
 
   </head>
   <body>  
@@ -40,10 +57,8 @@
             
   <div class="section" id="open-picoblaze-assembler">
 <h1>Open PicoBlaze Assembler<a class="headerlink" href="#open-picoblaze-assembler" title="Permalink to this headline">¶</a></h1>
-<div class="toctree-wrapper compound">
-</div>
-<p>Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers <a class="reference external" href="http://www.xilinx.com/products/intellectual-property/picoblaze.htm">provided by Xilinx</a>. It will run readily on any platform with a functional Python interpreter. Opbasm provides a better performing solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.</p>
-<p><strong>Special features of Opbasm:</strong></p>
+<p>Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers <a class="reference external" href="http://www.xilinx.com/products/intellectual-property/picoblaze.htm">provided by Xilinx</a>. It will run readily on any platform with a Python interpreter. Opbasm provides a better performing solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.</p>
+<tty-player autoplay loop controls src="_static/tty/demo.ttyrec"></tty-player><p><strong>Special features of Opbasm:</strong></p>
 <blockquote>
 <div><ul class="simple">
 <li>Optional <a class="reference internal" href="rst/m4.html"><em>m4 preprocessor macros</em></a> are available when the m4 program is installed. An extensive set of built-in macros provide more advanced features than the base language. For example, converting temperature scales becomes as easy as this:</li>
@@ -60,8 +75,9 @@
 </div>
 </div></blockquote>
 <ul class="simple">
-<li><a class="reference internal" href="#static-code-analysis">Static code analysis</a> to identify dead code and optionally remove it. This permits the development of code libraries that can be included without wasting memory on unused functions.</li>
+<li>Includes an optimizer that performs <a class="reference internal" href="#static-code-analysis">static code analysis</a> to identify dead code and optionally remove it. This permits the development of code libraries that can be included without wasting memory on unused functions.</li>
 <li>Code block annotations with <a class="reference internal" href="#user-defined-pragma-meta-comments">user defined PRAGMA meta-comments</a>.</li>
+<li>A basic <a class="reference internal" href="rst/opbsim.html"><em>command line simulator Opbsim</em></a> is included.</li>
 </ul>
 </div></blockquote>
 <p>Support for the full PicoBlaze-6 syntax is provided as well as <a class="reference internal" href="#enabling-most-of-the-new-pb6-syntax-enhancements-in-picoblaze-3-code">enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code</a>. The original templating system for ROM components is supported as well as a more flexible <a class="reference internal" href="#generic-rom-component">generic ROM component</a> that can read <em>.mem</em> and <em>.hex</em> files directly during synthesis and simulation. A utility script is included that permits <a class="reference internal" href="#updating-the-rom-contents-of-a-bitstream-file">updating the ROM contents of a bitstream file</a> without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.</p>
@@ -78,7 +94,7 @@
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
 <p>You must have Python installed first. Most modern Linux distributions and OS/X have it available by default. There are a number of options available for Windows. If you don&#8217;t already have a favorite, I recommend getting one of the <a class="reference external" href="http://www.scipy.org/install.html">&#8220;full-stack&#8221; Python distros</a> that are geared toward scientific computing such as Anaconda or Python(x,y).</p>
-<p>If your OS has a package manager, it may be preferable to install Python setuptools and pyparsing through that tool before attempting to install Opbasm. Otherwise, the installation script will install these packages directly without registering them with the OS package manager.</p>
+<p>If your OS has a package manager, it may be preferable to install Python setuptools through that tool before attempting to install Opbasm. Otherwise, the installation script will install these packages directly without registering them with the OS package manager.</p>
 <p>The easiest way to install Opbasm is from <a class="reference external" href="https://pypi.python.org/pypi/opbasm">PyPI</a>.</p>
 <div class="highlight-sh"><div class="highlight"><pre>&gt; pip install --upgrade opbasm
 </pre></div>
@@ -92,7 +108,7 @@
 </pre></div>
 </div>
 <p>On Linux systems you may need to install with root privileges using the <em>sudo</em> command.</p>
-<p>After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the <em>&lt;Python root&gt;Scripts</em> directory is in your %PATH% environment variable.</p>
+<p>After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the <tt class="docutils literal"><span class="pre">&lt;Python</span> <span class="pre">root&gt;\Scripts</span></tt> directory is in your %PATH% environment variable.</p>
 <p>If you can&#8217;t use the installer script, it is possible to run <em>opbasm.py</em> directly without installation.</p>
 <div class="highlight-sh"><div class="highlight"><pre>&gt; python opbasm.py ...
 </pre></div>
@@ -128,6 +144,37 @@ explanation of the new PicoBlaze-6 syntax.</p>
 <h2>PicoBlaze-6 enhancements<a class="headerlink" href="#picoblaze-6-enhancements" title="Permalink to this headline">¶</a></h2>
 <p>The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory. Opbasm provides -m to do the same as well as -s to limit the scratchpad memory size to 64 or 128 bytes. MEM format files are output by default. KCPSM6-style HEX format is activated with <em>-x</em>.</p>
 </div>
+<div class="section" id="syntax-extensions">
+<h2>Syntax extensions<a class="headerlink" href="#syntax-extensions" title="Permalink to this headline">¶</a></h2>
+<p>Two non-standard syntax extension have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a &#8221;.&#8221;. Local labels do not have to be gloabally unique making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately predeeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_proc:</span>
+  <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">04</span>
+<span class="nl">.loop:</span>            <span class="c">; Local label for this procedure</span>
+  <span class="k">add</span> <span class="n">s1</span><span class="p">,</span> <span class="n">s0</span>
+  <span class="k">sub</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">01</span>
+  <span class="k">compare</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
+  <span class="k">jump</span> <span class="n">nz</span><span class="p">,</span> <span class="n">.loop</span>  <span class="c">; Jump to local loop label</span>
+  <span class="k">return</span>
+
+<span class="nl">my_proc2:</span>
+  <span class="ge">&lt;something else&gt;</span>
+<span class="nl">.loop:</span>            <span class="c">; This is a different loop label</span>
+  <span class="ge">&lt;something else&gt;</span>
+  <span class="k">return</span>
+
+<span class="k">jump</span> <span class="n">my_proc.loop</span> <span class="c">; Access the local label by referring to its expanded name</span>
+</pre></div>
+</div>
+<p>Another small extension to the syntax is that the ADDRESS directive can take a label as a parameter as well as a numeric address. This is most useful when defining an ISR by inserting a <tt class="docutils literal"><span class="pre">jump</span></tt> instruction at the vector address and then returning back to a labeled address to resume assembling code from the the next point in memory.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_isr:</span>
+  <span class="k">address</span> <span class="mh">3FF</span>
+  <span class="k">jump</span> <span class="n">my_isr</span>     <span class="c">; Assemble instruction at interupt vector location</span>
+  <span class="k">address</span> <span class="n">my_isr</span>  <span class="c">; Resume assembly at address previously captured in &quot;my_isr&quot;</span>
+  <span class="ge">&lt;ISR code&gt;</span>
+  <span class="k">returni</span>
+</pre></div>
+</div>
+</div>
 <div class="section" id="m4-preprocessor">
 <h2>m4 preprocessor<a class="headerlink" href="#m4-preprocessor" title="Permalink to this headline">¶</a></h2>
 <p>Opbasm uses the m4 preprocessor to provide enhanced syntax to PicoBlaze developers. A useful package of predefined macros is included automatically when m4 is run. You can activate m4 by naming source files with the &#8221;.psm4&#8221;, or &#8221;.m4&#8221; extensions or by passing the <em>&#8211;m4</em> option. See the more detailed <a class="reference internal" href="rst/m4.html"><em>m4 documentation</em></a> for more information on using the preprocessor macros.</p>
@@ -151,7 +198,7 @@ explanation of the new PicoBlaze-6 syntax.</p>
 <p>The assembler is invoked with the <em>opbasm</em> script. It supports the following command line syntax:</p>
 <div class="highlight-python"><div class="highlight"><pre>Usage: opbasm [-i] &lt;input file&gt; [-n &lt;name&gt;] [-t &lt;template&gt;] [-6|-3] [-m &lt;mem size&gt;] [-s &lt;scratch size&gt;]
               [-d] [-r] [-e &lt;address&gt;]
-              [-o &lt;output dir&gt;] [-q] [--m4] [--pyparsing]
+              [-o &lt;output dir&gt;] [-q] [--m4]
               [--debug-preproc &lt;file&gt;]
        opbasm -g
 
@@ -183,10 +230,15 @@ Options:
   -v, --version         Show OPBASM version
   -q, --quiet           Quiet output
   --m4                  Use m4 preprocessor on all source files
+  -D NAME[=VALUE], --define=NAME[=VALUE]
+                        Define m4 macro NAME as having VALUE or empty
   --debug-preproc=FILE  Transformed source file after initial preprocessing
 </pre></div>
 </div>
-<p>Opbasm defaults to using PicoBlaze-3 as the target processor. Beginning with version 1.4 the default will change to the PicoBlaze-6. You should apply the optional <em>-3</em> switch when writing PB3 build scripts to guard against this future change.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Opbasm currently defaults to using PicoBlaze-3 as the target processor. <strong>Beginning with version 1.4 the default will change to PicoBlaze-6.</strong> You should apply the optional <tt class="docutils literal"><span class="pre">-3</span></tt> switch when writing PB3 build scripts to guard against this future change.</p>
+</div>
 <p>To compile to PicoBlaze-3 opcodes, use the following:</p>
 <div class="highlight-sh"><div class="highlight"><pre>&gt; opbasm foo.psm
 OPBASM - Open PicoBlaze Assembler
@@ -238,14 +290,17 @@ ROM_form_S3_1K.vhdl,picoblaze_rom.vhdl
 <div class="section" id="generic-rom-component">
 <h3>Generic ROM component<a class="headerlink" href="#generic-rom-component" title="Permalink to this headline">¶</a></h3>
 <p>As an alternative to the templating system, a generic, synthesizable VHDL ROM is provided in the <a class="reference external" href="https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl">picoblaze_rom.vhdl</a>  file. This component uses XSTs limited support for textio during synthesis to read a <em>.mem</em> or <em>.hex</em> file directly without the use of a template file. It takes advantage of XSTs support for automatically partitioning memories that exceed the maximum size of a BRAM. This provides a simplification of the synthesis flow and you do not need to manually switch to different template files if you change the size of the ROM for PicoBlaze-6 designs. For simulation, this component has the advantage that it doesn&#8217;t have to be recompiled for every change to the PicoBlaze source code in a design and is portable across Xilinx families. It automatically re-reads the latest <em>.mem</em> or <em>.hex</em> whenever the simulation is reset. A generic can be set to select the implementation as BRAM or distributed RAM.</p>
-<p>XST doesn&#8217;t infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The &#8220;<tt class="docutils literal"><span class="pre">ROM_form_S6_4K_&lt;date&gt;.vhd</span></tt>&#8221; template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">XST doesn&#8217;t infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The &#8220;<tt class="docutils literal"><span class="pre">ROM_form_S6_4K_&lt;date&gt;.vhd</span></tt>&#8221; template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.</p>
+</div>
 <p>A dual-ported <tt class="docutils literal"><span class="pre">picoblaze_dp_rom</span></tt> component is also included in this package. It provides a second read/write port that can be connected to internal logic to facilitate use of packed ROM data stored with <tt class="docutils literal"><span class="pre">INST</span></tt> directives or to use a portion of the BRAM as general purpose RAM. The <a class="reference internal" href="rst/m4.html#string-and-table-ops"><em>insttable m4 macros</em></a> are included to simplify the creation of <tt class="docutils literal"><span class="pre">INST</span></tt> directives containing packed byte data.</p>
 <p>It is not necessary to have an HDL template file present if you are using the generic ROM.</p>
 </div>
 </div>
 <div class="section" id="user-defined-pragma-meta-comments">
 <h2>User defined PRAGMA meta-comments<a class="headerlink" href="#user-defined-pragma-meta-comments" title="Permalink to this headline">¶</a></h2>
-<p>To facilitate post processing of assembled output, Opbasm includes a facility to annotate blocks of code using PRAGMA meta-comments. It uses a flexible syntax that provides considerable freedom in how you annotate your code.</p>
+<p>To assist with post processing of assembled output, Opbasm includes a facility to annotate blocks of code using PRAGMA meta-comments. It uses a flexible syntax that provides considerable freedom in how you annotate your code.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre>** Start a block:
 <span class="cs">;PRAGMA &lt;name&gt; [optional arguments] on|start|begin</span>
 
@@ -345,6 +400,8 @@ Generated updated bit file: new_foobar.bit
 <li>Notepad++ install: Select &#8220;Language|Define your language...&#8221;. Click &#8220;Import...&#8221; and select the <tt class="docutils literal"><span class="pre">picoblaze.xml</span></tt> file.</li>
 </ul>
 </div></blockquote>
+<div class="toctree-wrapper compound">
+</div>
 </div>
 <div class="section" id="licensing">
 <h2>Licensing<a class="headerlink" href="#licensing" title="Permalink to this headline">¶</a></h2>
@@ -404,6 +461,7 @@ Generated updated bit file: new_foobar.bit
 <li><a class="reference internal" href="#installation">Installation</a></li>
 <li><a class="reference internal" href="#picoblaze-3-enhancements">PicoBlaze-3 enhancements</a></li>
 <li><a class="reference internal" href="#picoblaze-6-enhancements">PicoBlaze-6 enhancements</a></li>
+<li><a class="reference internal" href="#syntax-extensions">Syntax extensions</a></li>
 <li><a class="reference internal" href="#m4-preprocessor">m4 preprocessor</a></li>
 <li><a class="reference internal" href="#static-code-analysis">Static code analysis</a></li>
 <li><a class="reference internal" href="#using-opbasm">Using Opbasm</a><ul>
