@@ -1,0 +1,60 @@
+include(`setup.m4')
+
+;VALIDATES: use_memcopy, use_memset, use_ascii2bcd
+
+;:::::::::: Scratchpad memory operations ::::::::::
+jump main
+
+namereg s9, DestBuf
+
+use_memcopy(memcopy, s0, s1, s2)
+use_memset(memset, s0, s1, s2)
+
+use_ascii2bcd(ascii2bcd, s0, s1)
+
+main:
+
+for(s8 := 1, s8 <= 5, s8 := s8 + 1) {
+
+  ; Init buffer
+  load s0, 10  ; Dest
+  load s1, s8  ; Len
+  load s2, s8  ; Value
+  call memset
+  
+  load s0, 10 ; Source
+  load s1, 20 ; Dest
+  load s2, s8 ; Len
+  call memcopy
+  
+  ; Convert to ASCII
+  load s6, s0
+  for(s4 := 0, s4 < s8, s4 := s4 + 1) {
+    fetch s5, (s6)
+    add s5, "0"
+    store s5, (s6)
+    add s6, 01
+  }
+  
+  ; Then convert it back
+  load s1, s8
+  call ascii2bcd
+
+  ; Verify array was copied correctly  
+  load s0, 10
+  load s1, 20
+  for(s4 := 0, s4 < s8, s4 := s4 + 1) {
+    fetch s5, (s0)
+    fetch s6, (s1)
+    
+    assert_true(s5 == s6)
+    
+    add s0, 01
+    add s1, 01
+  }
+
+}
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate
