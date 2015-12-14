@@ -1821,7 +1821,7 @@ def write_mif_file(fname, mmap):
     print('BEGIN', file=fh)
     # write data lines -> 'Address : Content' in multiples of 8
     for a in xrange(len(mmap) // 8):
-      d = ' '.join('{:05X}'.format(w) for w in mmap[a:a+8])
+      d = ' '.join('{:05X}'.format(w) for w in mmap[a*8:(a+1)*8])
       print('{:04X} : {};'.format(a*8, d), file=fh)
 
     # write MIF footer
