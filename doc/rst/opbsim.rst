@@ -11,7 +11,7 @@ Opbsim is a command line simulator for PicoBlaze-3 and PicoBlaze-6. The full ins
 Building Opbsim
 ---------------
 
-Opbsim is implemented in the `Nim <http://nim-lang.org/>`_ programming language. To build it you will have to have the nim compiler `installed <http://nim-lang.org/download.html>`_ and working. The Opbasm installation script does not build it for you. Its sources are located in the "sim" directory. The test suite expects to find the compiled executable in the same location.
+Opbsim is written in the `Nim <http://nim-lang.org/>`_ programming language. To build it you will need the nim compiler `installed <http://nim-lang.org/download.html>`_ and working. The Opbasm installation script does not build Opbsim for you. Its sources are located in the "sim" directory. The test suite expects to find the compiled executable in the same location.
 
 Opbsim is built with the Nim compiler using the following command:
 
