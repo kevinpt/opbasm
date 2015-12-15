@@ -41,7 +41,7 @@ Opbsim is run with the following options:
     -q            --quiet         Quiet output
     -j            --json          JSON report [forces quiet too]
     -p            --list-periphs  Print peripheral information
-    --pb3                         Simulate PicoBlase-3 code
+    --pb3                         Simulate PicoBlaze-3 code
     --pb6                         Simulate PicoBlaze-6 code [default]
 
 You have to provide a MEM file with the ``-m`` option. As a guard against infinite loops, there is a default execution limit of 100 million instructions (4 seconds of simulation time at 50 MHz). You can increase or decrease this limit with ``-L``. PB6 is the default processor target. You have to use the ``--pb3`` option to simulate PB3 code. Note that Opbsim cannot detect the difference between PB3 and PB6 code and will produce erroneous results if you simulate with the wrong target.
@@ -83,7 +83,7 @@ IntGen
 Peripheral Interface
 ~~~~~~~~~~~~~~~~~~~~
 
-You can add your own peripherals by modifying the Opbsim source. They are implemented as objects that have a sequence of input and putput ports they are attached to. Whenever an ``input`` or ``output`` instruction is executed, the associated port is checked for attached peripherals and an associated portRead or portWrite method is called. The methods have access to the processor state and can modify port values as needed. Multiple peripherals can be attached to a single port. They will be called in the order that they were definied during initialization of the processor state.
+You can add your own peripherals by modifying the Opbsim source. They are implemented as objects that have a sequence of input and output ports they are attached to. Whenever an ``input`` or ``output`` instruction is executed, the associated port is checked for attached peripherals and an associated portRead or portWrite method is called. The methods have access to the processor state and can modify port values as needed. Multiple peripherals can be attached to a single port. They will be called in the order that they were defined during initialization of the processor state.
 
 
 Test suite

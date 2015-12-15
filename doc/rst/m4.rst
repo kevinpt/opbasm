@@ -574,7 +574,7 @@ You cannot use a ``return`` instruction inside the code body of a ``func()`` mac
 isr
 ~~~
 
-A variant of the ``func()`` macro is available for defining ISRs. The ``isr()`` macro is similar to ``func()`` but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.
+A variant of the ``func()`` macro is available for defining ISRs. The ``isr()`` macro is similar to ``func()`` but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interrupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.
 
 .. code-block:: picoblaze
 
@@ -1015,7 +1015,7 @@ Most of the previous string handling routines are hard-coded to use a single cal
 Scratchpad memory operations
 ----------------------------
 
-A set of routines are available for manipulating arrays in scratchpad memory. They are accessed by invoking a ``use_XXX()`` generator macro to create the functions with register allocations of your choice. All of these macros take an intial argument that is the name of the generated function. They all preserve their input and temporary registers on the stack unless reused for a return value.
+A set of routines are available for manipulating arrays in scratchpad memory. They are accessed by invoking a ``use_XXX()`` generator macro to create the functions with register allocations of your choice. All of these macros take an initial argument that is the name of the generated function. They all preserve their input and temporary registers on the stack unless reused for a return value.
 
 memset
 ~~~~~~

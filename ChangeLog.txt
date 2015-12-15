@@ -38,6 +38,7 @@ v1.x / 2015-??-??
   * Support for KCPSM6 ECC template for 7-series devices
   * Support reading input source from stdin
   * New more compact delay_cycles() macro
+  * Add support for Altera MIF output
   * Windows m4 binary is included
     
   Bug fixes
