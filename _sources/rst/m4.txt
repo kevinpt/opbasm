@@ -4,7 +4,7 @@ m4 support in Opbasm
 
 The m4 preprocessor adds powerful facilities for enhanced PicoBlaze assembly. m4 is typically already present on most Linux systems. A precompiled Windows binary is included with Opbasm. Opbasm will automatically run m4 if a source file has the extension ".psm4" or ".m4" or on any file if the ``--m4`` option is used. The included macro package depends on some GNU extensions so GNU m4 must be used if the built-in macros are employed.
 
-Predefined macros are provided with Opbasm covering the following areas:
+Around 200 predefined macros are provided with Opbasm covering the following areas:
 
 +----------------------------------------------------+------------------------------------------------------+
 | * `Stack operations`_                              | * `Portable string and table operations`_            |
@@ -80,7 +80,7 @@ In the Cygwin environment, the included binary will not be executed and you must
 Overview of m4
 --------------
 
-m4 it a general purpose macro preprocessor. It performs text based string manipulation through repeated expansion of previously defined macros including support for recursion. The preprocessor has a number of built in macros and provides a means to define your own. Macros have a name that contains letters, digits, and underscores. Any arguments are enclosed in parentheses and delimited by commas. Expansion is suppressed by enclosing text in quote characters which are ```'`` by default. Comments start with "#" by default but have been changed to use ";" to match PicoBlaze syntax.
+m4 is a general purpose macro preprocessor. It performs text based string manipulation through repeated expansion of previously defined macros including support for recursion. The preprocessor has a number of built in macros and provides a means to define your own. Macros have a name that contains letters, digits, and underscores. Any arguments are enclosed in parentheses and delimited by commas. Expansion is suppressed by enclosing text in quote characters which are ```'`` by default. Comments start with "#" by default but have been changed to use ";" to match PicoBlaze syntax.
 
 m4 uses different syntax from PicoBlaze assembly to represent different types of literals. It is important to know what context you are operating in to determine which type of literal to put in your source.
 
@@ -459,19 +459,22 @@ Similarly to ``if()`` there are a set of high level looping macros ``for()``, ``
 C-style syntax
 ~~~~~~~~~~~~~~~
 
-Similarly to the ``if()`` macro, an alternate C-style syntax is available for ``for()``, ``while()``, and ``dowhile()``. Note that the ``for()`` macro continues to use commas to separate the sections.
+An alternate C-style syntax is also available for ``for()``, ``while()``, and ``dowhile()``. Note that the ``for()`` macro continues to use commas to separate the sections.
 
 .. code-block:: picoblaze
 
+  ; For loops
   for (s0 := 0, s0 < s1, s0 := s0 + 1) {
     output s0, P_FOO
   }
 
+  ; While loops
   while (s0 < s1) {
     add s0, 01
     output s0, P_FOO
   }
 
+  ; Do-while loops
   do {
     add s0, 01
     output s0, P_FOO
@@ -496,6 +499,9 @@ Procedures and Functions
 
 A set of macros are available that can streamline the creation of procedures, functions, and interrupt service routines. All of these macros have a C-style block syntax which is the preferred way to invoke them.
 
+proc
+~~~~
+
 The most basic is the ``proc()`` macro which is a convenience routine creating a labeled code block with an included ``vars()`` macro for variable definitions, a final ``return`` instruction, and automatic ";PRAGMA" comments identifying it as a function.
 
 .. code-block:: picoblaze
@@ -517,7 +523,10 @@ The most basic is the ``proc()`` macro which is a convenience routine creating a
   
   CALL addinc
   
-The "argument" list to proc also includes local variables used by the procedure. You are responsible for loading arguments into registers and cleaning up temporary registers. The 
+The "argument" list to proc is passed on to the ``vars()`` macro. It can include local variables used by the procedure. You are responsible for loading arguments into registers and cleaning up temporary registers.
+
+func
+~~~~
 
 The ``func()`` macro provides a more elaborate function generator that takes care of handling arguments by passing them on the stack. A dynamically generated macro is created for calling each defined function. ``func()`` takes a list of registers to pass as arguments as well as an optional number of bytes for values returned on the stack. those registers are placed on the stack and then popped into local registers that are saved and restored after the function completes. The argument list is in the same "Sn is Y" syntax used by the ``vars()`` macro but you can also just list register names without providing an alias.
 
@@ -562,7 +571,10 @@ After the function call the registers will be in the same state they were before
 
 You cannot use a ``return`` instruction inside the code body of a ``func()`` macro because the stack cleanup code will not be executed. Instead you must call the ``leave_func`` macro whenever you want to exit early. It will ensure the cleanup code is executed.
 
-A variant of the ``func()`` macro is available for defining ISRs. The ``isr()`` macro is similar to ``func()`` but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.
+isr
+~~~
+
+A variant of the ``func()`` macro is available for defining ISRs. The ``isr()`` macro is similar to ``func()`` but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interrupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.
 
 .. code-block:: picoblaze
 
@@ -625,6 +637,9 @@ The delay can be from 0 to approximately 100e9 but a practical limit would be to
 
 An alternate implementation of ``delay_cycles()`` can be invoked by first configuring it with the ``use_delay_reg()`` macro. You call it with a single register to use for a delay counter. This register must be different than the ones used for the long period delay macros described next. With a delay register configured, the ``delay_cycles()`` macro will be implemented as a small loop for delays of 511 cycles or less. Longer delays will fall back to using recursive delay trees.
 
+Time delays
+~~~~~~~~~~~
+
 Delays by microseconds and milliseconds are implemented with the ``delay_us()`` and ``delay_ms()`` macros. Before using these you must establish the system clock frequency with the ``use_clock()`` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay by a certain number of instructions if needed.
 
 .. code-block:: picoblaze
@@ -653,6 +668,9 @@ The ``delay_*()`` macros take a delay value, a pair of registers and an optional
 =======  =======
 
 The registers are used for an internal 16-bit counter. The internal delay loop is automatically adjusted to ensure the count value fits within 16-bits. When implementing a delay as a subroutine an adjustment can be added to account for the ``CALL`` and ``RETURN`` instructions.
+
+Variable delays
+~~~~~~~~~~~~~~~
 
 If you need to use multiple delays it may be desirable to have a common delay routine that supports variable delay counts. This is provided by the ``var_delay_us()`` and ``var_delay_ms()`` macros. They are similar to the fixed delays but are not cycle accurate and have no provision for adjustment.
 
@@ -949,6 +967,47 @@ If you have existing code using the portable string macros, you can convert it t
 
   use_packed_strings(s0,s1, s5,s6, write_char, read_next_chars, string)
 
+Multi-function strings
+~~~~~~~~~~~~~~~~~~~~~~
+
+Most of the previous string handling routines are hard-coded to use a single callback routine like ``write_char`` to process characters. This function does not need to be limited to just outputting data on a port. It also does not need to be limited to a single operation. You can use a register or scratchpad location to alter its behavior for different needs.
+
+.. code-block:: picoblaze
+
+  constant M_CHAR_MODE, 00
+  constant P_CONSOLE, FF
+  
+  constant CHAR_OUT, 01
+  constant CHAR_COPY, 02
+  
+  
+  use_strings(s0, s5,s6, handle_char)
+  
+  proc handle_char(`s0 is ch', `sA is ptr') {
+    fetch _tempreg, M_CHAR_MODE
+    if(_tempreg == CHAR_COPY) {
+      ; Store in a scratchpad buffer
+      store ch, (ptr)
+      add ptr, 01
+    } else { ; CHAR_OUT
+      ; Write to console
+      output ch, P_CONSOLE
+    }
+  }
+  
+  string(hello, `Hello again\n')
+  
+  ...
+
+  ; Write string to a port  
+  load_store(CHAR_OUT, M_CHAR_MODE)
+  call hello
+  
+  ; Copy string to a scratchpad buffer
+  load_store(CHAR_COPY, M_CHAR_MODE)
+  load sA, 10  ; Start address
+  call hello
+  load_store(NUL, sA) ; Write NUL to end of string buffer
 
   
 .. _Scratchpad memory operations:  
@@ -956,7 +1015,7 @@ If you have existing code using the portable string macros, you can convert it t
 Scratchpad memory operations
 ----------------------------
 
-A set of rroutines are available for manipulating arrays in scratchpad memory. They are accessed by involing a ``use_XXX()`` generator macro to create the functions with register allocations of your choice. All of these macros take an intial argument that is the name of the generated function. All of these macros preserve their input and temporary registers on the stack unless they are reused for a return value.
+A set of routines are available for manipulating arrays in scratchpad memory. They are accessed by invoking a ``use_XXX()`` generator macro to create the functions with register allocations of your choice. All of these macros take an initial argument that is the name of the generated function. They all preserve their input and temporary registers on the stack unless reused for a return value.
 
 memset
 ~~~~~~
@@ -1027,8 +1086,8 @@ Similar to ``memwrite`` is the ``use_hexwrite()`` macro. It writes an array of b
   load_store(0x11, 0x21)
   load_store(0x42, 0x22)
   
-  load s0, 20
-  load s1, 03
+  load s0, 20 ; Source array
+  load s1, 03 ; Writing 3 bytes
   call hexwrite
   
 This writes the string "5A1142" to the output port. Every byte expands into two hex digits.
@@ -1055,7 +1114,7 @@ are skipped. Invalid BCD digits are not detected.
   load s1, 03 ; Writing 3 bytes
   call bcdwrite
 
-This converts the array to ASCII characters and sends "15" to the output port. This is useful for printg the output from ``int2bcd`` described below.
+This converts the array to ASCII characters and sends "15" to the output port. This is useful for printing the output from ``int2bcd`` described below.
 
  
   
@@ -1064,7 +1123,7 @@ This converts the array to ASCII characters and sends "15" to the output port. T
 BCD conversion
 --------------
 
-A pair of generator macros create functions for converting between unsigned integers and unpacked BCD. They are designed to work with arbitrary sized integers consisting of one or more bytes.
+A pair of generator macros create functions for converting between unsigned integers and unpacked BCD. They are designed to work with arbitrary sized integers consisting of one or more bytes. The ``use_int2bcd()`` macro takes a list of integer bytes on the stack and writes the BCD representation into a fixed size buffer.
 
 .. code-block:: picoblaze
 
@@ -1073,12 +1132,12 @@ A pair of generator macros create functions for converting between unsigned inte
   ...
   
   load s0, 20  ; Use buffer from 0x20 to 0x24
-  load s1, 02  ; Convert 16-bit integer
+  load s1, 02  ; Convert 16-bit integer (2 bytes)
   load16(s4,s3, 30789)
   push(s3, s4) ; Place integer on stack low byte first, high byte last
   call int2bcd
   
-After conversion the array at 0x20 contains the hex values ``[03 00 07 08 09]``. This result can then be processed by ``bcdwrite`` to write an integer value out to a port. The result is right justified in the array with leading 0's for any unused digits. No error detection is performed if the result requires more digits than the array was defined for.
+After conversion the array at 0x20 contains the hex values ``[03 00 07 08 09]``. This result can then be processed by ``bcdwrite`` to write an integer value out to a port. The result is right justified in the array with leading 0's for any unused digits. No error detection is performed if the result requires more digits than the generator macro was defined to use.
 
 .. code-block:: picoblaze
 

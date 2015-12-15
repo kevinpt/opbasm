@@ -146,7 +146,7 @@ explanation of the new PicoBlaze-6 syntax.</p>
 </div>
 <div class="section" id="syntax-extensions">
 <h2>Syntax extensions<a class="headerlink" href="#syntax-extensions" title="Permalink to this headline">¶</a></h2>
-<p>Two non-standard syntax extension have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a &#8221;.&#8221;. Local labels do not have to be gloabally unique making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately predeeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.</p>
+<p>Two non-standard syntax extensions have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a &#8221;.&#8221;. Local labels do not have to be globally unique making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately preceeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_proc:</span>
   <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">04</span>
 <span class="nl">.loop:</span>            <span class="c">; Local label for this procedure</span>
@@ -168,7 +168,7 @@ explanation of the new PicoBlaze-6 syntax.</p>
 <p>Another small extension to the syntax is that the ADDRESS directive can take a label as a parameter as well as a numeric address. This is most useful when defining an ISR by inserting a <tt class="docutils literal"><span class="pre">jump</span></tt> instruction at the vector address and then returning back to a labeled address to resume assembling code from the the next point in memory.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_isr:</span>
   <span class="k">address</span> <span class="mh">3FF</span>
-  <span class="k">jump</span> <span class="n">my_isr</span>     <span class="c">; Assemble instruction at interupt vector location</span>
+  <span class="k">jump</span> <span class="n">my_isr</span>     <span class="c">; Assemble instruction at interrupt vector location</span>
   <span class="k">address</span> <span class="n">my_isr</span>  <span class="c">; Resume assembly at address previously captured in &quot;my_isr&quot;</span>
   <span class="ge">&lt;ISR code&gt;</span>
   <span class="k">returni</span>
@@ -279,7 +279,7 @@ Running in PicoBlaze-6 mode
 <p>Because Opbasm is more flexible in the naming of modules, the original template system&#8217;s assumption that the &#8220;{name}&#8221; field matches the input source file isn&#8217;t necessarily valid. A new field &#8220;{source file}&#8221; is added that clearly indicates the original top level source file used to populate a template. This field is optional and only used in a comment so it is not critical to include it in your templates.</p>
 <p>The native KCPSM assemblers are hard-coded to look for a template named <em>ROM_form.vhd</em> or <em>ROM_form.v</em>. Opbasm searches for templates by those names (as well as <em>ROM_form.vhdl</em>) but you can also pass the <em>-t &lt;template file&gt;</em> option to specify a different template with any arbitrary name. If your OS supports symbolic links it is recommended to maintain a link from the original template to <em>ROM_form.xxx</em> rather than renaming it to one of the generic defaults.</p>
 <p>To save the bother of hunting down templates when you start a new project, you can generate copies of the default templates included with Opbasm using the following command:</p>
-<div class="highlight-sh"><div class="highlight"><pre>&gt; obpasm -g
+<div class="highlight-sh"><div class="highlight"><pre>&gt; opbasm -g
 Retrieving default templates...
 ROM_form_S3_1K.vhdl,picoblaze_rom.vhdl
   COPYING:  /usr/local/lib/python2.7/dist-packages/opbasm-1.0-py2.7.egg/templates/ROM_form_S3_1K.vhdl
@@ -346,7 +346,7 @@ ROM_form_S3_1K.vhdl,picoblaze_rom.vhdl
 </div>
 <div class="section" id="updating-bit-files">
 <span id="updating-the-rom-contents-of-a-bitstream-file"></span><h2>Updating bit files<a class="headerlink" href="#updating-bit-files" title="Permalink to this headline">¶</a></h2>
-<p>The KCPSM3 assembler included a program and batch file that automated the process of updating a PicoBlaze ROM in a bit file without requiring a resynthesis. For PicoBlaze-6 that process has been abandoned in favour of using the JTAG loader.</p>
+<p>The KCPSM3 assembler included a program and batch file that automated the process of updating a PicoBlaze ROM in a bit file without requiring a resynthesis. For PicoBlaze-6 that process has been abandoned in favor of using the JTAG loader.</p>
 <p>Because some platforms don&#8217;t readily support the use of the JTAG loader, the old system of updating bit files has been reimplemented as a utility script <em>pb_update</em>. You will need to have a new <em>.mem</em> file along with the top level <em>.ncd</em> and <em>.bit</em> files for the design. The Xilinx ISE tools <em>xdl</em> and <em>data2mem</em> must be accessible from your command line path.</p>
 <img alt="_images/pb_update.png" src="_images/pb_update.png" />
 <p>When run, the <em>pb_update</em> script will convert the <em>.ncd</em> netlist to the textual <em>.xdl</em> format and scan it for any block RAM instances. If one BRAM is found it is assumed to be the PicoBlaze ROM. If multiple BRAMs are in the design, a list is provided with their instance names and you are prompted to select which one(s) are part of the PicoBlaze ROM.</p>

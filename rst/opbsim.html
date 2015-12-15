@@ -64,7 +64,7 @@
 <p>Opbsim is a command line simulator for PicoBlaze-3 and PicoBlaze-6. The full instruction set for both targets is supported. The primary purpose of Opbsim is to run the automated test suite that validates the macro library. However, it is designed to be simple and run fast to permit testing of long running programs and, as such, may be of of general use as well. Opbsim can run faster than real-time when it is built in release mode. The simulator is simple enough to permit easy modifications and a modular object system is in place to simulate various external peripherals.</p>
 <div class="section" id="building-opbsim">
 <h2>Building Opbsim<a class="headerlink" href="#building-opbsim" title="Permalink to this headline">¶</a></h2>
-<p>Opbsim is implemented in the <a class="reference external" href="http://nim-lang.org/">Nim</a> programming language. To build it you will have to have the nim compiler <a class="reference external" href="http://nim-lang.org/download.html">installed</a> and working. The Opbasm installation script does not build it for you. Its sources are located in the &#8220;sim&#8221; directory. The test suite expects to find the compiled executable in the same location.</p>
+<p>Opbsim is written in the <a class="reference external" href="http://nim-lang.org/">Nim</a> programming language. To build it you will need the nim compiler <a class="reference external" href="http://nim-lang.org/download.html">installed</a> and working. The Opbasm installation script does not build Opbsim for you. Its sources are located in the &#8220;sim&#8221; directory. The test suite expects to find the compiled executable in the same location.</p>
 <p>Opbsim is built with the Nim compiler using the following command:</p>
 <div class="highlight-sh"><div class="highlight"><pre>&gt; nim c -d:release opbsim.nim
 </pre></div>
@@ -87,7 +87,7 @@ Options:
   -q            --quiet         Quiet output
   -j            --json          JSON report [forces quiet too]
   -p            --list-periphs  Print peripheral information
-  --pb3                         Simulate PicoBlase-3 code
+  --pb3                         Simulate PicoBlaze-3 code
   --pb6                         Simulate PicoBlaze-6 code [default]
 </pre></div>
 </div>
@@ -118,7 +118,7 @@ to the output as the number of testbench errors.</dd>
 </dl>
 <div class="section" id="peripheral-interface">
 <h3>Peripheral Interface<a class="headerlink" href="#peripheral-interface" title="Permalink to this headline">¶</a></h3>
-<p>You can add your own peripherals by modifying the Opbsim source. They are implemented as objects that have a sequence of input and putput ports they are attached to. Whenever an <tt class="docutils literal"><span class="pre">input</span></tt> or <tt class="docutils literal"><span class="pre">output</span></tt> instruction is executed, the associated port is checked for attached peripherals and an associated portRead or portWrite method is called. The methods have access to the processor state and can modify port values as needed. Multiple peripherals can be attached to a single port. They will be called in the order that they were definied during initialization of the processor state.</p>
+<p>You can add your own peripherals by modifying the Opbsim source. They are implemented as objects that have a sequence of input and output ports they are attached to. Whenever an <tt class="docutils literal"><span class="pre">input</span></tt> or <tt class="docutils literal"><span class="pre">output</span></tt> instruction is executed, the associated port is checked for attached peripherals and an associated portRead or portWrite method is called. The methods have access to the processor state and can modify port values as needed. Multiple peripherals can be attached to a single port. They will be called in the order that they were defined during initialization of the processor state.</p>
 </div>
 </div>
 <div class="section" id="test-suite">
