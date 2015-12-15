@@ -194,6 +194,10 @@
           <keyword>instdata</keyword>
           <keyword>insttable_le</keyword>
           <keyword>insttable_be</keyword>
+          <keyword>use_strings</keyword>
+          <keyword>use_packed_strings</keyword>
+          <keyword>string</keyword>
+          <keyword>packed_string</keyword>
           <keyword>negate</keyword>
           <keyword>not</keyword>
           <keyword>abs</keyword>
