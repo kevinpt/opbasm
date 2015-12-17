@@ -173,6 +173,34 @@ The ``words_le()`` and ``words_be()`` macros convert a list of 16-bit numbers in
 
   words_le(0xff01, 0xff02)  ; Expands to "1, 255, 2, 255"
   words_be(0xff01, 0xff02)  ; Expands to "255, 1, 255, 2"
+  
+Conditional code
+----------------
+
+You may want to conditionally generate portions of a program or pass build time parameters to macros for different results. This can be accomplished with the m4 ``ifdef()`` macro.
+
+.. code-block:: picoblaze
+
+  ifdef(`VARNAME`, `
+    <Defined conditional code here>
+  ', `
+    <Undefined conditional code here>
+  ')
+  
+  
+  ifdef(`VARNAME', `load s0, 10')  ; Defined
+
+  ifdef(`VARNAME',, `load s0, 20') ; Not defined
+  
+  load s1, MAXVAL
+  
+You can ommit either block of the ``ifdef()`` macro if you want generation only for the defined or undefined conditions. To control the selected code block you pass defined variables with the ``-D`` option to Opbasm:
+
+.. code-block:: shell
+
+  opbasm -DVARNAME -DMAXVAL=42 foo.psm4
+  
+This will define "VARNAME" as an empty string and "MAXVAL" with the string "42" which will be passed on unaltered to the assembler. These defined variables become macros which will be substituted with their value like any other macro.
 
 General purpose macros
 ----------------------
@@ -637,6 +665,21 @@ The delay can be from 0 to approximately 100e9 but a practical limit would be to
 
 An alternate implementation of ``delay_cycles()`` can be invoked by first configuring it with the ``use_delay_reg()`` macro. You call it with a single register to use for a delay counter. This register must be different than the ones used for the long period delay macros described next. With a delay register configured, the ``delay_cycles()`` macro will be implemented as a small loop for delays of 511 cycles or less. Longer delays will fall back to using recursive delay trees.
 
+.. code-block:: picoblaze
+
+  use_delay_reg(s6)
+  delay_cycles(40)
+  
+  ; Expands to:
+  
+  
+                  LOAD s6, 13                    ; (40 - 1) / 2
+   DLOOP_f1_0001:
+                  SUB s6, 01
+                  JUMP nz, DLOOP_f1_0001
+                  LOAD se, se                    ; NOP
+
+
 Time delays
 ~~~~~~~~~~~
 
@@ -960,6 +1003,32 @@ After configuration you define strings with the ``packed_string()`` macro just a
   main:
   ...
   call hello ; Call write_char on each character in the "hello" string
+  
+This expands to the following on both target processors:
+
+.. code-block:: picoblaze
+
+              <Handler routines>
+              
+              ; "Hello world\r\n"
+       hello: LOAD s5, _hello_STR'upper
+              LOAD s6, _hello_STR'lower
+              JUMP __packed_string_handler
+  _hello_STR: INST 04865
+              INST 06c6c
+              INST 06f20
+              INST 0776f
+              INST 0726c
+              INST 0640d
+              INST 00a00
+
+              ; Define a packed string called `"hello"'
+
+        main:
+
+              CALL hello
+
+You can see that the 13 byte string is stored into 7 instruction words providing the densest string storage possible without resorting to compression.
 
 If you have existing code using the portable string macros, you can convert it to use packed strings by changing the macro name with the optional seventh argument:
 
@@ -1154,7 +1223,7 @@ For handling numeric string inputs there are a pair of generator macros that can
   ;                    <Array addr> <len>
   use_ascii2bcd(ascii2bcd, s0,        s1)
   
-  load_store("0", 0x20) ; Simulate text input
+  load_store("X", 0x20) ; Simulate text input
   load_store("1", 0x21)
   load_store("2", 0x22)
   load_store("4", 0x23)
@@ -1164,7 +1233,7 @@ For handling numeric string inputs there are a pair of generator macros that can
   load s1, 05 ; Convert 5 characters from 0x20 to 0x24
   call ascii2bcd
   
-The resulting array contains BCD: ``[00 01 02 04 09]``. Any non-digit characters are converted to 0.
+The resulting array contains BCD: ``[00 01 02 04 09]``. Any non-digit characters in the string are converted to 0.
 
 The ``use_bcd2int()`` macro is used to convert from BCD to an integer. This finishes the conversion of numeric string input into a usable integer value after first converting ASCII to BCD using ``ascii2bcd``.
   
