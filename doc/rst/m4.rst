@@ -73,7 +73,7 @@ Using these macros you can write code in a higher-level style like the following
 Installing m4 on Windows
 ------------------------
 
-The current release of Opbasm includes GnuWin32 Windows binaries for `m4 <http://gnuwin32.sourceforge.net/packages/m4.htm>`_. It will be installed by the setup.py script.
+Opbasm includes GnuWin32 Windows binaries for `m4 <http://gnuwin32.sourceforge.net/packages/m4.htm>`_. It will be installed by the setup.py script.
 
 In the Cygwin environment, the included binary will not be executed and you must install the Cygwin version of m4. In the `Cygwin installer <http://cygwin.com/install.html>`_ select the m4 package (under Interpreters) for installation. Opbasm will be able to use m4 immediately within a Cygwin shell.
 
@@ -87,10 +87,10 @@ m4 uses different syntax from PicoBlaze assembly to represent different types of
 ============  =============  ============
 **Type**      **PicoBlaze**  **m4**
 ============  =============  ============
-decimal       10'd           10 
-hexadecimal   0a             0x0a
-binary        00001010'b     0b1010
-char          "A"            A or ```A'``
+Decimal       10'd           10 
+Hexadecimal   0a             0x0a
+Binary        00001010'b     0b1010
+Char          "A"            A or ```A'``
 ============  =============  ============
 
 In general you use m4 syntax for literals passed as arguments to macros within parentheses. The only exception is ``pbhex()`` which takes a list of hex values in PicoBlaze format. Be careful not to use PicoBlaze hex format in other m4 contexts as it will be misinterpreted as decimal if only digits 0-9 are used.
@@ -205,7 +205,7 @@ This will define "VARNAME" as an empty string and "MAXVAL" with the string "42" 
 General purpose macros
 ----------------------
 
-A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to `sE` by default. You can change it to another register by calling ``use_tempreg(<reg>)``. The temp register can be accessed in your own macros by using the ``"_tempreg"`` macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros. 
+A few of the macros depend on modifying a temporary register. To simplify the macro calls, a preallocated temp register is used. It is set to `sE` by default. You can change it to another register by calling ``use_tempreg(<reg>)``. The temp register can be accessed in your own macros by using the ``_tempreg`` macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros. 
 
 .. code-block:: picoblaze
 
@@ -222,6 +222,14 @@ use_bcdwrite      use_hexwrite       use_int2bcd    use_ascii2bcd   use_bcd2int
 
 The other ``expr()`` macros use the temp register indirectly when the mul and div operations are invoked.
 
+You can guard against accidentally using the temp register for long term storage by renaming it with the NAMEREG directive:
+
+.. code-block:: picoblaze
+
+  namereg sE, TEMPREG
+  use_tempreg(TEMPREG)
+
+Now you can't accidentally assign something to ``sE`` that will be overwritten by a macro using the ``_tempreg`` macro.
 
 PicoBlaze programs commonly contain lists of constant declarations for IO port addresses. The ``iodefs(<start port>, [port names]+)`` macro simplifies their declaration by allowing contiguous sequences of ports to be named in one statement. It can also be used to define scratchpad addresses.
 
@@ -683,7 +691,7 @@ An alternate implementation of ``delay_cycles()`` can be invoked by first config
 Time delays
 ~~~~~~~~~~~
 
-Delays by microseconds and milliseconds are implemented with the ``delay_us()`` and ``delay_ms()`` macros. Before using these you must establish the system clock frequency with the ``use_clock()`` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay by a certain number of instructions if needed.
+Delays by microseconds and milliseconds are implemented with the ``delay_us()`` and ``delay_ms()`` macros. Before using these you must establish the system clock frequency with the ``use_clock()`` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay down by a certain number of instructions if needed to account for function call or loop overhead.
 
 .. code-block:: picoblaze
 
@@ -702,7 +710,7 @@ Delays by microseconds and milliseconds are implemented with the ``delay_us()`` 
   delay_ms(10, s4, s5)               ; Inline delay by 10 ms
   ; Exactly 10 ms have passed here
 
-The ``delay_*()`` macros take a delay value, a pair of registers and an optional adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that can't be easily expressed. You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:
+The ``delay_*()`` macros take a delay value, a pair of registers and an optional instruction adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that can't be easily expressed. You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:
 
 =======  =======
 50 MHz   429 ms
@@ -1203,10 +1211,10 @@ A pair of generator macros create functions for converting between unsigned inte
   load s0, 20  ; Use buffer from 0x20 to 0x24
   load s1, 02  ; Convert 16-bit integer (2 bytes)
   load16(s4,s3, 30789)
-  push(s3, s4) ; Place integer on stack low byte first, high byte last
+  push(s3, s4) ; Place integer on stack low byte first, high byte last (on top)
   call int2bcd
   
-After conversion the array at 0x20 contains the hex values ``[03 00 07 08 09]``. This result can then be processed by ``bcdwrite`` to write an integer value out to a port. The result is right justified in the array with leading 0's for any unused digits. No error detection is performed if the result requires more digits than the generator macro was defined to use.
+After conversion the array at scratchpad 0x20 contains the hex values ``[03 00 07 08 09]``. This result can then be processed by ``bcdwrite`` to write an integer value out to a port. The result is right justified in the array with leading 0's for any unused digits. No error detection is performed if the result requires more digits than the generator macro was defined to use.
 
 .. code-block:: picoblaze
 
@@ -1216,7 +1224,7 @@ After conversion the array at 0x20 contains the hex values ``[03 00 07 08 09]``.
   
 The result is ``[00 00 05 01 12]`` at 0x20.
 
-For handling numeric string inputs there are a pair of generator macros that can be used. First is ``use_ascii2bcd()`` which will convert a numeric ASCII string into BCD format.
+For converting numeric string inputs to binary a pair of generator macros that can be used. First is ``use_ascii2bcd()`` which will convert a numeric ASCII string into BCD format.
 
 .. code-block:: picoblaze
 
@@ -1246,7 +1254,7 @@ The ``use_bcd2int()`` macro is used to convert from BCD to an integer. This fini
   load s1, 05 ; Convert 5 digits from 0x20 to 0x24
   call bcd2int
   
-The converted integer value is overwritten into the array from left to right, destroying some of the BCD digits. The first byte in the array is the least significant. The total number of integer bytes is returned in the length register (s1 in this case). After conversion the array contains ``[E1 04 02 04 09]``. 0x04E1 is 1249 from the original ASCII string. The integer result is guaranteed to always be smaller than the largest BCD number that will fit in an array (999...) so an overflow is impossible.
+The converted integer value is overwritten into the array from left to right, destroying some of the BCD digits. The first byte in the array is the least significant. The total number of converted binary integer bytes is returned in the length register (s1 in this case). After conversion the array contains ``[E1 04 02 04 09]``. 0x04E1 is 1249 from the original ASCII string. The integer result is guaranteed to always be smaller than the largest BCD number that will fit in an array (999...) so an overflow is impossible.
   
 
 

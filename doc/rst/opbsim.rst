@@ -2,11 +2,7 @@
 Opbsim
 ======
 
-.. note::
-
-  Opbsim is slated for official release in v1.3. Until then it is only available for download through a Git clone.
-
-Opbsim is a command line simulator for PicoBlaze-3 and PicoBlaze-6. The full instruction set for both targets is supported. The primary purpose of Opbsim is to run the automated test suite that validates the macro library. However, it is designed to be simple and run fast to permit testing of long running programs and, as such, may be of of general use as well. Opbsim can run faster than real-time when it is built in release mode. The simulator is simple enough to permit easy modifications and a modular object system is in place to simulate various external peripherals.
+Opbsim is a command line simulator for PicoBlaze-3 and PicoBlaze-6. The full instruction set for both targets is supported. The primary purpose of Opbsim is to run the automated test suite that validates the Opbasm macro library. However, it is designed to be simple and run fast to permit testing of long running programs and, as such, may be of of general use as well. Opbsim can run faster than real-time when it is built in release mode. The simulator is simple enough (900 SLOC) to permit easy modifications and a modular object system is in place to simulate various external peripherals.
 
 Building Opbsim
 ---------------
@@ -17,9 +13,25 @@ Opbsim is built with the Nim compiler using the following command:
 
 .. code-block:: sh
 
+  > cd sim
   > nim c -d:release opbsim.nim
   
-This will produce an executable ``opbsim`` program that should be placed at a location on your search path.
+This will produce an executable ``opbsim`` program that should be placed at a location on your search path. Nim does not include 64-bit DLLs. When building on 64-bit Windows you will need to copy the 64-bit ``pcre.dll`` from the "sim/win64" directory to the same location as ``opbsim.exe``.
+
+It you have the Nimble package manager installed you can build and install Opbsim with the following:
+
+.. code-block:: sh
+
+  > cd sim
+  > nimble install
+  
+This will create a release build and install it to the following default locations.
+
+On `*nix`:
+  A symbolic link at ~/.nimble/bin/opbsim
+  
+On Windows:
+  A batch wrapper at C:\\Users\\<username>\\.nimble\\bin\\opbsim.bat
 
 Using Opbsim
 ------------
@@ -185,7 +197,7 @@ You can add your own peripherals by modifying the Opbsim source. They are implem
 Test suite
 ----------
 
-Opbsim is used as part of an automated test suite. The tests are designed to run using the Python unittest framework with auto test discovery. If necessary, each test runs Opbasm to assemble a program for both PB6 and PB3 targets. The assembled code is then run in the simulator and the result is checked for any failures. You need to have Opbasm installed and accessible from your command line search path. Opbsim must be compiled and available from the /sim directory of the project. Run the tests from the root directory of the project with the following command:
+Opbsim is used as part of an automated test suite. The tests are designed to run using the Python unittest framework with auto test discovery. If necessary, each test runs Opbasm to assemble a program for both PB6 and PB3 targets. The assembled code is then run in the simulator and the result is checked for any failures. You need to have Opbasm installed and accessible from your command line search path. Opbsim must be compiled and available from the /sim directory of the project or your search path. Run the tests from the root directory of the project with the following command:
 
 .. code-block:: sh
 

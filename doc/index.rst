@@ -213,6 +213,7 @@ The assembler is invoked with the *opbasm* script. It supports the following com
     -s SCRATCH_SIZE, --scratch-size=SCRATCH_SIZE
                           Scratchpad memory size
     -x, --hex             Write HEX in place of MEM file
+    --mif                 Write MIF in place of MEM file
     -o OUTPUT_DIR, --outdir=OUTPUT_DIR
                           Output directory
     -d, --report-dead-code
