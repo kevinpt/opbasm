@@ -168,7 +168,7 @@
 </table>
 <div class="section" id="installing-m4-on-windows">
 <span id="guidance-on-installing-m4-under-windows"></span><h2>Installing m4 on Windows<a class="headerlink" href="#installing-m4-on-windows" title="Permalink to this headline">¶</a></h2>
-<p>The current release of Opbasm includes GnuWin32 Windows binaries for <a class="reference external" href="http://gnuwin32.sourceforge.net/packages/m4.htm">m4</a>. It will be installed by the setup.py script.</p>
+<p>Opbasm includes GnuWin32 Windows binaries for <a class="reference external" href="http://gnuwin32.sourceforge.net/packages/m4.htm">m4</a>. It will be installed by the setup.py script.</p>
 <p>In the Cygwin environment, the included binary will not be executed and you must install the Cygwin version of m4. In the <a class="reference external" href="http://cygwin.com/install.html">Cygwin installer</a> select the m4 package (under Interpreters) for installation. Opbasm will be able to use m4 immediately within a Cygwin shell.</p>
 </div>
 <div class="section" id="overview-of-m4">
@@ -188,19 +188,19 @@
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td>decimal</td>
+<tr class="row-even"><td>Decimal</td>
 <td>10&#8217;d</td>
 <td>10</td>
 </tr>
-<tr class="row-odd"><td>hexadecimal</td>
+<tr class="row-odd"><td>Hexadecimal</td>
 <td>0a</td>
 <td>0x0a</td>
 </tr>
-<tr class="row-even"><td>binary</td>
+<tr class="row-even"><td>Binary</td>
 <td>00001010&#8217;b</td>
 <td>0b1010</td>
 </tr>
-<tr class="row-odd"><td>char</td>
+<tr class="row-odd"><td>Char</td>
 <td>&#8220;A&#8221;</td>
 <td>A or <tt class="docutils literal"><span class="pre">`A'</span></tt></td>
 </tr>
@@ -263,9 +263,32 @@
 </pre></div>
 </div>
 </div>
+<div class="section" id="conditional-code">
+<h2>Conditional code<a class="headerlink" href="#conditional-code" title="Permalink to this headline">¶</a></h2>
+<p>You may want to conditionally generate portions of a program or pass build time parameters to macros for different results. This can be accomplished with the m4 <tt class="docutils literal"><span class="pre">ifdef()</span></tt> macro.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">ifdef(</span><span class="s">`VARNAME`</span><span class="p">,</span> <span class="s">`</span>
+  <span class="o">&lt;</span><span class="s">Defined</span> <span class="s">conditional</span> <span class="s">code</span> <span class="s">here</span><span class="o">&gt;</span>
+<span class="s">&#39;</span><span class="p">,</span> <span class="s">`</span>
+  <span class="o">&lt;</span><span class="s">Undefined</span> <span class="s">conditional</span> <span class="s">code</span> <span class="s">here</span><span class="o">&gt;</span>
+<span class="s">&#39;</span><span class="nb">)</span>
+
+
+<span class="nb">ifdef(</span><span class="s">`VARNAME&#39;</span><span class="p">,</span> <span class="s">`load</span> <span class="s">s0</span><span class="p">,</span> <span class="m">10</span><span class="s">&#39;</span><span class="nb">)</span>  <span class="c">; Defined</span>
+
+<span class="nb">ifdef(</span><span class="s">`VARNAME&#39;</span><span class="p">,,</span> <span class="s">`load</span> <span class="s">s0</span><span class="p">,</span> <span class="m">20</span><span class="s">&#39;</span><span class="nb">)</span> <span class="c">; Not defined</span>
+
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="n">MAXVAL</span>
+</pre></div>
+</div>
+<p>You can ommit either block of the <tt class="docutils literal"><span class="pre">ifdef()</span></tt> macro if you want generation only for the defined or undefined conditions. To control the selected code block you pass defined variables with the <tt class="docutils literal"><span class="pre">-D</span></tt> option to Opbasm:</p>
+<div class="highlight-shell"><div class="highlight"><pre>opbasm -DVARNAME -DMAXVAL<span class="o">=</span><span class="m">42</span> foo.psm4
+</pre></div>
+</div>
+<p>This will define &#8220;VARNAME&#8221; as an empty string and &#8220;MAXVAL&#8221; with the string &#8220;42&#8221; which will be passed on unaltered to the assembler. These defined variables become macros which will be substituted with their value like any other macro.</p>
+</div>
 <div class="section" id="general-purpose-macros">
 <h2>General purpose macros<a class="headerlink" href="#general-purpose-macros" title="Permalink to this headline">¶</a></h2>
-<p>A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to <cite>sE</cite> by default. You can change it to another register by calling <tt class="docutils literal"><span class="pre">use_tempreg(&lt;reg&gt;)</span></tt>. The temp register can be accessed in your own macros by using the <tt class="docutils literal"><span class="pre">&quot;_tempreg&quot;</span></tt> macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros.</p>
+<p>A few of the macros depend on modifying a temporary register. To simplify the macro calls, a preallocated temp register is used. It is set to <cite>sE</cite> by default. You can change it to another register by calling <tt class="docutils literal"><span class="pre">use_tempreg(&lt;reg&gt;)</span></tt>. The temp register can be accessed in your own macros by using the <tt class="docutils literal"><span class="pre">_tempreg</span></tt> macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">use_tempreg(</span><span class="s">sA</span><span class="nb">)</span>    <span class="c">; Switch to sA for the temp register</span>
 </pre></div>
 </div>
@@ -306,6 +329,12 @@
 </tbody>
 </table>
 <p>The other <tt class="docutils literal"><span class="pre">expr()</span></tt> macros use the temp register indirectly when the mul and div operations are invoked.</p>
+<p>You can guard against accidentally using the temp register for long term storage by renaming it with the NAMEREG directive:</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">namereg</span> <span class="n">sE</span><span class="p">,</span> <span class="n">TEMPREG</span>
+<span class="nb">use_tempreg(</span><span class="s">TEMPREG</span><span class="nb">)</span>
+</pre></div>
+</div>
+<p>Now you can&#8217;t accidentally assign something to <tt class="docutils literal"><span class="pre">sE</span></tt> that will be overwritten by a macro using the <tt class="docutils literal"><span class="pre">_tempreg</span></tt> macro.</p>
 <p>PicoBlaze programs commonly contain lists of constant declarations for IO port addresses. The <tt class="docutils literal"><span class="pre">iodefs(&lt;start</span> <span class="pre">port&gt;,</span> <span class="pre">[port</span> <span class="pre">names]+)</span></tt> macro simplifies their declaration by allowing contiguous sequences of ports to be named in one statement. It can also be used to define scratchpad addresses.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">iodefs(</span><span class="m">0</span><span class="p">,</span> <span class="s">P_control</span><span class="p">,</span> <span class="s">P_read</span><span class="p">,</span> <span class="s">P_write</span><span class="nb">)</span>
 
@@ -694,9 +723,22 @@
 </div>
 <p>The delay can be from 0 to approximately 100e9 but a practical limit would be to keep the delay less than 200 cycles to restrict the amount of generated code. You must ensure that there is enough space on the call stack to perform the recursive calls. In the example above the 33-cycle delay block extends five calls deep.</p>
 <p>An alternate implementation of <tt class="docutils literal"><span class="pre">delay_cycles()</span></tt> can be invoked by first configuring it with the <tt class="docutils literal"><span class="pre">use_delay_reg()</span></tt> macro. You call it with a single register to use for a delay counter. This register must be different than the ones used for the long period delay macros described next. With a delay register configured, the <tt class="docutils literal"><span class="pre">delay_cycles()</span></tt> macro will be implemented as a small loop for delays of 511 cycles or less. Longer delays will fall back to using recursive delay trees.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">use_delay_reg(</span><span class="s">s6</span><span class="nb">)</span>
+<span class="nb">delay_cycles(</span><span class="m">40</span><span class="nb">)</span>
+
+<span class="c">; Expands to:</span>
+
+
+                <span class="k">LOAD</span> <span class="n">s6</span><span class="p">,</span> <span class="mh">13</span>                    <span class="c">; (40 - 1) / 2</span>
+ <span class="nl">DLOOP_f1_0001:</span>
+                <span class="k">SUB</span> <span class="n">s6</span><span class="p">,</span> <span class="mh">01</span>
+                <span class="k">JUMP</span> <span class="n">nz</span><span class="p">,</span> <span class="n">DLOOP_f1_0001</span>
+                <span class="k">LOAD</span> <span class="n">se</span><span class="p">,</span> <span class="n">se</span>                    <span class="c">; NOP</span>
+</pre></div>
+</div>
 <div class="section" id="time-delays">
 <h3>Time delays<a class="headerlink" href="#time-delays" title="Permalink to this headline">¶</a></h3>
-<p>Delays by microseconds and milliseconds are implemented with the <tt class="docutils literal"><span class="pre">delay_us()</span></tt> and <tt class="docutils literal"><span class="pre">delay_ms()</span></tt> macros. Before using these you must establish the system clock frequency with the <tt class="docutils literal"><span class="pre">use_clock()</span></tt> macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay by a certain number of instructions if needed.</p>
+<p>Delays by microseconds and milliseconds are implemented with the <tt class="docutils literal"><span class="pre">delay_us()</span></tt> and <tt class="docutils literal"><span class="pre">delay_ms()</span></tt> macros. Before using these you must establish the system clock frequency with the <tt class="docutils literal"><span class="pre">use_clock()</span></tt> macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay down by a certain number of instructions if needed to account for function call or loop overhead.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">use_clock(</span><span class="m">100</span><span class="nb">)</span>                     <span class="c">; 100 MHz system clock</span>
 <span class="nb">use_delay_reg(</span><span class="s">s6</span><span class="nb">)</span>                  <span class="c">; Use compact internal delay loop</span>
 
@@ -713,7 +755,7 @@
 <span class="c">; Exactly 10 ms have passed here</span>
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">delay_*()</span></tt> macros take a delay value, a pair of registers and an optional adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that can&#8217;t be easily expressed. You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:</p>
+<p>The <tt class="docutils literal"><span class="pre">delay_*()</span></tt> macros take a delay value, a pair of registers and an optional instruction adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that can&#8217;t be easily expressed. You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="50%" />
@@ -1016,6 +1058,29 @@
 <span class="k">call</span> <span class="n">hello</span> <span class="c">; Call write_char on each character in the &quot;hello&quot; string</span>
 </pre></div>
 </div>
+<p>This expands to the following on both target processors:</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre>            <span class="ge">&lt;Handler routines&gt;</span>
+
+            <span class="c">; &quot;Hello world\r\n&quot;</span>
+     <span class="nl">hello:</span> <span class="k">LOAD</span> <span class="n">s5</span><span class="p">,</span> <span class="n">_hello_STR</span><span class="o">&#39;upper</span>
+            <span class="k">LOAD</span> <span class="n">s6</span><span class="p">,</span> <span class="n">_hello_STR</span><span class="o">&#39;lower</span>
+            <span class="k">JUMP</span> <span class="n">__packed_string_handler</span>
+<span class="nl">_hello_STR:</span> <span class="k">INST</span> <span class="mh">04865</span>
+            <span class="k">INST</span> <span class="mh">06c6c</span>
+            <span class="k">INST</span> <span class="mh">06f20</span>
+            <span class="k">INST</span> <span class="mh">0776f</span>
+            <span class="k">INST</span> <span class="mh">0726c</span>
+            <span class="k">INST</span> <span class="mh">0640d</span>
+            <span class="k">INST</span> <span class="mh">00a00</span>
+
+            <span class="c">; Define a packed string called `&quot;hello&quot;&#39;</span>
+
+      <span class="nl">main:</span>
+
+            <span class="k">CALL</span> <span class="n">hello</span>
+</pre></div>
+</div>
+<p>You can see that the 13 byte string is stored into 7 instruction words providing the densest string storage possible without resorting to compression.</p>
 <p>If you have existing code using the portable string macros, you can convert it to use packed strings by changing the macro name with the optional seventh argument:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">use_packed_strings(</span><span class="s">s0</span><span class="p">,</span><span class="s">s1</span><span class="p">,</span> <span class="s">s5</span><span class="p">,</span><span class="s">s6</span><span class="p">,</span> <span class="s">write_char</span><span class="p">,</span> <span class="s">read_next_chars</span><span class="p">,</span> <span class="s">string</span><span class="nb">)</span>
 </pre></div>
@@ -1158,22 +1223,22 @@ are skipped. Invalid BCD digits are not detected.</p>
 <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">20</span>  <span class="c">; Use buffer from 0x20 to 0x24</span>
 <span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">02</span>  <span class="c">; Convert 16-bit integer (2 bytes)</span>
 <span class="nb">load16(</span><span class="s">s4</span><span class="p">,</span><span class="s">s3</span><span class="p">,</span> <span class="m">30789</span><span class="nb">)</span>
-<span class="nb">push(</span><span class="s">s3</span><span class="p">,</span> <span class="s">s4</span><span class="nb">)</span> <span class="c">; Place integer on stack low byte first, high byte last</span>
+<span class="nb">push(</span><span class="s">s3</span><span class="p">,</span> <span class="s">s4</span><span class="nb">)</span> <span class="c">; Place integer on stack low byte first, high byte last (on top)</span>
 <span class="k">call</span> <span class="n">int2bcd</span>
 </pre></div>
 </div>
-<p>After conversion the array at 0x20 contains the hex values <tt class="docutils literal"><span class="pre">[03</span> <span class="pre">00</span> <span class="pre">07</span> <span class="pre">08</span> <span class="pre">09]</span></tt>. This result can then be processed by <tt class="docutils literal"><span class="pre">bcdwrite</span></tt> to write an integer value out to a port. The result is right justified in the array with leading 0&#8217;s for any unused digits. No error detection is performed if the result requires more digits than the generator macro was defined to use.</p>
+<p>After conversion the array at scratchpad 0x20 contains the hex values <tt class="docutils literal"><span class="pre">[03</span> <span class="pre">00</span> <span class="pre">07</span> <span class="pre">08</span> <span class="pre">09]</span></tt>. This result can then be processed by <tt class="docutils literal"><span class="pre">bcdwrite</span></tt> to write an integer value out to a port. The result is right justified in the array with leading 0&#8217;s for any unused digits. No error detection is performed if the result requires more digits than the generator macro was defined to use.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">load16(</span><span class="s">s4</span><span class="p">,</span><span class="s">s3</span><span class="p">,</span> <span class="m">512</span><span class="nb">)</span>
 <span class="nb">push(</span><span class="s">s3</span><span class="p">,</span> <span class="s">s4</span><span class="nb">)</span>
 <span class="k">call</span> <span class="n">int2bcd</span>
 </pre></div>
 </div>
 <p>The result is <tt class="docutils literal"><span class="pre">[00</span> <span class="pre">00</span> <span class="pre">05</span> <span class="pre">01</span> <span class="pre">12]</span></tt> at 0x20.</p>
-<p>For handling numeric string inputs there are a pair of generator macros that can be used. First is <tt class="docutils literal"><span class="pre">use_ascii2bcd()</span></tt> which will convert a numeric ASCII string into BCD format.</p>
+<p>For converting numeric string inputs to binary a pair of generator macros that can be used. First is <tt class="docutils literal"><span class="pre">use_ascii2bcd()</span></tt> which will convert a numeric ASCII string into BCD format.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;                    &lt;Array addr&gt; &lt;len&gt;</span>
 <span class="nb">use_ascii2bcd(</span><span class="s">ascii2bcd</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span>        <span class="s">s1</span><span class="nb">)</span>
 
-<span class="nb">load_store(</span><span class="s">&quot;0&quot;</span><span class="p">,</span> <span class="mh">0x20</span><span class="nb">)</span> <span class="c">; Simulate text input</span>
+<span class="nb">load_store(</span><span class="s">&quot;X&quot;</span><span class="p">,</span> <span class="mh">0x20</span><span class="nb">)</span> <span class="c">; Simulate text input</span>
 <span class="nb">load_store(</span><span class="s">&quot;1&quot;</span><span class="p">,</span> <span class="mh">0x21</span><span class="nb">)</span>
 <span class="nb">load_store(</span><span class="s">&quot;2&quot;</span><span class="p">,</span> <span class="mh">0x22</span><span class="nb">)</span>
 <span class="nb">load_store(</span><span class="s">&quot;4&quot;</span><span class="p">,</span> <span class="mh">0x23</span><span class="nb">)</span>
@@ -1184,7 +1249,7 @@ are skipped. Invalid BCD digits are not detected.</p>
 <span class="k">call</span> <span class="n">ascii2bcd</span>
 </pre></div>
 </div>
-<p>The resulting array contains BCD: <tt class="docutils literal"><span class="pre">[00</span> <span class="pre">01</span> <span class="pre">02</span> <span class="pre">04</span> <span class="pre">09]</span></tt>. Any non-digit characters are converted to 0.</p>
+<p>The resulting array contains BCD: <tt class="docutils literal"><span class="pre">[00</span> <span class="pre">01</span> <span class="pre">02</span> <span class="pre">04</span> <span class="pre">09]</span></tt>. Any non-digit characters in the string are converted to 0.</p>
 <p>The <tt class="docutils literal"><span class="pre">use_bcd2int()</span></tt> macro is used to convert from BCD to an integer. This finishes the conversion of numeric string input into a usable integer value after first converting ASCII to BCD using <tt class="docutils literal"><span class="pre">ascii2bcd</span></tt>.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;                &lt;Array addr&gt; &lt;len&gt; &lt;temp regs&gt;</span>
 <span class="nb">use_bcd2int(</span><span class="s">bcd2int</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span>       <span class="s">s1</span><span class="p">,</span>   <span class="s">s2</span><span class="p">,</span><span class="s">s3</span><span class="p">,</span><span class="s">s4</span><span class="p">,</span><span class="s">s5</span><span class="p">,</span><span class="s">s6</span><span class="nb">)</span>
@@ -1194,7 +1259,7 @@ are skipped. Invalid BCD digits are not detected.</p>
 <span class="k">call</span> <span class="n">bcd2int</span>
 </pre></div>
 </div>
-<p>The converted integer value is overwritten into the array from left to right, destroying some of the BCD digits. The first byte in the array is the least significant. The total number of integer bytes is returned in the length register (s1 in this case). After conversion the array contains <tt class="docutils literal"><span class="pre">[E1</span> <span class="pre">04</span> <span class="pre">02</span> <span class="pre">04</span> <span class="pre">09]</span></tt>. 0x04E1 is 1249 from the original ASCII string. The integer result is guaranteed to always be smaller than the largest BCD number that will fit in an array (999...) so an overflow is impossible.</p>
+<p>The converted integer value is overwritten into the array from left to right, destroying some of the BCD digits. The first byte in the array is the least significant. The total number of converted binary integer bytes is returned in the length register (s1 in this case). After conversion the array contains <tt class="docutils literal"><span class="pre">[E1</span> <span class="pre">04</span> <span class="pre">02</span> <span class="pre">04</span> <span class="pre">09]</span></tt>. 0x04E1 is 1249 from the original ASCII string. The integer result is guaranteed to always be smaller than the largest BCD number that will fit in an array (999...) so an overflow is impossible.</p>
 </div>
 <div class="section" id="bit-arithmetic">
 <h2>8-bit arithmetic<a class="headerlink" href="#bit-arithmetic" title="Permalink to this headline">¶</a></h2>
@@ -1708,6 +1773,7 @@ pairs of 8-bit registers with <tt class="docutils literal"><span class="pre">reg
 <li><a class="reference internal" href="#installing-m4-on-windows">Installing m4 on Windows</a></li>
 <li><a class="reference internal" href="#overview-of-m4">Overview of m4</a></li>
 <li><a class="reference internal" href="#type-conversions">Type conversions</a></li>
+<li><a class="reference internal" href="#conditional-code">Conditional code</a></li>
 <li><a class="reference internal" href="#general-purpose-macros">General purpose macros</a></li>
 <li><a class="reference internal" href="#stack-operations">Stack operations</a></li>
 <li><a class="reference internal" href="#bitfield-operations">Bitfield operations</a></li>
