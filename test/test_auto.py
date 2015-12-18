@@ -6,6 +6,15 @@ import unittest, types
 import os, re, subprocess, json
 
 
+def FindOpbsim():
+  '''Look for Opbsim under the local sim directory first then give default if it isn't found'''
+  for p in ['sim/opbsim', 'sim/opbsim.exe']:
+    if os.path.isfile(p): return p
+
+  # Let the OS search for it
+  return 'opbsim'
+
+
 class GeneratedTestCase(unittest.TestCase):
     def __init__(self, methodName, method, **kwargs):
       setattr(self, methodName, types.MethodType(method, self))
@@ -36,18 +45,24 @@ def do_test(self):
     self.assertTrue(r == 0, 'Opbasm failed')
     
   self.assertTrue(os.path.exists(mem_file), 'Cannot generate mem file')
+  
   # Run the test
-  opbsim = 'sim/opbsim'
+  opbsim = FindOpbsim()
   cmd = '{} -m:{} -j --{}'.format(opbsim, mem_file, self.target)
   #print('Running opbsim:', cmd)
   try:
     json_out = subprocess.check_output(cmd, shell=True)
   except subprocess.CalledProcessError as e:
     print('\n>>> '.join(('\n' + e.output).splitlines()).lstrip())
-    json_out = json.loads(e.output)
-    error_port = 0xFF  
-    error_count = json_out['ports_out'][error_port]
-    self.assertTrue(e.returncode == 0 and error_count == 0, 'Simulation failed with {} errors on {} target'.format(error_count, self.target))
+    try:
+      json_out = json.loads(e.output)
+      error_port = 0xFF  
+      error_count = json_out['ports_out'][error_port]
+    except ValueError:
+      error_count = 1
+      print('## JSON not found')
+      
+    self.assertTrue((e.returncode == 0) and (error_count == 0), 'Simulation failed with {} errors on {} target'.format(error_count, self.target))
 
   # Check results
   json_out = json.loads(json_out)
