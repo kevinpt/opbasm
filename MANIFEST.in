@@ -9,10 +9,10 @@ prune opbasm_lib/lang/tools
 
 include test/asm/*.psm4
 include test/asm/*.m4
-include sim/*.nim
+include sim/*.nim sim/*.nimble
 recursive-include sim/win64 *
 
-recursive-include doc *
+recursive-include doc
 prune doc/_build
 
 include README.rst
