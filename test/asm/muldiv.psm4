@@ -1,0 +1,55 @@
+include(`setup.m4')
+
+;VALIDATES: expr_mul8, expr_div16, expr_mul8s, expr_mul8su, expr_div16s
+
+;:::::::::: Test multiply and divide ::::::::::
+
+vars(`s0 is ma', `s1 is mb')
+
+reg16(prod, s2, s3)
+reg16(quotient, s4, s5)
+
+jump main
+
+use_expr_all
+
+main:
+
+; Unsigned mul and div
+
+load ma, 00
+do {
+  for(mb := 1, mb != 0, mb := mb + 1) {
+    expr2(prod := ma * mb)
+    expr2(quotient := prod / mb)
+
+    assert_true(reglower(quotient) == ma)
+    assert_true(regupper(quotient) == 0)
+  }
+  add ma, 01
+} while(ma != 0)
+
+
+; Signed mul and div
+
+load ma, evalh(-128)
+do {
+  for(mb := 1, mb != 0, mb := mb + 1) {
+    expr2s(prod := ma * mb)
+    expr2s(quotient := prod / mb)
+
+    assert_true(reglower(quotient) == ma)
+    if(signed(ma < 0)) {
+      ; Negative sign extension
+      assert_true(regupper(quotient) == 0xFF)
+    } else {
+      ; No sign extension
+      assert_true(regupper(quotient) == 0)
+    }
+  }
+  add ma, 01
+} while(ma != -128)
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

@@ -941,7 +941,7 @@ Options:
   -q            --quiet         Quiet output
   -j            --json          JSON report [forces quiet too]
   -p            --list-periphs  Print peripheral information
-  --pb3                         Simulate PicoBlase-3 code
+  --pb3                         Simulate PicoBlaze-3 code
   --pb6                         Simulate PicoBlaze-6 code [default]
   --version                     Report version information
 """

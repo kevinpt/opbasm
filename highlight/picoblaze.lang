@@ -114,7 +114,7 @@
           <keyword>reverse</keyword>
           <keyword>iodefs</keyword>
           <keyword>load_out</keyword>
-          <keyword>load_st</keyword>
+          <keyword>load_store</keyword>
           <keyword>vars</keyword>
           <keyword>use_clock</keyword>
           <keyword>delay_cycles</keyword>
@@ -182,9 +182,7 @@
           <keyword>putstack</keyword>
           <keyword>putstackat</keyword>
           <keyword>dropstack</keyword>
-          <keyword>dropstackreg</keyword>
           <keyword>addstack</keyword>
-          <keyword>addstackreg</keyword>
           <keyword>callstring</keyword>
           <keyword>outputstring</keyword>
           <keyword>storestring</keyword>
@@ -196,22 +194,26 @@
           <keyword>instdata</keyword>
           <keyword>insttable_le</keyword>
           <keyword>insttable_be</keyword>
+          <keyword>use_strings</keyword>
+          <keyword>use_packed_strings</keyword>
+          <keyword>string</keyword>
+          <keyword>packed_string</keyword>
           <keyword>negate</keyword>
           <keyword>not</keyword>
           <keyword>abs</keyword>
           <keyword>signex</keyword>
           <keyword>isnum</keyword>
           <keyword>compares</keyword>
-          <keyword>multiply8x8</keyword>
-          <keyword>multiply8x8s</keyword>
-          <keyword>multiply8x8su</keyword>
-          <keyword>divide8x8</keyword>
-          <keyword>divide8x8s</keyword>
-          <keyword>divide16x8</keyword>
-          <keyword>divide16x8s</keyword>
-          <keyword>multiply8xk</keyword>
-          <keyword>multiply8xk_small</keyword>
-          <keyword>divide8xk</keyword>
+          <keyword>use_multiply8x8</keyword>
+          <keyword>use_multiply8x8s</keyword>
+          <keyword>use_multiply8x8su</keyword>
+          <keyword>use_divide8x8</keyword>
+          <keyword>use_divide8x8s</keyword>
+          <keyword>use_divide16x8</keyword>
+          <keyword>use_divide16x8s</keyword>
+          <keyword>use_multiply8xk</keyword>
+          <keyword>use_multiply8xk_small</keyword>
+          <keyword>use_divide8xk</keyword>
           <keyword>expr</keyword>
           <keyword>exprs</keyword>
           <keyword>expr2</keyword>
@@ -259,6 +261,38 @@
           <keyword>test16</keyword>
           <keyword>argc</keyword>
           <keyword>do</keyword>
+          <keyword>ansi_black</keyword>
+          <keyword>ansi_blue</keyword>
+          <keyword>ansi_cyan</keyword>
+          <keyword>ansi_green</keyword>
+          <keyword>ansi_magenta</keyword>
+          <keyword>ansi_red</keyword>
+          <keyword>ansi_reset</keyword>
+          <keyword>ansi_white</keyword>
+          <keyword>ansi_yellow</keyword>
+          <keyword>argc</keyword>
+          <keyword>colorize</keyword>
+          <keyword>dec2pbhex</keyword>
+          <keyword>func</keyword>
+          <keyword>isr</keyword>
+          <keyword>leave_func</keyword>
+          <keyword>leave_isr</keyword>
+          <keyword>popvars</keyword>
+          <keyword>proc</keyword>
+          <keyword>retvalue</keyword>
+          <keyword>strhash</keyword>
+          <keyword>strlenc</keyword>
+          <keyword>use_ascii2bcd</keyword>
+          <keyword>use_bcd2int</keyword>
+          <keyword>use_bcdwrite</keyword>
+          <keyword>use_delay_reg</keyword>
+          <keyword>use_hexwrite</keyword>
+          <keyword>use_int2bcd</keyword>
+          <keyword>use_memcopy</keyword>
+          <keyword>use_memset</keyword>
+          <keyword>use_memwrite</keyword>
+          <keyword>use_random16</keyword>
+          <keyword>use_random8</keyword>
         </context>
 
 

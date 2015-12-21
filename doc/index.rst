@@ -125,7 +125,7 @@ The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory.
 Syntax extensions
 -----------------
 
-Two non-standard syntax extension have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a ".". Local labels do not have to be gloabally unique making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately predeeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.
+Two non-standard syntax extensions have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a ".". Local labels do not have to be globally unique making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately preceeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.
 
 .. code-block:: picoblaze
 
@@ -152,7 +152,7 @@ Another small extension to the syntax is that the ADDRESS directive can take a l
 
   my_isr:
     address 3FF
-    jump my_isr     ; Assemble instruction at interupt vector location
+    jump my_isr     ; Assemble instruction at interrupt vector location
     address my_isr  ; Resume assembly at address previously captured in "my_isr"
     <ISR code>
     returni
@@ -213,6 +213,7 @@ The assembler is invoked with the *opbasm* script. It supports the following com
     -s SCRATCH_SIZE, --scratch-size=SCRATCH_SIZE
                           Scratchpad memory size
     -x, --hex             Write HEX in place of MEM file
+    --mif                 Write MIF in place of MEM file
     -o OUTPUT_DIR, --outdir=OUTPUT_DIR
                           Output directory
     -d, --report-dead-code
@@ -287,7 +288,7 @@ To save the bother of hunting down templates when you start a new project, you c
 
 .. code-block:: sh
 
-  > obpasm -g
+  > opbasm -g
   Retrieving default templates...
   ROM_form_S3_1K.vhdl,picoblaze_rom.vhdl
     COPYING:  /usr/local/lib/python2.7/dist-packages/opbasm-1.0-py2.7.egg/templates/ROM_form_S3_1K.vhdl
@@ -368,7 +369,7 @@ This function signature will then appear in the log where it can be post-process
 Updating bit files
 ------------------
 
-The KCPSM3 assembler included a program and batch file that automated the process of updating a PicoBlaze ROM in a bit file without requiring a resynthesis. For PicoBlaze-6 that process has been abandoned in favour of using the JTAG loader.
+The KCPSM3 assembler included a program and batch file that automated the process of updating a PicoBlaze ROM in a bit file without requiring a resynthesis. For PicoBlaze-6 that process has been abandoned in favor of using the JTAG loader.
 
 Because some platforms don't readily support the use of the JTAG loader, the old system of updating bit files has been reimplemented as a utility script *pb_update*. You will need to have a new *.mem* file along with the top level *.ncd* and *.bit* files for the design. The Xilinx ISE tools *xdl* and *data2mem* must be accessible from your command line path.
 

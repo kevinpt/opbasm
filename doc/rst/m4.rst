@@ -73,7 +73,7 @@ Using these macros you can write code in a higher-level style like the following
 Installing m4 on Windows
 ------------------------
 
-The current release of Opbasm includes GnuWin32 Windows binaries for `m4 <http://gnuwin32.sourceforge.net/packages/m4.htm>`_. It will be installed by the setup.py script.
+Opbasm includes GnuWin32 Windows binaries for `m4 <http://gnuwin32.sourceforge.net/packages/m4.htm>`_. It will be installed by the setup.py script.
 
 In the Cygwin environment, the included binary will not be executed and you must install the Cygwin version of m4. In the `Cygwin installer <http://cygwin.com/install.html>`_ select the m4 package (under Interpreters) for installation. Opbasm will be able to use m4 immediately within a Cygwin shell.
 
@@ -87,10 +87,10 @@ m4 uses different syntax from PicoBlaze assembly to represent different types of
 ============  =============  ============
 **Type**      **PicoBlaze**  **m4**
 ============  =============  ============
-decimal       10'd           10 
-hexadecimal   0a             0x0a
-binary        00001010'b     0b1010
-char          "A"            A or ```A'``
+Decimal       10'd           10 
+Hexadecimal   0a             0x0a
+Binary        00001010'b     0b1010
+Char          "A"            A or ```A'``
 ============  =============  ============
 
 In general you use m4 syntax for literals passed as arguments to macros within parentheses. The only exception is ``pbhex()`` which takes a list of hex values in PicoBlaze format. Be careful not to use PicoBlaze hex format in other m4 contexts as it will be misinterpreted as decimal if only digits 0-9 are used.
@@ -173,11 +173,39 @@ The ``words_le()`` and ``words_be()`` macros convert a list of 16-bit numbers in
 
   words_le(0xff01, 0xff02)  ; Expands to "1, 255, 2, 255"
   words_be(0xff01, 0xff02)  ; Expands to "255, 1, 255, 2"
+  
+Conditional code
+----------------
+
+You may want to conditionally generate portions of a program or pass build time parameters to macros for different results. This can be accomplished with the m4 ``ifdef()`` macro.
+
+.. code-block:: picoblaze
+
+  ifdef(`VARNAME`, `
+    <Defined conditional code here>
+  ', `
+    <Undefined conditional code here>
+  ')
+  
+  
+  ifdef(`VARNAME', `load s0, 10')  ; Defined
+
+  ifdef(`VARNAME',, `load s0, 20') ; Not defined
+  
+  load s1, MAXVAL
+  
+You can ommit either block of the ``ifdef()`` macro if you want generation only for the defined or undefined conditions. To control the selected code block you pass defined variables with the ``-D`` option to Opbasm:
+
+.. code-block:: shell
+
+  opbasm -DVARNAME -DMAXVAL=42 foo.psm4
+  
+This will define "VARNAME" as an empty string and "MAXVAL" with the string "42" which will be passed on unaltered to the assembler. These defined variables become macros which will be substituted with their value like any other macro.
 
 General purpose macros
 ----------------------
 
-A few of the macros depend on modifying a temporary register. To simplify the macro calls, the temp register is set to `sE` by default. You can change it to another register by calling ``use_tempreg(<reg>)``. The temp register can be accessed in your own macros by using the ``"_tempreg"`` macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros. 
+A few of the macros depend on modifying a temporary register. To simplify the macro calls, a preallocated temp register is used. It is set to `sE` by default. You can change it to another register by calling ``use_tempreg(<reg>)``. The temp register can be accessed in your own macros by using the ``_tempreg`` macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros. 
 
 .. code-block:: picoblaze
 
@@ -194,6 +222,14 @@ use_bcdwrite      use_hexwrite       use_int2bcd    use_ascii2bcd   use_bcd2int
 
 The other ``expr()`` macros use the temp register indirectly when the mul and div operations are invoked.
 
+You can guard against accidentally using the temp register for long term storage by renaming it with the NAMEREG directive:
+
+.. code-block:: picoblaze
+
+  namereg sE, TEMPREG
+  use_tempreg(TEMPREG)
+
+Now you can't accidentally assign something to ``sE`` that will be overwritten by a macro using the ``_tempreg`` macro.
 
 PicoBlaze programs commonly contain lists of constant declarations for IO port addresses. The ``iodefs(<start port>, [port names]+)`` macro simplifies their declaration by allowing contiguous sequences of ports to be named in one statement. It can also be used to define scratchpad addresses.
 
@@ -574,7 +610,7 @@ You cannot use a ``return`` instruction inside the code body of a ``func()`` mac
 isr
 ~~~
 
-A variant of the ``func()`` macro is available for defining ISRs. The ``isr()`` macro is similar to ``func()`` but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.
+A variant of the ``func()`` macro is available for defining ISRs. The ``isr()`` macro is similar to ``func()`` but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interrupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.
 
 .. code-block:: picoblaze
 
@@ -637,10 +673,25 @@ The delay can be from 0 to approximately 100e9 but a practical limit would be to
 
 An alternate implementation of ``delay_cycles()`` can be invoked by first configuring it with the ``use_delay_reg()`` macro. You call it with a single register to use for a delay counter. This register must be different than the ones used for the long period delay macros described next. With a delay register configured, the ``delay_cycles()`` macro will be implemented as a small loop for delays of 511 cycles or less. Longer delays will fall back to using recursive delay trees.
 
+.. code-block:: picoblaze
+
+  use_delay_reg(s6)
+  delay_cycles(40)
+  
+  ; Expands to:
+  
+  
+                  LOAD s6, 13                    ; (40 - 1) / 2
+   DLOOP_f1_0001:
+                  SUB s6, 01
+                  JUMP nz, DLOOP_f1_0001
+                  LOAD se, se                    ; NOP
+
+
 Time delays
 ~~~~~~~~~~~
 
-Delays by microseconds and milliseconds are implemented with the ``delay_us()`` and ``delay_ms()`` macros. Before using these you must establish the system clock frequency with the ``use_clock()`` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay by a certain number of instructions if needed.
+Delays by microseconds and milliseconds are implemented with the ``delay_us()`` and ``delay_ms()`` macros. Before using these you must establish the system clock frequency with the ``use_clock()`` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay down by a certain number of instructions if needed to account for function call or loop overhead.
 
 .. code-block:: picoblaze
 
@@ -659,7 +710,7 @@ Delays by microseconds and milliseconds are implemented with the ``delay_us()`` 
   delay_ms(10, s4, s5)               ; Inline delay by 10 ms
   ; Exactly 10 ms have passed here
 
-The ``delay_*()`` macros take a delay value, a pair of registers and an optional adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that can't be easily expressed. You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:
+The ``delay_*()`` macros take a delay value, a pair of registers and an optional instruction adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that can't be easily expressed. You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:
 
 =======  =======
 50 MHz   429 ms
@@ -960,6 +1011,32 @@ After configuration you define strings with the ``packed_string()`` macro just a
   main:
   ...
   call hello ; Call write_char on each character in the "hello" string
+  
+This expands to the following on both target processors:
+
+.. code-block:: picoblaze
+
+              <Handler routines>
+              
+              ; "Hello world\r\n"
+       hello: LOAD s5, _hello_STR'upper
+              LOAD s6, _hello_STR'lower
+              JUMP __packed_string_handler
+  _hello_STR: INST 04865
+              INST 06c6c
+              INST 06f20
+              INST 0776f
+              INST 0726c
+              INST 0640d
+              INST 00a00
+
+              ; Define a packed string called `"hello"'
+
+        main:
+
+              CALL hello
+
+You can see that the 13 byte string is stored into 7 instruction words providing the densest string storage possible without resorting to compression.
 
 If you have existing code using the portable string macros, you can convert it to use packed strings by changing the macro name with the optional seventh argument:
 
@@ -1015,7 +1092,7 @@ Most of the previous string handling routines are hard-coded to use a single cal
 Scratchpad memory operations
 ----------------------------
 
-A set of routines are available for manipulating arrays in scratchpad memory. They are accessed by invoking a ``use_XXX()`` generator macro to create the functions with register allocations of your choice. All of these macros take an intial argument that is the name of the generated function. They all preserve their input and temporary registers on the stack unless reused for a return value.
+A set of routines are available for manipulating arrays in scratchpad memory. They are accessed by invoking a ``use_XXX()`` generator macro to create the functions with register allocations of your choice. All of these macros take an initial argument that is the name of the generated function. They all preserve their input and temporary registers on the stack unless reused for a return value.
 
 memset
 ~~~~~~
@@ -1134,10 +1211,10 @@ A pair of generator macros create functions for converting between unsigned inte
   load s0, 20  ; Use buffer from 0x20 to 0x24
   load s1, 02  ; Convert 16-bit integer (2 bytes)
   load16(s4,s3, 30789)
-  push(s3, s4) ; Place integer on stack low byte first, high byte last
+  push(s3, s4) ; Place integer on stack low byte first, high byte last (on top)
   call int2bcd
   
-After conversion the array at 0x20 contains the hex values ``[03 00 07 08 09]``. This result can then be processed by ``bcdwrite`` to write an integer value out to a port. The result is right justified in the array with leading 0's for any unused digits. No error detection is performed if the result requires more digits than the generator macro was defined to use.
+After conversion the array at scratchpad 0x20 contains the hex values ``[03 00 07 08 09]``. This result can then be processed by ``bcdwrite`` to write an integer value out to a port. The result is right justified in the array with leading 0's for any unused digits. No error detection is performed if the result requires more digits than the generator macro was defined to use.
 
 .. code-block:: picoblaze
 
@@ -1147,14 +1224,14 @@ After conversion the array at 0x20 contains the hex values ``[03 00 07 08 09]``.
   
 The result is ``[00 00 05 01 12]`` at 0x20.
 
-For handling numeric string inputs there are a pair of generator macros that can be used. First is ``use_ascii2bcd()`` which will convert a numeric ASCII string into BCD format.
+For converting numeric string inputs to binary a pair of generator macros that can be used. First is ``use_ascii2bcd()`` which will convert a numeric ASCII string into BCD format.
 
 .. code-block:: picoblaze
 
   ;                    <Array addr> <len>
   use_ascii2bcd(ascii2bcd, s0,        s1)
   
-  load_store("0", 0x20) ; Simulate text input
+  load_store("X", 0x20) ; Simulate text input
   load_store("1", 0x21)
   load_store("2", 0x22)
   load_store("4", 0x23)
@@ -1164,7 +1241,7 @@ For handling numeric string inputs there are a pair of generator macros that can
   load s1, 05 ; Convert 5 characters from 0x20 to 0x24
   call ascii2bcd
   
-The resulting array contains BCD: ``[00 01 02 04 09]``. Any non-digit characters are converted to 0.
+The resulting array contains BCD: ``[00 01 02 04 09]``. Any non-digit characters in the string are converted to 0.
 
 The ``use_bcd2int()`` macro is used to convert from BCD to an integer. This finishes the conversion of numeric string input into a usable integer value after first converting ASCII to BCD using ``ascii2bcd``.
   
@@ -1177,7 +1254,7 @@ The ``use_bcd2int()`` macro is used to convert from BCD to an integer. This fini
   load s1, 05 ; Convert 5 digits from 0x20 to 0x24
   call bcd2int
   
-The converted integer value is overwritten into the array from left to right, destroying some of the BCD digits. The first byte in the array is the least significant. The total number of integer bytes is returned in the length register (s1 in this case). After conversion the array contains ``[E1 04 02 04 09]``. 0x04E1 is 1249 from the original ASCII string. The integer result is guaranteed to always be smaller than the largest BCD number that will fit in an array (999...) so an overflow is impossible.
+The converted integer value is overwritten into the array from left to right, destroying some of the BCD digits. The first byte in the array is the least significant. The total number of converted binary integer bytes is returned in the length register (s1 in this case). After conversion the array contains ``[E1 04 02 04 09]``. 0x04E1 is 1249 from the original ASCII string. The integer result is guaranteed to always be smaller than the largest BCD number that will fit in an array (999...) so an overflow is impossible.
   
 
 
