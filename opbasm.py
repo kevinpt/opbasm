@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.3'
+__version__ = '1.3.1'
 
 
 class FatalError(Exception):
@@ -668,7 +668,7 @@ class Assembler(object):
     m4_def_args = ' '.join('-D{}={}'.format(k,v) if v else '-D{}'.format(k) for k,v in m4_defines.iteritems())
 
     m4_cmd = find_m4()
-    cmd = '{} {} {} {} -'.format(m4_cmd, m4_options, m4_def_args, macro_defs)
+    cmd = '"{}" {} {} "{}" -'.format(m4_cmd, m4_options, m4_def_args, macro_defs)
     p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     m4_result, m4_err = p.communicate(input=pure_m4.encode('utf-8'))
     if p.returncode:
