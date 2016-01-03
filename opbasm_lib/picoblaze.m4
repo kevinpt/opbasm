@@ -33,38 +33,65 @@ changecom(;)
 ;==================================================
 
 ;---------------------------------
-;Extensions to eval
-;Evaluate expression as a decimal number
-;Args:
-;  Arg1: Expression or constant name
-;Result:
-;  Expands to a PicoBlaze decimal literal with a comment listing the original expression
+; Evaluate m4 expression as a PicoBlaze decimal number.
+; Args:
+;   Arg1: Expression or constant name
+; Returns:
+;   Expands to a PicoBlaze decimal literal with a comment listing the original expression
+; Example:
+;   constant cname, evald(20 * 4 - 1)  -->  constant cname, 79'd
 define(`evald', `eval(const2m4($1))''d  `;' $1)
 
-; Evaluate expression as an 8-bit hex number
+;---------------------------------
+; Evaluate m4 expression as an 8-bit PicoBlaze hex number.
+; Args:
+;   Arg1: Expression or constant name
+; Returns:
+;   Expands to a PicoBlaze hex literal with a comment listing the original expression
+; Example:
+;   constant cname,  evalh(20 + 6)      -->  constant cname,  1a
+;   constant cname2, evalh(250 + 6)     -->  constant cname2, 01
 define(`evalh', `eval((const2m4($1)) & 0xFF, 16, 2)  ; $1')
 
-; Evaluate expression as a 12-bit hex number for addresses
+;---------------------------------
+; Evaluate m4 expression as a 12-bit PicoBlaze address.
+; Args:
+;   Arg1: Expression
+; Returns:
+;   Expands to a PicoBlaze address literal with a comment listing the original expression
 define(`evala', `eval(($1) & 0xFFF, 16, 3)  ; $1')
 
-; Evaluate expression as an 8-bit binary number
+;---------------------------------
+; Evaluate m4 expression as a PicoBlaze binary number.
+; Args:
+;   Arg1: Expression or constant name
+; Returns:
+;   Expands to a PicoBlaze binary literal with a comment listing the original expression
 define(`evalb', `eval((const2m4($1)) & 0xFF, 2, 8)''b  `;' $1)
 
-; Evaluate expression with constant expansion
+
+;---------------------------------
+; Evaluate m4 expression with expansion of constants.
+; Args:
+;   Arg1: Expression or constant name
+;   Arg2: Optional numeric base to convert to (default is 10)
+;   Arg3: Optional minimum number of digits in result (default is 0)
+; Returns:
+;   Expands to a literal for the expression or constant
 define(`evalc', `eval(const2m4($1), ifelse($2,,10,$2), ifelse($3,,0,$3))')
 
 
+;---------------------------------
 ; Only evaluate valid expressions, otherwise reproduce the original text in the
-; first argument
-define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($2,,`pushdef(`_evalx', `eval($1)')', `pushdef(`_evalx', `eval($1, $2)')'),`pushdef(`_evalx', `eval(($1 & 0x`'repeatstr(F,$3)), $2, $3)')'),`pushdef(`_evalx', $1)')'_evalx`'popdef(`_evalx'))
-
+; first argument.
+; Args:
+;   Arg1: Expression or string literal
+;   Arg2: Optional numeric base to convert to (default is 10)
+;   Arg3: Optional minimum number of digits in result (default is 0)
 ; Example:
-;   constant cname,  evalh(20 + 6)      -->  constant cname,  1a
-;     constant cname2, evald(20 * 4 - 1)  -->  constant cname2, 79'd
-;     constant cname3, evalh(250 + 6)     -->  constant cname3, 01
-;
-;     evalx(some_name)  --> some_name
-;     evalx(1+3)        --> 4
+;   evalx(some_name)  --> some_name
+;   evalx(1+3)        --> 4
+define(`evalx', `ifelse(eval(regexp(`$1',`^[-+~0-9(]')>=0),1,ifelse($3,,ifelse($2,,`pushdef(`_evalx', `eval($1)')', `pushdef(`_evalx', `eval($1, $2)')'),`pushdef(`_evalx', `eval(($1 & 0x`'repeatstr(F,$3)), $2, $3)')'),`pushdef(`_evalx', $1)')'_evalx`'popdef(`_evalx'))
 
 
 ;=============== TYPE CONVERSION ===============
@@ -91,11 +118,12 @@ define(`dec2pbhex', `ifelse(eval($#>1),1,`eval($1 & 0xFF,16,2)'`,' `$0(shift($@)
 ; Convert a string to a list of decimal ASCII codes
 ; Args:
 ;   Arg1: String to convert
-: Example:
+; Example:
 ;   asciiord(`My string')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103
 changequote(<!,!>) ; Change quotes so we can handle "`" and "'"
 
-; NOTE: We have to escape the string argument to avoid unwanted substitutions
+; Note:
+;   You must use m4 quotes on the string argument to avoid unwanted substitutions.
 define(<!asciiord!>,<!changequote(<!,!>)changecom(-~-)<!!>_asciiord(_esc_words($1))<!!>changecom(;)changequote`'dnl
 !>)
 
@@ -123,22 +151,31 @@ define(<!_aconv!>,<!ifelse(<!$1!>,<! !>,32,<!$1!>,<!;!>,59,dnl
 changequote
 
 ;---------------------------------
-; Convert a string to a list of decimal ASCII codes with or without a NUL terminator
-; The following C escape codes are translated to their ASCII value:
-;   * \\  \
-;   * \n  NL\LF
-;   * \r  CR
-;   * \t  HT
-;   * \b  BS
-;   * \a  BEL
-;   * \e  ESC
-;   * \s  semicolon ;
+; Convert a string to a list of decimal ASCII codes without a NUL terminator.
+;
 ; Args:
 ;   Arg1: String to convert
+; The following C escape codes are translated to their ASCII value:
+;
+; * \\\\  \\
+; * \\n  NL\\LF
+; * \\r  CR
+; * \\t  HT
+; * \\b  BS
+; * \\a  BEL
+; * \\e  ESC
+; * \\s  semicolon ;
 ; Example:
 ;   estr(`My string\r\n')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103, 13, 10
 ;   cstr(`My string\r\n')  ; Expands to 77, 121, 32, 115, 116, 114, 105, 110, 103, 13, 10, 0
 define(`estr', `_esc(asciiord(`$1'))')
+
+;---------------------------------
+; Convert a string to a list of decimal ASCII codes with a NUL terminator.
+; Args:
+;   Arg1: String to convert
+; See also:
+;  :pb:macro:`estr` for more information.
 define(`cstr', `_esc(asciiord(`$1')), 0')
 
 ; Step through decimal values replacing escape codes as necessary
@@ -177,13 +214,21 @@ define(`_strlenc', $#)
 define(`qstr', `"$1"')
 
 ;---------------------------------
-; Convert 16-bit words into bytes
-; words_le produces little-endian byte order, words_be is big-endian
+; Convert 16-bit words into bytes with little-endian order.
+;
 ; Args:
 ;   Arg1-Argn: Numbers to split into bytes
 ; Example:
 ;   words_le(0xff01, 0xff02) ; Expands to 255, 1, 255, 2
 define(`words_le', `ifelse(`$1',,,eval($#>1),1,`_split_le($1), $0(shift($@))',`_split_le($1)')')
+
+
+;---------------------------------
+; Convert 16-bit words into bytes with big-endian order.
+; Args:
+;   Arg1-Argn: Numbers to split into bytes
+; Example:
+;   words_be(0xff01, 0xff02) ; Expands to 1, 255, 2, 255
 define(`words_be', `ifelse(`$1',,,eval($#>1),1,`_split_be($1), $0(shift($@))',`_split_be($1)')')
 
 define(`_split_le', `eval(($1) & 0xFF), eval((($1) & 0xFF00) >> 8)')
@@ -223,6 +268,13 @@ changequote
 
 define(`_tempreg', `sE')
 
+;---------------------------------
+; Define a common temporary register used by other macros.
+; This allows you to change the temp register from its default of ``sE``.
+; Args:
+;   Arg1: Register to use for temp register
+; Example:
+;   use_tempreg(sA)
 define(`use_tempreg', `pushdef(`_tempreg', $1)')
 
 
@@ -230,7 +282,7 @@ define(`use_tempreg', `pushdef(`_tempreg', $1)')
 ;========================================================
 
 ;---------------------------------
-; No-op macros
+; No-op macro
 define(`nop', `load _tempreg, _tempreg  ; NOP')
 
 ;---------------------------------
@@ -267,6 +319,8 @@ $1f`'eval(M4_FILE_NUM)_`'eval(_uniq_ix, 10, 4)')
 
 ;---------------------------------
 ; Reverse arguments
+; Args:
+;  Arg1-Argn: List of arguments to reverse
 ; Example:
 ;   reverse(1,2,3)  --> 3,2,1
 define(`reverse', `ifelse(eval($# > 1), 1, `reverse(shift($@)), `$1'', ``$1'')')
@@ -291,7 +345,7 @@ define(`iodefs', `const($2, eval($1, 16, 2))'
 ; Args:
 ;   Arg1: Value to load (constant or other register)
 ;   Arg2: Port to output to
-;   Arg3: Optional Register to load with value, uses _tempreg is omitted
+;   Arg3: Optional Register to load with value, uses _tempreg if omitted
 define(`load_out', `load ifelse($3,,`_tempreg',`$3'), evalx($1, 16, 2)
 output ifelse($3,,`_tempreg',`$3'), ifelse(isnum(const2m4($2)),1,evalx(const2m4($2), 16, 2),`($2)') ')
 
@@ -301,7 +355,7 @@ output ifelse($3,,`_tempreg',`$3'), ifelse(isnum(const2m4($2)),1,evalx(const2m4(
 ; Args:
 ;   Arg1: Value to load (constant or other register)
 ;   Arg2: Scratchpad address to output to (constant or a register)
-;   Arg3: Optional Register to load with value, uses _tempreg is omitted
+;   Arg3: Optional Register to load with value, uses _tempreg if omitted
 define(`load_store', `load ifelse($3,,`_tempreg',`$3'), evalx($1, 16, 2)
 store ifelse($3,,`_tempreg',`$3'), ifelse(isnum(const2m4($2)),1,evalx(const2m4($2), 16, 2),`($2)') ')
 
@@ -609,6 +663,8 @@ define(`_dval_var', `eval(($1 * _cfreq / 2 - 2) / (3 + _dnop_us($2,2)) - 1)')
 
 ;---------------------------------
 ; Clear the carry flag
+; Args:
+;   Arg1: Optional temp register
 define(`clearcy', `and _tempreg, _tempreg  ; Clear carry')
 
 ;---------------------------------
@@ -770,8 +826,8 @@ define(`retlt', `return c  ; if less than')
 ;   Arg3: Optional else clause or next else-if comparison expression
 ;   Arg4-Argn: Additional else-if clauses
 ;
-;   This macro performs a comparison of the left and right operands and then inserts
-;   the if* macro selected by the operation
+; This macro performs a comparison of the left and right operands and then inserts
+; the if* macro selected by the operation.
 ; Example:
 ;   if(s0 < s1, `load s0, 01', `load s0, 02')
 ;   if(s0 != 0xa5, `load s0, 01')
@@ -839,9 +895,9 @@ isnum($2),1,`compares($1, eval($2 + 1))',dnl
 ;   Arg1: True clause
 ;   Arg2: Optional else clause
 ;
-;   These macros insert labels and jump instructions to implement the behavior of
-;   an if-then or if-then-else statement testing for equality, inequality,
-;   greater-or-equal, or less-than
+; These macros insert labels and jump instructions to implement the behavior of
+; an if-then or if-then-else statement testing for equality, inequality,
+; greater-or-equal, or less-than.
 ; Example:
 ;   compare s0, s1
 ;   ifeq(`load s3, 20
@@ -849,8 +905,6 @@ isnum($2),1,`compares($1, eval($2 + 1))',dnl
 ;   ; else
 ;        `load s3, 30
 ;         output s3, MY_OTHER_PORT')
-
-; If equal
 define(`ifeq', `pushdef(`_neq', uniqlabel(NEQ_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump nz, _neq
 $1
 ifelse(`$2',,,`jump _endif')
@@ -858,7 +912,13 @@ _neq:
 $2
 ifelse(`$2',,,`_endif:')'`popdef(`_neq')'`popdef(`_endif')')
 
-; If not equal
+;---------------------------------
+; Low level if not equal.
+; Args:
+;   Arg1: True clause
+;   Arg2: Optional else clause
+; See also:
+;  :pb:macro:`ifeq` for more information.
 define(`ifne', `pushdef(`_eq', uniqlabel(EQ_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump z, _eq
 $1
 ifelse(`$2',,,`jump _endif')
@@ -866,7 +926,13 @@ _eq:
 $2
 ifelse(`$2',,,`_endif:')'`popdef(`_eq')'`popdef(`_endif')')
 
-; If greater or equal
+;---------------------------------
+; Low level if greater or equal.
+; Args:
+;   Arg1: True clause
+;   Arg2: Optional else clause
+; See also:
+;  :pb:macro:`ifeq` for more information.
 define(`ifge', `pushdef(`_lt', uniqlabel(LT_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump c, _lt
 $1
 ifelse(`$2',,,`jump _endif')
@@ -874,7 +940,13 @@ _lt:
 $2
 ifelse(`$2',,,`_endif:')'`popdef(`_lt')'`popdef(`_endif')')
 
-; If less than
+;---------------------------------
+; Low level if less than.
+; Args:
+;   Arg1: True clause
+;   Arg2: Optional else clause
+; See also:
+;  :pb:macro:`ifeq` for more information.
 define(`iflt', `pushdef(`_xge', uniqlabel(GE_))'`pushdef(`_endif', uniqlabel(ENDIF_))'`jump nc, _xge
 $1
 ifelse(`$2',,,`jump _endif')
@@ -963,11 +1035,12 @@ _clbl: ifelse(`$3',,,`expr($3)')
 jump _slbl')
 _elbl:' `popdef(`_slbl')'`popdef(`_clbl')'`popdef(`_elbl')') 
 
-
-; Break statement to exit loops
+;---------------------------------
+; Break statement to exit from *for*, *while*, and *dowhile* loops.
 define(`break', `jump _elbl')
 
-; Continue statement to restart loop
+;---------------------------------
+; Continue statement to restart a *for*, *while*, or *dowhile* loop.
 define(`continue', `jump _clbl')
 
 
@@ -1056,13 +1129,20 @@ call `$1'')')
 
 
 ;---------------------------------
-; Return from func() and isr() macro code bodies
+; Return from func() macro code bodies
 ; Args:
 ;   Arg1: Optional condition code (Z, NZ, C, or NC)
 ; Example:
+;   leave_func
 ;   leave_func(Z)
 define(`leave_func', `jump ifelse(`$1',,,`$1,') LEAVE_`'_funcname')
 
+;---------------------------------
+; Return from isr() macro code bodies
+; Args:
+;   Arg1: Optional condition code (Z, NZ, C, or NC)
+; Example:
+;   leave_isr(Z)
 define(`leave_isr', `leave_func($1)')
 
 ;---------------------------------
@@ -1088,7 +1168,7 @@ define(`retvalue', `ifelse(eval($2 > 0 && $2 <= _func_ret_num),1,dnl
 ; Args:
 ;   Arg1: Address for ISR
 ;   Arg2: Variable definitions (same format as passed to the vars() macro)
-;   Arg3: Optional return interrupt state "enable"|"disable"|empty
+;   Arg3: Optional return interrupt state "enable" | "disable" | empty
 ;   Arg4: Code block for ISR body
 ; Example:
 ;   isr(0x3FF, `s0, s1, s2', `load s0, 42
@@ -1182,10 +1262,10 @@ define(`_dec_frame', `define(`_frame_offset', eval(_frame_offset - $1))')
 
 
 ;---------------------------------
-; Pseudo-stack operations using the scratchpad RAM
-; The stack pointer grows from the end of the scratchpad to the start
+; Push register values onto a simulated stack in scratchpad RAM.
+; The stack pointer grows from the end of the scratchpad to the start.
 ; Args:
-;   Arg1-Argn: Registers with values to push or pop
+;   Arg1-Argn: Registers with values to push
 ; Example:
 ;   use_stack(sa, 0x3F)
 ;   push(s0)
@@ -1196,7 +1276,13 @@ define(`push', `_stack_initcheck' `ifelse(`$1',,,`store $1, (_stackptr)  ; Push
 sub _stackptr, 01`'_inc_frame(1)
 $0(shift($@))')')
 
-
+;---------------------------------
+; Pop register values from a simulated stack in scratchpad RAM.
+; Arguments should be passed in the same order as push() to restore register contents.
+; Args:
+;   Arg1-Argn: Registers with values to pop
+; See also:
+;  :pb:macro:`push` for more information.
 define(`pop', `_pop(reverse($@))')
 
 define(`_pop', `_stack_initcheck' `ifelse(`$1',,,`add _stackptr, 01  ; Pop
@@ -1259,24 +1345,24 @@ sub _stackptr, evalx($2, 16, 2)')
 
 
 ;---------------------------------
-;Drop values stored on the stack
-;Args:
-;  Arg1: Number of values to drop from the stack or a register
+; Drop values stored on the stack
+; Args:
+;   Arg1: Number of values to drop from the stack or a register
 ;
-;Example:
-;  dropstack(2)  ; Remove 2 values
-;  dropstack(s1) ; Remove number of values specified in s1 register
+; Example:
+;   dropstack(2)  ; Remove 2 values
+;   dropstack(s1) ; Remove number of values specified in s1 register
 define(`dropstack', `_stack_initcheck' `ifelse(isnum($1),1,`_dec_frame($1)')'dnl
 `add _stackptr, evalx($1, 16, 2)  ; Remove stack values')
 
 ;---------------------------------
-;Allocate local space on the stack
+; Allocate local space on the stack
 ; Args:
 ;   Arg1: Number of values to add to the stack or a register
 ;
-;Example:
-;  addstack(2)  ; Add 2 values
-;  addstack(s1) ; Add number of values from s1
+; Example:
+;   addstack(2)  ; Add 2 values
+;   addstack(s1) ; Add number of values from s1
 define(`addstack', `_stack_initcheck' `ifelse(isnum($1),1,`_inc_frame($1)')'dnl
 `sub _stackptr, evalx($1, 16, 2)  ; Add local stack values')
 
@@ -1513,7 +1599,6 @@ jump __`'$5`'_handler')'
 )
 
 
-
 ;---------------------------------
 ; Configure packed string handling. This uses string data packed into
 ; INST statements stored in big-endian order. You must provide a routine to read
@@ -1605,27 +1690,28 @@ define(`colorize', `ifelse($3,bold,`ansi_$2(bold)',ansi_$2)$1`'ansi_reset')
 ;=====================================================
 
 ;---------------------------------
-;2s complement negation
-;Args:
-;  Arg1: Register to negate
-;Result:
-;  Result is in the same register
+; 2s complement negation
+; Args:
+;   Arg1: Register to negate
+; Result:
+;   Result is in the same register
 define(`negate', `xor $1, FF  ; Negate
 add $1, 01')
 
 ;---------------------------------
-;Logical not
-;Args:
-;  Arg1: Register to invert
-;Result:
-;  Result is in the same register
+; Logical not
+; Args:
+;   Arg1: Register to invert
+; Result:
+;   Result is in the same register
 define(`not', `xor $1, FF  ; Not')
 
 ;---------------------------------
 ; Absolute value
 ; Args:
 ;   Arg1: Register to make positive
-; Result is in the same register
+; Result:
+;   Result is in the same register
 define(`abs', `if($1 & 0x80, `negate($1)')')
 
 ;---------------------------------
@@ -1654,6 +1740,7 @@ define(`isnum', `ifelse(regexp($1, `^-?\(0[xXbB][0-9a-fA-F]+\|[0-9]+\)$'),0,1,0)
 ;
 ; Carry flag is set in accordance with signed relation
 ; Zero flag is indeterminate. Use normal compare instruction for == and !=
+;
 ; Note:
 ;   This calls the setcy() macro and depends on the temp reg
 define(`compares', `ifelse(isconst($2),1,`_compares_rk($1, eval(pb2m4(_cname_$2)))',dnl
@@ -2021,18 +2108,31 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, _tempreg) return
 ; Args:
 ;   Arg1: Register assignment expression of the form:
 ;         sN := <val> op <val> [op <val>]*
-;         val is one of:
-;           register
-;           literal expression (with no internal spaces)
-;           sp[addr] scratchpad adddress
-;           spi[reg] indirect scratchpad address in register
-;         op is one of:
-;           + - * /      add, subtract, multiply, divide
-;           & | ^        and, or, xor
-;           << >>        shift left, shift right (0-filled MSB)
-;           =:           reverse assignment to register or scratchpad
 ;
-;   ** Operations are evaluated left to right with *no precedence*
+; val is one of:
+;
+; * register
+; * literal expression (with no internal spaces)
+; * sp[addr] scratchpad adddress
+; * spi[reg] indirect scratchpad address in register
+;
+; op is one of:
+;
+;   `+ - * /`
+;     add, subtract, multiply, divide
+;
+;   `& | ^`
+;     and, or, xor
+;
+;   `<< >>`
+;     shift left, shift right (0-filled MSB)
+;
+;   `=:`
+;     reverse assignment to register or scratchpad
+;
+; Note:
+;   Operations are evaluated left to right with **no precedence**
+;
 ; Example:
 ;   expr(s0 := s1 + s2 - s3 >> 4 =: sp[M_value])
 ;     Arithmetic is performed on s0 and the result is stored in scratchpad at M_value
@@ -2040,26 +2140,34 @@ _genmul8xk($2, eval(2**8 / ($3) + 1,2), $4, _tempreg) return
 ;
 ;   expr(s1 := s4 + (28*4-1))
 ;     s1 <= s4, s1 <= s1 + 111   Constant expressions must have no spaces
-
-; ### Summary of expression macros ###
-;         target x operand   Supported operators
-; expr    8x8                +, -, *, /, &, |, ^, <<, >>, =:
-; exprs   8x8                +, -, *, /, &, |, ^, <<, >>, =:  (signed *, /, and >>)
-; expr2   16x8 *             +, -, *, /, <<, >>, =:
-; expr2s  16x8 *             +, -, *, /, <<, >>, =:           (signed for all except <<)
-; expr16  16x16              +, -, &, |, ^, <<, >>, =:
-; expr16s 16x16              +, -, &, |, ^, <<, >>, =:        (signed >>)
 ;
-;   * The expr2 macros support 16-bit literals as operands of + and -
+; Summary of expression macros:
+;
+; ======= ================= =================================== ==========================
+; Macro   Target x operand  Supported operators                 Notes
+; ======= ================= =================================== ==========================
+; expr    8x8               ``+, -, *, /, &, |, ^, <<, >>, =:``
+; exprs   8x8               ``+, -, *, /, &, |, ^, <<, >>, =:`` (signed \*, /, and >>)
+; expr2   16x8 (see note)   ``+, -, *, /, <<, >>, =:``
+; expr2s  16x8 (see note)   ``+, -, *, /, <<, >>, =:``          (signed for all except <<)
+; expr16  16x16             ``+, -, &, |, ^, <<, >>, =:``
+; expr16s 16x16             ``+, -, &, |, ^, <<, >>, =:``       (signed >>)
+; ======= ================= =================================== ==========================
+;
+; Note:
+;   The expr2 macros support 16-bit literals as operands of + and -
 ;
 ; For multiplication and division support you must initialize the internal functions with
 ; one of the following:
 ;
-;          Multiply                           Divide
+; ======   ================================   ===============
+; Macro    Multiply                           Divide
+; ======   ================================   ===============
 ; expr     use_expr_mul                       use_expr_div
 ; exprs    use_expr_muls                      use_expr_divs
 ; expr2    use_expr_mul                       use_expr_div16
 ; expr2s   use_expr_muls and use_expr_mulsu   use_expr_div16s
+; ======   ================================   ===============
 ;
 ; As an expedient you can invoke "use_expr_all" to include all of them and then eliminate any
 ; unused mul or div routines with the --remove-dead-code option to opbasm.
@@ -2416,14 +2524,19 @@ load $1, _div8s_quo
 
 
 ;---------------------------------
-; Configure unsigned 16x8 division for expressions
-; All arguments are optional
+; Configure unsigned 16x8 division for expressions. This creates a new function "expr_div16"
+; used by the expr2() macro.
 ; Args:
-;   Arg1,Arg2: Dividend (default is s7,s8)
-;   Arg3:      Divisor  (default is s9)
-;   Arg4,Arg5, Arg6: Internal result Quotient, Remainder (default is sa,sb, sc) preserved on stack
-;
-; The result is copied to Arg1,Arg2, Arg3
+;   Arg1: Optional MSB of Dividend (default is s7)
+;   Arg2: Optional LSB of Dividend (default is s8)
+;   Arg3: Optional Divisor  (default is s9)
+;   Arg4: Optional MSB of Quotient (default is sA)
+;   Arg5: Optional LSB of Quotient (default is sB)
+;   Arg6: Optional Remainder (default is sC)
+; Returns:
+;   The generated function places the quotient in Arg1,Arg2 and the remainder in Arg3.
+; Arg4-6 act as temp registers and are restored
+; from the stack.
 define(`use_expr_div16', `define(`_div16_init',1)'dnl
  `ifelse($#,0,`use_divide16x8(`expr_div16', s7,s8, s9, sa,sb, sc, `push(sa,sb, sc)')
   define(`_div16_quo',`s7,s8') define(`_div16_rem',`s9')dnl
@@ -2453,14 +2566,19 @@ load16($1,$2, _div16_quo)
 
 
 ;---------------------------------
-; Configure signed 16x8 division for expressions
-; All arguments are optional
+; Configure signed 16x8 division for expressions. This creates a new function "expr_div16s"
+; used by the expr2s() macro.
 ; Args:
-;   Arg1,Arg2: Dividend (default is s7,s8)
-;   Arg3:      Divisor  (default is s9)
-;   Arg4,Arg5, Arg6: Internal result Quotient, Remainder (default is sa,sb, sc) preserved on stack
-;
-; The result is copied to Arg1,Arg2, Arg3
+;   Arg1: Optional MSB of Dividend (default is s7)
+;   Arg2: Optional LSB of Dividend (default is s8)
+;   Arg3: Optional Divisor  (default is s9)
+;   Arg4: Optional MSB of Quotient (default is sA)
+;   Arg5: Optional LSB of Quotient (default is sB)
+;   Arg6: Optional Remainder (default is sC)
+; Returns:
+;   The generated function places the quotient in Arg1,Arg2 and the remainder in Arg3.
+; Arg4-6 act as temp registers and are restored
+; from the stack.
 define(`use_expr_div16s', `define(`_div16s_init',1)'dnl
  `ifelse($#,0,`use_divide16x8s(`expr_div16s', s7,s8, s9, sa,sb, sc, `push(sa,sb, sc)')
   define(`_div16s_quo',`s7,s8') define(`_div16s_rem',`s9')dnl
@@ -2521,28 +2639,52 @@ const($1_L, evalc($3, 16, 2))'
 `reg16($1, $1_H, $1_L)')
 
 ;---------------------------------
-; Get the upper and lower registers from a reg16 definition
+; Get the upper register from a reg16 definition
 ; Args:
-;   Arg1, Arg2: MSB, LSB of 16-bit register
+;   Arg1: MSB of 16-bit register pair
+;   Arg2: LSB of 16-bit register pair
 ; Example:
 ;   reg16(rx, s5, s4)
-;   load s1, regupper(rx) ; load upper byte from s5
+;   load s1, regupper(rx) ; load upper byte from s5 (rx expands to "s5,s4")
 ;   load s1, reglower(rx) ; load lower byte from s4
 define(`regupper', $1)
+
+;---------------------------------
+; Get the lower register from a reg16 definition
+; Args:
+;   Arg1: MSB of 16-bit register pair
+;   Arg2: LSB of 16-bit register pair
+; See also:
+;   :pb:macro:`regupper` for more information.
 define(`reglower', $2)
 
-; Split a 16-bit constant into upper and lower bytes
+;---------------------------------
+; Split a 16-bit constant and return its upper byte
+; Args:
+;   Arg1: Constant to split
+; Example:
+;   constupper(0x1234) ; Expands to 0x12
 define(`constupper', `eval(((const2m4($1)) >> 8) & 0xFF)')
+
+;---------------------------------
+; Split a 16-bit constant and return its lower byte
+; Args:
+;   Arg1: Constant to split
+; Example:
+;   constupper(0x1234) ; Expands to 0x34
 define(`constlower', `eval((const2m4($1)) & 0xFF)')
 
 ;---------------------------------
 ; 16-bit load
 ; Args:
-;   Arg1, Arg2: MSB, LSB destination
-; 3 arguments: load constant
-;   Arg3: Decimal constant or expression
-; 4 arguments: load register
-;   Arg3, Arg4: MSB, LSB source
+;   Arg1: MSB destination register
+;   Arg2: LSB destination register
+;   Arg3: Decimal constant or expression or source MSB when Arg4 is present
+;   Arg4: Optional register for source LSB
+; Returns:
+;   Result in Arg1, Arg2
+; When three arguments are passed Arg3 is a constant literal. When four arguments are passed,
+; Arg3 and Arg4 are a 16-bit register pair copied to the destination.
 ; Example:
 ;   load16(s1, s0, 2014)
 ;   load16(s1, s0, 200 * 11 + 5)
@@ -2559,8 +2701,11 @@ load $2, eval(constlower($3), 16, 2)')
 ;---------------------------------
 ; Load a 16-bit address from a label
 ; Args:
-;   Arg1, Arg2: MSB, LSB destination
-;   Arg3: address label
+;   Arg1: MSB destination register
+;   Arg2: LSB destination register
+;   Arg3: Address label
+; Returns:
+;   Result in Arg1, Arg2
 ; Example:
 ;   my_func: return
 ;   loadaddr(s1,s0, my_func)
@@ -2572,16 +2717,19 @@ changequote
 ;---------------------------------
 ; 16-bit addition and subtraction
 ; Args:
-;   Arg1, Arg2: MSB1, LSB1
-; 3 arguments: add from constant
-;   Arg3: Decimal constant or expression
-; 4 arguments: add from register
-;   Arg3, Arg4: MSB2, LSB2
-; Result in Arg1, Arg2
+;   Arg1: MSB1 register
+;   Arg2: LSB1 register
+;   Arg3: Decimal constant or expression or MSB2 when Arg4 is present
+;   Arg4: Optional register for LSB2
+; When three arguments are passed Arg3 is a constant literal. When four arguments are passed,
+; Arg3 and Arg4 are a 16-bit pair to add to the result.
+;
+; Returns:
+;   Result in Arg1, Arg2
 ; Example:
-;   add16(s1,s0, s3,s2)
-;   add16(rx, ry)
-;   sub16(rx, 2000)
+;   add16(s1,s0, 0x1234) ; s1,s0 += 0x1234
+;   add16(s1,s0, s3,s2)  ; s1,s0 += s3,s2
+;   sub16(rx, 2000)      ; rx    -= 2000
 define(`add16', `ifelse($#,4,`_add16($@)',`_add16k($@)')')
 
 define(`_add16', `add $2, $4
@@ -2602,7 +2750,8 @@ subcy $1, eval(constupper($3), 16, 2)')
 ;---------------------------------
 ; 16-bit 2s complement negation
 ; Args:
-;   Arg1, Arg2: MSB, LSB to negate
+;   Arg1: MSB register to negate
+;   Arg2: LSB register to negate
 ; Result in Arg1, Arg2
 ; Example:
 ;   negate16(s1, s0)
@@ -2614,7 +2763,8 @@ addcy $1, 00')
 ;---------------------------------
 ; 16-bit logical not
 ; Args:
-;   Arg1, Arg2: MSB, LSB to invert
+;   Arg1: MSB register to invert
+;   Arg2: LSB register to invert
 ; Result in Arg1, Arg2
 ; Example:
 ;   not16(s1, s0)
@@ -2624,7 +2774,8 @@ xor $2, FF')
 ;---------------------------------
 ; 16-bit absolute value
 ; Args:
-;   Arg1, Arg2: MSB, LSB to make positive
+;   Arg1: MSB register to make positive
+;   Arg2: LSB register to make positive
 ; Result is in Arg1, Arg2
 ; Example:
 ;   abs16(s1, s0)
@@ -2632,14 +2783,16 @@ define(`abs16', `if($1 & 0x80, `negate16($1, $2)')')
 
 
 ;---------------------------------
-; 16-bit and
+; 16-bit logical AND
 ; Args:
-;   Arg1, Arg2: MSB1, LSB1
-; 3 arguments: and with constant
-;   Arg3: Decimal constant or expression
-; 4 arguments: and with register
-;   Arg3, Arg4: MSB2, LSB2
-; Result in Arg1, Arg2
+;   Arg1: MSB1
+;   Arg2: LSB1
+;   Arg3: Decimal constant or expression or MSB2 when Arg4 is present
+;   Arg4: Optional register for LSB2
+; Returns:
+;   Result in Arg1, Arg2
+; When three arguments are passed Arg3 is a constant literal. When four arguments are passed,
+; Arg3 and Arg4 are a 16-bit pair to AND to the result.
 define(`and16', `ifelse($#,4,`_and16($@)',`_and16k($@)')')
 
 define(`_and16', `and $2, $4
@@ -2651,12 +2804,14 @@ and $1, eval(constupper($3), 16, 2)')
 ;---------------------------------
 ; 16-bit or
 ; Args:
-;   Arg1, Arg2: MSB1, LSB1
-; 3 arguments: or with constant
-;   Arg3: Decimal constant or expression
-; 4 arguments: or with register
-;   Arg3, Arg4: MSB2, LSB2
-; Result in Arg1, Arg2
+;   Arg1: MSB1
+;   Arg2: LSB1
+;   Arg3: Decimal constant or expression or MSB2 when Arg4 is present
+;   Arg4: Optional register for LSB2
+; Returns:
+;   Result in Arg1, Arg2
+; When three arguments are passed Arg3 is a constant literal. When four arguments are passed,
+; Arg3 and Arg4 are a 16-bit pair to OR to the result.
 define(`or16', `ifelse($#,4,`_or16($@)',`_or16k($@)')')
 
 define(`_or16', `or $2, $4
@@ -2668,12 +2823,14 @@ or $1, eval(constupper($3), 16, 2)')
 ;---------------------------------
 ; 16-bit xor
 ; Args:
-;   Arg1, Arg2: MSB1, LSB1
-; 3 arguments: xor with constant
-;   Arg3: Decimal constant or expression
-; 4 arguments: xor with register
-;   Arg3, Arg4: MSB2, LSB2
-; Result in Arg1, Arg2
+;   Arg1: MSB1
+;   Arg2: LSB1
+;   Arg3: Decimal constant or expression or MSB2 when Arg4 is present
+;   Arg4: Optional register for LSB2
+; Returns:
+;   Result in Arg1, Arg2
+; When three arguments are passed Arg3 is a constant literal. When four arguments are passed,
+; Arg3 and Arg4 are a 16-bit pair to XOR to the result.
 define(`xor16', `ifelse($#,4,`_xor16($@)',`_xor16k($@)')')
 
 define(`_xor16', `xor $2, $4
@@ -2686,11 +2843,12 @@ xor $1, eval(constupper($3), 16, 2)')
 ;---------------------------------
 ; 16-bit test
 ; Args:
-;   Arg1, Arg2: MSB1, LSB1
-; 3 arguments: test with constant
-;   Arg3: Decimal constant or expression
-; 4 arguments: test with register
-;   Arg3, Arg4: MSB2, LSB2
+;   Arg1: MSB1
+;   Arg2: LSB1
+;   Arg3: Decimal constant or expression or MSB2 when Arg4 is present
+;   Arg4: Optional register for LSB2
+; When three arguments are passed Arg3 is a constant literal. When four arguments are passed,
+; Arg3 and Arg4 are a 16-bit pair to use with the TEST comparison.
 ; Note:
 ;   On PicoBlaze-3 only the Z flag is set properly
 ifdef(`PB3', `define(`test16', `ifelse($#,4,`_test16pb3($@)',`_test16kpb3($@)')')',
@@ -2715,12 +2873,16 @@ _tnz:'`popdef(`_tnz')')
 
 
 ;---------------------------------
-; 16-bit comparison
+; 16-bit unsigned comparison.
 ; Args:
-;   Arg1, Arg2: MSB1, LSB1
-;   Arg3, Arg4: MSB2, LSB2
+;   Arg1: MSB1 register for first value
+;   Arg2: LSB1 register for first value
+;   Arg3: MSB2 register for second value
+;   Arg4: LSB2 register for second value
 ; Note:
-;   On PicoBlaze-3 only the Z flag is correct
+;   On PicoBlaze-3, only the Z flag is correct. The C flag does not represent a 16-bit carry.
+; Example:
+;   compare16(s0,s1, s2,s3) ; Subtract s2,s3 from s0,s1 and set the flags
 ifdef(`PB3', `define(`compare16', `if($1 == $3, `compare $2, $4')')',
 `define(`compare16', `compare $2, $4
 comparecy $1, $3')')
@@ -2729,8 +2891,7 @@ comparecy $1, $3')')
 
 
 ;---------------------------------
-; 16-bit shifts
-
+; 16-bit shift primitives
 define(`_sl1_16', `sl1 $2
 sla $1')
 
@@ -2756,36 +2917,84 @@ sra $2')
 define(`_srx_16', `srx $1
 sra $2')
 
+
+;---------------------------------
+; 16-bit arithmetic shift left, inserting C flag
+; Args:
+;   Arg1: MSB register to shift
+;   Arg2: LSB register to shift
+;   Arg3: Number of bits to shift (0-16)
 define(`sla_16', `repeat(`_sla_16($1, $2)', eval(const2m4($3)))')
+
+;---------------------------------
+; 16-bit arithmetic shift right, inserting C flag
+; Args:
+;   Arg1: MSB register to shift
+;   Arg2: LSB register to shift
+;   Arg3: Number of bits to shift (0-16)
 define(`sra_16', `repeat(`_sra_16($1, $2)', eval(const2m4($3)))')
 
-
+;---------------------------------
+; 16-bit shift left, inserting '0'
+; Args:
+;   Arg1: MSB register to shift
+;   Arg2: LSB register to shift
+;   Arg3: Number of bits to shift (0-16)
 define(`sl0_16', `ifelse(eval(const2m4($3) > 8),1,`load $1, $2
 load $2, 00
 repeat(`sl0 $1', eval(const2m4($3) - 8))',dnl
 `repeat(`_sl0_16($1, $2)', eval(const2m4($3)))')')
 
+;---------------------------------
+; 16-bit shift left, inserting '1'
+; Args:
+;   Arg1: MSB register to shift
+;   Arg2: LSB register to shift
+;   Arg3: Number of bits to shift (0-16)
 define(`sl1_16', `ifelse(eval(const2m4($3) > 8),1,`load $1, $2
 load $2, FF
 repeat(`sl1 $1', eval(const2m4($3) - 8))',dnl
 `repeat(`_sl1_16($1, $2)', eval(const2m4($3)))')')
 
+;---------------------------------
+; 16-bit sign extending shift left, duplicating LSB
+; Args:
+;   Arg1: MSB register to shift
+;   Arg2: LSB register to shift
+;   Arg3: Number of bits to shift (0-16)
 define(`slx_16', `ifelse(eval(const2m4($3) > 8),1,`load $1, $2
 if($2 & 0x01, `load $2, FF', `load $2, 00')
 repeat(`_slx_16($1, $2)', eval(const2m4($3) - 8))',dnl
 `repeat(`_slx_16($1, $2)', eval(const2m4($3)))')')
 
-
+;---------------------------------
+; 16-bit shift right, inserting '0'
+; Args:
+;   Arg1: MSB register to shift
+;   Arg2: LSB register to shift
+;   Arg3: Number of bits to shift (0-16)
 define(`sr0_16', `ifelse(eval(const2m4($3) > 8),1,`load $2, $1
 load $1, 00
 repeat(`sr0 $2', eval(const2m4($3) - 8))',dnl
 `repeat(`_sr0_16($1, $2)', eval(const2m4($3)))')')
 
+;---------------------------------
+; 16-bit shift right, inserting '1'
+; Args:
+;   Arg1: MSB register to shift
+;   Arg2: LSB register to shift
+;   Arg3: Number of bits to shift (0-16)
 define(`sr1_16', `ifelse(eval(const2m4($3) > 8),1,`load $2, $1
 load $1, FF
 repeat(`sr1 $2', eval(const2m4($3) - 8))',dnl
 `repeat(`_sr1_16($1, $2)', eval(const2m4($3)))')')
 
+;---------------------------------
+; 16-bit sign extending shift right, duplicating MSB
+; Args:
+;   Arg1: MSB register to shift
+;   Arg2: LSB register to shift
+;   Arg3: Number of bits to shift (0-16)
 define(`srx_16', `ifelse(eval(const2m4($3) > 8),1,`load $2, $1
 if($1 & 0x80, `load $1, FF', `load $1, 00')
 repeat(`_srx_16($1, $2)', eval(const2m4($3) - 8))',dnl
@@ -2799,6 +3008,12 @@ or $2, 01
 _rnc:
 '`popdef(`_rnc')')
 
+;---------------------------------
+; 16-bit rotate left
+; Args:
+;   Arg1: MSB register to rotate
+;   Arg2: LSB register to rotate
+;   Arg3: Number of bits to rotate (0-16)
 define(`rl16', `ifelse(eval(const2m4($3) > 8),1,`swap($1,$2)
 repeat(`_rl16($1, $2)', eval(const2m4($3) - 8))',dnl
 `repeat(`_rl16($1, $2)', eval(const2m4($3)))')')
@@ -2811,6 +3026,12 @@ or $1, 80
 _rnc:
 '`popdef(`_rnc')')
 
+;---------------------------------
+; 16-bit rotate right
+; Args:
+;   Arg1: MSB register to rotate
+;   Arg2: LSB register to rotate
+;   Arg3: Number of bits to rotate (0-16)
 define(`rr16', `ifelse(eval(const2m4($3) > 8),1,`swap($1,$2)
 repeat(`_rr16($1, $2)', eval(const2m4($3) - 8))',dnl
 `repeat(`_rr16($1, $2)', eval(const2m4($3)))')')
@@ -2823,13 +3044,15 @@ repeat(`_rr16($1, $2)', eval(const2m4($3) - 8))',dnl
 ;---------------------------------
 ; 16-bit fetch
 ; Args:
-;   Arg1, Arg2: MSB, LSB of target
-; 3 arguments: Fetch from indirect register
-;   Arg3: Register with pointer to low byte
-;         Incremented twice to permit sequential use of fetch16()
-; 4 arguments: MSB, LSB addresses to fetch from
-;   Arg3, Arg4: MSB, LSB of source
-; Result in Arg1, Arg2
+;   Arg1: MSB register of target
+;   Arg2: LSB register of target
+;   Arg3: Register pointing to low byte or MSB of source address when Arg4 is present
+;   Arg4: Optional register for LSB of source address
+; Returns:
+;   Result in Arg1, Arg2
+; When three arguments are passed Arg3 is a register pointing to the low byte to fetch.
+; It is incremented twice to permit sequential use of fetch16().
+; When four arguments are passed, Arg3 and Arg4 are a 16-bit pair of address constants to fetch from.
 ; Example:
 ;   constant M_ACCUM_L, 1a
 ;   constant M_ACCUM_H, 1b
@@ -2853,12 +3076,13 @@ add $3, 01')
 ;---------------------------------
 ; 16-bit store
 ; Args:
-;   Arg1, Arg2: MSB, LSB of source
-; 3 arguments: Store to indirect register
-;   Arg3: Register with pointer to low byte
-;         Incremented twice to permit sequential use of store16()
-; 4 arguments: MSB, LSB addresses to store to
-;   Arg3, Arg4: MSB, LSB of target (LSB sent first)
+;   Arg1: MSB register of source
+;   Arg2: LSB register of source
+;   Arg3: Register pointing to low byte or MSB of target address when Arg4 is present
+;   Arg4: Optional register for LSB of target address
+; When three arguments are passed Arg3 is a register pointing to the low byte to store to.
+; It is incremented twice to permit sequential use of store16().
+; When four arguments are passed, Arg3 and Arg4 are a 16-bit pair of address constants to store to.
 ; Example:
 ;   load16(rx, 2014)
 ;   store16(rx, M_ACCUM)  ; Store direct to address
@@ -2879,13 +3103,15 @@ add $3, 01')
 ;---------------------------------
 ; 16-bit input
 ; Args:
-;   Arg1, Arg2: MSB, LSB of target
-; 3 arguments: Input from indirect register
-;   Arg3: Register with pointer to low byte
-;         Incremented twice to permit sequential use of input16()
-; 4 arguments: MSB, LSB port addresses to input from
-;   Arg3, Arg4: MSB, LSB of source port
-; Result in Arg1, Arg2
+;   Arg1: MSB register of target
+;   Arg2: LSB register of target
+;   Arg3: Register pointing to low byte or MSB of source address when Arg4 is present
+;   Arg4: Optional register for LSB of source address
+; Returns:
+;   Result in Arg1, Arg2
+; When three arguments are passed Arg3 is a register pointing to the low port byte to read from.
+; It is incremented twice to permit sequential use of input16().
+; When four arguments are passed, Arg3 and Arg4 are a 16-bit pair of port constants to input from.
 ; Example:
 ;   constant P_ACCUM_L, 1a
 ;   constant P_ACCUM_H, 1b
@@ -2909,12 +3135,13 @@ add $3, 01')
 ;---------------------------------
 ; 16-bit output
 ; Args:
-;   Arg1, Arg2: MSB, LSB of source
-; 3 arguments: Output to indirect register
-;   Arg3: Register with pointer to low byte
-;         Incremented twice to permit sequential use of output16()
-; 4 arguments: MSB, LSB port addresses to output to
-;   Arg3, Arg4: MSB, LSB of target (LSB sent first)
+;   Arg1: MSB register of source
+;   Arg2: LSB register of source
+;   Arg3: Register pointing to low byte or MSB of output address when Arg4 is present
+;   Arg4: Optional register for LSB of output address
+; When three arguments are passed Arg3 is a register pointing to the low byte to output to.
+; It is incremented twice to permit sequential use of output16().
+; When four arguments are passed, Arg3 and Arg4 are a 16-bit pair of port address constants to output to.
 ; Example:
 ;   load16(rx, 2014)
 ;   output16(rx, P_ACCUM)  ; Output direct to port address
@@ -3024,22 +3251,22 @@ define(`_strhash', `ifelse(`$1',,0,`pushdef(`_SH_CS',$0(shift($@)))'`eval(((_SH_
 ;===========================================================
 
 ;---------------------------------
-;Generate a function to copy an array in scratchpad memory
-;Args:
-;  Arg1: Name of function to generate
-;  Arg2: Register for first function argument,
-;        the scratchpad address of the source array
-;  Arg3: Register for destination address
-;  Arg4: Register for number of bytes to copy
-;Returns:
-;  The generated function has no return value. All registers are
-;  preserved on the stack.
-;Example:
-;  use_memcopy(memcopy, s0, s1, s2)
-;  load s0, 20 ; Source address
-;  load s1, 30 ; Dest address
-;  load s2, 05 ; Copy 5 bytes
-;  call memcopy
+; Generate a function to copy an array in scratchpad memory.
+; Args:
+;   Arg1: Name of function to generate
+;   Arg2: Register for first function argument,
+;         the scratchpad address of the source array
+;   Arg3: Register for destination address
+;   Arg4: Register for number of bytes to copy
+; Returns:
+;   The generated function has no return value. All registers are
+;   preserved on the stack.
+; Example:
+;   use_memcopy(memcopy, s0, s1, s2)
+;   load s0, 20 ; Source address
+;   load s1, 30 ; Dest address
+;   load s2, 05 ; Copy 5 bytes
+;   call memcopy
 define(`use_memcopy', `; PRAGMA function $1 [$2, $3, $4] begin
             $1:  ; Copy count ($4) bytes from src ($2) to dest ($3) in scratchpad
               vars(`$2 is _src', `$3 is _dest', `$4 is _count')
@@ -3056,22 +3283,22 @@ define(`use_memcopy', `; PRAGMA function $1 [$2, $3, $4] begin
               popvars')
 
 ;---------------------------------
-;Generate a function to set an array in scratchpad memory
-;Args:
-;  Arg1: Name of function to generate
-;  Arg2: Register for first function argument,
-;        the scratchpad address of the destination array
-;  Arg3: Register for number of bytes to copy
-;  Arg4: Register for value to set array bytes to
-;Returns:
-;  The generated function has no return value. All registers are
-;  preserved on the stack.
-;Example:
-;  use_memset(memset, s0, s1, s2)
-;  load s0, 20 ; Destination address
-;  load s1, 05 ; Copy 5 bytes
-;  load s2, 00 ; Set all bytes to 0
-;  call memset
+; Generate a function to set an array in scratchpad memory.
+; Args:
+;   Arg1: Name of function to generate
+;   Arg2: Register for first function argument,
+;         the scratchpad address of the destination array
+;   Arg3: Register for number of bytes to copy
+;   Arg4: Register for value to set array bytes to
+; Returns:
+;   The generated function has no return value. All registers are
+;   preserved on the stack.
+; Example:
+;   use_memset(memset, s0, s1, s2)
+;   load s0, 20 ; Destination address
+;   load s1, 05 ; Copy 5 bytes
+;   load s2, 00 ; Set all bytes to 0
+;   call memset
 define(`use_memset', `; PRAGMA function $1 [$2, $3, $4] begin
             $1:  ; Write count ($3) bytes of value ($4) to dest ($2) in scratchpad
               vars(`$2 is _dest', `$3 is _count', `$4 is _value')
@@ -3086,23 +3313,23 @@ define(`use_memset', `; PRAGMA function $1 [$2, $3, $4] begin
               popvars')
 
 ;---------------------------------
-;Generate a function to write an array of bytes to an output port
-;Args:
-;  Arg1: Name of function to generate
-;  Arg2: Register for first function argument,
-;        the scratchpad address of the source array
-;  Arg3: Register for number of bytes to write
-;  Arg4: Port address to write. This is a fixed value that can't
-;        be changed at runtime
-;Returns:
-;  The generated function has no return value. All registers are
-;  preserved on the stack.
-;Example:
-;  constant ConsolePort, FE
-;  use_memwrite(memwrite, s0, s1, ConsolePort)
-;  load s0, 20 ; Source address
-;  load s1, 05 ; Write 5 bytes
-;  call memwrite
+; Generate a function to write an array of bytes to an output port.
+; Args:
+;   Arg1: Name of function to generate
+;   Arg2: Register for first function argument,
+;         the scratchpad address of the source array
+;   Arg3: Register for number of bytes to write
+;   Arg4: Port address to write. This is a fixed value that can't
+;         be changed at runtime
+; Returns:
+;   The generated function has no return value. All registers are
+;   preserved on the stack.
+; Example:
+;   constant ConsolePort, FE
+;   use_memwrite(memwrite, s0, s1, ConsolePort)
+;   load s0, 20 ; Source address
+;   load s1, 05 ; Write 5 bytes
+;   call memwrite
 define(`use_memwrite', `; PRAGMA function $1 [$2, $3] begin
             $1: ; Write an array in memory to port $4
               vars(`$2 is _src', `$3 is _count')
@@ -3119,23 +3346,23 @@ define(`use_memwrite', `; PRAGMA function $1 [$2, $3] begin
 
 
 ;---------------------------------
-;Generate a function to write an array of BCD coded bytes to an output port
-;Args:
-;  Arg1: Name of function to generate
-;  Arg2: Register for first function argument,
-;        the scratchpad address of the source BCD data
-;  Arg3: Register for number of bytes to write
-;  Arg4: Port address to write. This is a fixed value that can't
-;        be changed at runtime
-;Returns:
-;  The generated function has no return value. All registers are
-;  preserved on the stack.
-;Example:
-;  constant ConsolePort, FE
-;  use_bcdwrite(bcdwrite, s0, s1, ConsolePort)
-;  load s0, 20 ; Source address
-;  load s1, 05 ; Write 5 bytes
-;  call bcdwrite
+; Generate a function to write an array of BCD coded bytes to an output port.
+; Args:
+;   Arg1: Name of function to generate
+;   Arg2: Register for first function argument,
+;         the scratchpad address of the source BCD data
+;   Arg3: Register for number of bytes to write
+;   Arg4: Port address to write. This is a fixed value that can't
+;         be changed at runtime
+; Returns:
+;   The generated function has no return value. All registers are
+;   preserved on the stack.
+; Example:
+;   constant ConsolePort, FE
+;   use_bcdwrite(bcdwrite, s0, s1, ConsolePort)
+;   load s0, 20 ; Source address
+;   load s1, 05 ; Write 5 bytes
+;   call bcdwrite
 define(`use_bcdwrite', `; PRAGMA function $1 [$2, $3] begin
             $1: ; Write BCD array in memory as ASCII digits to port $4
               vars(`$2 is _src', `$3 is _count')
@@ -3158,23 +3385,23 @@ define(`use_bcdwrite', `; PRAGMA function $1 [$2, $3] begin
 
 
 ;---------------------------------
-;Generate a function to write an array to an output port as ASCII hex
-;Args:
-;  Arg1: Name of function to generate
-;  Arg2: Register for first function argument,
-;        the scratchpad address of the source data
-;  Arg3: Register for number of bytes to write
-;  Arg4: Port address to write. This is a fixed value that can't
-;        be changed at runtime
-;Returns:
-;  The generated function has no return value. All registers are
-;  preserved on the stack.
-;Example:
-;  constant ConsolePort, FE
-;  use_hexwrite(hexwrite, s0, s1, ConsolePort)
-;  load s0, 20 ; Source address
-;  load s1, 05 ; Write 5 bytes
-;  call hexwrite
+; Generate a function to write an array to an output port as ASCII hex.
+; Args:
+;   Arg1: Name of function to generate
+;   Arg2: Register for first function argument,
+;         the scratchpad address of the source data
+;   Arg3: Register for number of bytes to write
+;   Arg4: Port address to write. This is a fixed value that can't
+;         be changed at runtime
+; Returns:
+;   The generated function has no return value. All registers are
+;   preserved on the stack.
+; Example:
+;   constant ConsolePort, FE
+;   use_hexwrite(hexwrite, s0, s1, ConsolePort)
+;   load s0, 20 ; Source address
+;   load s1, 05 ; Write 5 bytes
+;   call hexwrite
 define(`use_hexwrite', `; PRAGMA function $1 [$2, $3] begin
             $1: ; Write array in memory as ASCII hex digits to port $4
               vars(`$2 is _src', `$3 is _count')
@@ -3201,36 +3428,37 @@ define(`use_hexwrite', `; PRAGMA function $1 [$2, $3] begin
 
 
 ;---------------------------------
-;Generate a function to convert an integer to unpacked BCD coded
-;bytes stored in a scratchpad buffer.
-;The number to convert is passed on the stack as one or more bytes
-;with the MSB pushed last. The buffer size is fixed after generating
-;the function. You must ensure it is large enough to contain the
-;largest integer you expect to convert. Each buffer byte corresponds to
-;one decimal digit. The converted BCD number is right justified within
-;the buffer with leading 0's for padding. The least significant digit
-;is always at the end of the buffer.
-;Args:
-;  Arg1: Name of function to generate
-;  Arg2: Number of bytes for scratchpad buffer (fixed constant)
-;  Arg3: First argument of generated function.
-;        Register with destination scratchpad address
-;  Arg4: Register containing number of bytes of data to convert
-;        on the stack
-;  Arg5: Internal temp register
-;  Arg6: Internal temp register
-;  Arg7: Internal temp register
-;  Arg8: Internal temp register
-;Returns:
-;  The generated function has no return value. All registers are
-;  preserved on the stack.
-;Example:
-;  use_int2bcd(int2bcd, 5, s0, s1, s2, s3, s4, s5) ; Support up to 5 decimal digits
-;  load s0, 20 ; Dest address
-;  load s1, 02 ; Convert 16-bit number (2-bytes)
-;  load16(s4,s3, 31337)
-;  push(s3,s4) ; Put number to convert on stack; LSB then MSB
-;  call int2bcd
+; Generate a function to convert an integer to unpacked BCD coded
+; bytes stored in a scratchpad buffer.
+;
+; The number to convert is passed on the stack as one or more bytes
+; with the MSB pushed last. The buffer size is fixed after generating
+; the function. You must ensure it is large enough to contain the
+; largest integer you expect to convert. Each buffer byte corresponds to
+; one decimal digit. The converted BCD number is right justified within
+; the buffer with leading 0's for padding. The least significant digit
+; is always at the end of the buffer.
+; Args:
+;   Arg1: Name of function to generate
+;   Arg2: Number of bytes for scratchpad buffer (fixed constant)
+;   Arg3: First argument of generated function.
+;         Register with destination scratchpad address
+;   Arg4: Register containing number of bytes of data to convert
+;         on the stack
+;   Arg5: Internal temp register
+;   Arg6: Internal temp register
+;   Arg7: Internal temp register
+;   Arg8: Internal temp register
+; Returns:
+;   The generated function has no return value. All registers are
+;   preserved on the stack.
+; Example:
+;   use_int2bcd(int2bcd, 5, s0, s1, s2, s3, s4, s5) ; Support up to 5 decimal digits
+;   load s0, 20 ; Dest address
+;   load s1, 02 ; Convert 16-bit number (2-bytes)
+;   load16(s4,s3, 31337)
+;   push(s3,s4) ; Put number to convert on stack; LSB then MSB
+;   call int2bcd
 define(`use_int2bcd', `
 ; PRAGMA function $1 [$3, $4] begin
 $1:  ; Convert a number on the stack into BCD stored in a scratchpad buffer of $2 bytes
@@ -3295,22 +3523,22 @@ $1:  ; Convert a number on the stack into BCD stored in a scratchpad buffer of $
 
 
 ;---------------------------------
-;Generate a function to convert an ASCII number to BCD.
-;Invalid characters are converted to "0" digits.
-;Args:
-;  Arg1: Name of function to generate
-;  Arg2: Register for first function argument,
-;        the scratchpad address of the ASCII data
-;  Arg3: Register for length of the data
-;Returns:
-;  The generated function has no return value. All registers are
-;  preserved on the stack.
-;Example:
-;  use_ascii2bcd(ascii2bcd, s0, s1)
-;  load s0, 20 ; Array address
-;  load s1, 05 ; Length
-;  call ascii2bcd
-;  ; The array now contains all BCD digits
+; Generate a function to convert an ASCII number to BCD.
+; Invalid characters are converted to "0" digits.
+; Args:
+;   Arg1: Name of function to generate
+;   Arg2: Register for first function argument,
+;         the scratchpad address of the ASCII data
+;   Arg3: Register for length of the data
+; Returns:
+;   The generated function has no return value. All registers are
+;   preserved on the stack.
+; Example:
+;   use_ascii2bcd(ascii2bcd, s0, s1)
+;   load s0, 20 ; Array address
+;   load s1, 05 ; Length
+;   call ascii2bcd
+;   ; The array now contains all BCD digits
 define(`use_ascii2bcd', `
 ; PRAGMA function $1 [$2, $3] begin
 $1:  ; Convert an ASCII number stored in a scratchpad buffer into BCD
@@ -3331,38 +3559,40 @@ $1:  ; Convert an ASCII number stored in a scratchpad buffer into BCD
   ; PRAGMA function end')
 
 ;---------------------------------
-;Generate a function to convert an unpacked BCD coded bytes to a
-;variable size integer. The BCD input is stored in a buffer in
-;scratchpad memory. The buffer address and length are passed as arguments.
-;The converted result is overwritten to the leftmost portion of the buffer.
-;The length register returns with the number of bytes in the result.
-;This function handles conversion to any size integer as the result is
-;guaranteed to be smaller than the initial buffer.
-;Internal temp registers must be allocated for use by the macro. They must
-;not include the _tempreg register.
-;Args:
-;  Arg1: Name of function to generate
-;  Arg2: First argument of generated function.
-;        Register with scratchpad BCD address
-;  Arg3: Register with number of bytes for scratchpad buffer
-;  Arg4: Internal temp register
-;  Arg5: Internal temp register
-;  Arg6: Internal temp register
-;  Arg7: Internal temp register
-;  Arg8: Internal temp register
-;Returns:
-;  The converted integer value is located at the start of the buffer with the LSB
-;  first, opposite to the order of the BCD digits.
-;  The number of bytes in the converted integer is returned in the second argument
-;  to the function (Arg3 of this generator macro). All other registers are preserved
-;  on the stack.
-;Example:
-;  use_bcd2int(bcd2int, s0, s1, s2,s3,s4,s5,s6)
-;  load s0, 20 ; BCD buffer
-;  load s1, 03 ; 3 BCD digits long
-;  call bcd2int
-;  ; s1 contains the number of converted bytes
-;  ; scratchpad 20 (and possibly 21) contain the binary result
+; Generate a function to convert an unpacked BCD coded bytes to a
+; variable size integer.
+;
+; The BCD input is stored in a buffer in
+; scratchpad memory. The buffer address and length are passed as arguments.
+; The converted result is overwritten to the leftmost portion of the buffer.
+; The length register returns with the number of bytes in the result.
+; This function handles conversion to any size integer as the result is
+; guaranteed to be smaller than the initial buffer.
+; Internal temp registers must be allocated for use by the macro. They must
+; not include the _tempreg register.
+; Args:
+;   Arg1: Name of function to generate
+;   Arg2: First argument of generated function.
+;         Register with scratchpad BCD address
+;   Arg3: Register with number of bytes for scratchpad buffer
+;   Arg4: Internal temp register
+;   Arg5: Internal temp register
+;   Arg6: Internal temp register
+;   Arg7: Internal temp register
+;   Arg8: Internal temp register
+; Returns:
+;   The converted integer value is located at the start of the buffer with the LSB
+;   first, opposite to the order of the BCD digits.
+;   The number of bytes in the converted integer is returned in the second argument
+;   to the function (Arg3 of this generator macro). All other registers are preserved
+;   on the stack.
+; Example:
+;   use_bcd2int(bcd2int, s0, s1, s2,s3,s4,s5,s6)
+;   load s0, 20 ; BCD buffer
+;   load s1, 03 ; 3 BCD digits long
+;   call bcd2int
+;   ; s1 contains the number of converted bytes
+;   ; scratchpad 20 (and possibly 21) contain the binary result
 define(`use_bcd2int', `
 ; PRAGMA function $1 [$2, $3] begin
 $1:  ; Convert a BCD number stored in a scratchpad buffer into a binary number

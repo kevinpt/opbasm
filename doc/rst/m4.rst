@@ -7,7 +7,7 @@ The m4 preprocessor adds powerful facilities for enhanced PicoBlaze assembly. m4
 Around 200 predefined macros are provided with Opbasm covering the following areas:
 
 +----------------------------------------------------+------------------------------------------------------+
-| * `Stack operations`_                              | * `Portable string and table operations`_            |
+| * `Stack operations`_                              | * `String and table operations`_                     |
 | * `Bitfield manipulations`_                        | * `Scratchpad memory operations`_                    |
 | * `Shift and rotate by multiple bits`_             | * `BCD conversion`_                                  |
 | * `Conditional jump, call, and return`_            | * `16-bit arithmetic, logical, and shift operators`_ |
@@ -85,7 +85,7 @@ m4 is a general purpose macro preprocessor. It performs text based string manipu
 m4 uses different syntax from PicoBlaze assembly to represent different types of literals. It is important to know what context you are operating in to determine which type of literal to put in your source.
 
 ============  =============  ============
-**Type**      **PicoBlaze**  **m4**
+Type          PicoBlaze      m4
 ============  =============  ============
 Decimal       10'd           10 
 Hexadecimal   0a             0x0a
@@ -93,7 +93,7 @@ Binary        00001010'b     0b1010
 Char          "A"            A or ```A'``
 ============  =============  ============
 
-In general you use m4 syntax for literals passed as arguments to macros within parentheses. The only exception is ``pbhex()`` which takes a list of hex values in PicoBlaze format. Be careful not to use PicoBlaze hex format in other m4 contexts as it will be misinterpreted as decimal if only digits 0-9 are used.
+In general you use m4 syntax for literals passed as arguments to macros within parentheses. The only exception is :pb:macro:`pbhex` which takes a list of hex values in PicoBlaze format. Be careful not to use PicoBlaze hex format in other m4 contexts as it will be misinterpreted as decimal if only digits 0-9 are used.
 
 m4 includes the ability to evaluate arbitrary integer expressions using the ``eval()`` macro. Its default output is an m4 decimal integer so the similar ``evalh()`` and ``evald()`` are provided to evaluate expressions resulting in PicoBlaze hex or decimal format.
 
@@ -148,26 +148,26 @@ Type conversions
 
 Some basic macros are provided to perform type conversions. They are useful for constructing parameters to other macros that only expect decimal values.
 
-The ``pbhex()`` macro is used to convert a list of values in PicoBlaze hex format into m4 decimals.
+The :pb:macro:`pbhex` macro is used to convert a list of values in PicoBlaze hex format into m4 decimals.
 
 .. code-block:: picoblaze
 
   pbhex(0a, 0b, ff)         ; Expands to "10, 11, 255"
 
-The ``asciiord()`` macro converts a string of one or more characters to a list of decimals representing their ASCII encoding. Quotes are not strictly necessary but guard against including trailing whitespace.
+The :pb:macro:`asciiord` macro converts a string of one or more characters to a list of decimals representing their ASCII encoding. Quotes are not strictly necessary but guard against including trailing whitespace.
 
 .. code-block:: picoblaze
 
   asciiord(0)               ; Expands to "48"
   asciiord(`any str')       ; Expands to "97, 110, 121, 32, 115, 116, 114"
 
-If you need a NUL terminated string the ``asciiord_cstr()`` macro works the same but appends a terminating 0:
+If you need a NUL terminated string, the :pb:macro:`cstr` macro works the same but appends a terminating 0:
 
 .. code-block:: picoblaze
 
   asciiord_cstr(`1234')     ; Expands to "49, 50, 51, 52, 0"
 
-The ``words_le()`` and ``words_be()`` macros convert a list of 16-bit numbers into little-endian or big-endian bytes.
+The :pb:macro:`words_le` and :pb:macro:`words_be` macros convert a list of 16-bit numbers into little-endian or big-endian bytes.
 
 .. code-block:: picoblaze
 
@@ -220,7 +220,7 @@ use_divide16x8s   use_divide8xk      use_random8    use_memcopy     use_memwrite
 use_bcdwrite      use_hexwrite       use_int2bcd    use_ascii2bcd   use_bcd2int
 ================  =================  =============  ==============  =============== 
 
-The other ``expr()`` macros use the temp register indirectly when the mul and div operations are invoked.
+The other :pb:macro:`expr` macros use the temp register indirectly when the mul and div operations are invoked.
 
 You can guard against accidentally using the temp register for long term storage by renaming it with the NAMEREG directive:
 
@@ -251,13 +251,13 @@ The ``vars([<reg> is <alias> [:= <init>]]+)`` macro allows you to associate alia
   ; Expands to:
     load s0, 00
 
-Symbols "count" and "sum" can now be used in place of s0 and s1. You should quote each variable declaration to avoid macro expansion errors when redefining an existing variable. Use the ``popvars`` macro to remove all variables defined in the previous call to ``vars()``. 
+Symbols "count" and "sum" can now be used in place of s0 and s1. You should quote each variable declaration to avoid macro expansion errors when redefining an existing variable. Use the ``popvars`` macro to remove all variables defined in the previous call to :pb:macro:`vars`. 
 
 
 Stack operations
 ----------------
 
-A set of macros are available to simulate a stack using the scratchpad RAM. You initialize the stack and establish the stack pointer register with a call to ``use_stack()``. After that you can call ``push()`` and ``pop()`` to manage registers on the stack. You can push and pop any number of registers at once. Pops happen in reverse order to preserve register values when passed the same list as ``push()``. The stack grows down so the initial address should be the highest the stack will occupy.
+A set of macros are available to simulate a stack using the scratchpad RAM. You initialize the stack and establish the stack pointer register with a call to :pb:macro:`use_stack`. After that you can call :pb:macro:`push` and :pb:macro:`pop` to manage registers on the stack. You can push and pop any number of registers at once. Pops happen in reverse order to preserve register values when passed the same list as :pb:macro:`push`. The stack grows down so the initial address should be the highest the stack will occupy.
 
 .. code-block:: picoblaze
 
@@ -271,7 +271,7 @@ A set of macros are available to simulate a stack using the scratchpad RAM. You 
     pop(s0, s1)
     return
 
-The ``getstack()``, ``getstackat()``, and ``dropstack()`` macros can be used to retrieve and drop values from a stack frame. This provides a facility for passing function arguments on the stack and is particularly useful for writing functions that take a variable number of arguments. The argument to ``dropstack()`` can be a register to drop a variable number of arguments.
+The :pb:macro:`getstack`, :pb:macro:`getstackat`, and :pb:macro:`dropstack` macros can be used to retrieve and drop values from a stack frame. This provides a facility for passing function arguments on the stack and is particularly useful for writing functions that take a variable number of arguments. The argument to :pb:macro:`dropstack` can be a register to drop a variable number of arguments.
 
 .. code-block:: picoblaze
 
@@ -287,7 +287,7 @@ The ``getstack()``, ``getstackat()``, and ``dropstack()`` macros can be used to 
     dropstack(2)         ; Remove arguments from the stack
     return
 
-You can use the ``getstackat()`` macro to retrieve values from the stack one at a time in any order.
+You can use the :pb:macro:`getstackat` macro to retrieve values from the stack one at a time in any order.
 
 .. code-block:: picoblaze
 
@@ -298,7 +298,7 @@ You can use the ``getstackat()`` macro to retrieve values from the stack one at 
     dropstack(2)         ; Remove arguments from the stack
     return
 
-You may wish to allocate temporary space on the stack for local variables in a function. Use the ``addstack()`` macro to accomplish this. ``putstack()`` and ``putstackat()`` are used to store register values on the stack without altering the stack pointer.
+You may wish to allocate temporary space on the stack for local variables in a function. Use the :pb:macro:`addstack` macro to accomplish this. :pb:macro:`putstack` and :pb:macro:`putstackat` are used to store register values on the stack without altering the stack pointer.
 
 .. code-block:: picoblaze
 
@@ -329,7 +329,7 @@ A set of macros are available to manipulate bitfields without manually construct
   testbit(s0, 0)               ; Test if bit-0 is set or clear
   jump nz, somewhere
 
-The ``maskh()`` macro works like ``mask()`` but produces a result in PicoBlaze hex format so it can be used as a direct argument to any instruction that takes a constant.
+The :pb:macro:`maskh` macro works like :pb:macro:`mask` but produces a result in PicoBlaze hex format so it can be used as a direct argument to any instruction that takes a constant.
 
 .. code-block:: picoblaze
 
@@ -383,7 +383,7 @@ PicoBlaze assembly depends on using the carry and zero flags directly to handle 
 Conditional if-then-else
 ------------------------
 
-A high level ``if()`` macro is present that provides evaluation of infix Boolean expressions. It takes the form of ``if(<expr>,<true block>,[<expr>,<true block 2>...|<else block>])``. The expression syntax uses conventional C operators ==, !=, <, ,>=, >, <=, and &. Additional expressions after the first true block produce else-if evaluation similar to m4's ``ifelse()`` macro. It is important to guard code blocks with m4 quotes to avoid errors caused by m4 splitting strings with internal commas. The ``if()`` macro implements a ``COMPARE`` instruction and generates the appropriate branch logic to test the flags. Unique generated labels are inserted into the code to manage the sequencing of the code blocks.
+A high level :pb:macro:`if` macro is present that provides evaluation of infix Boolean expressions. It takes the form of ``if(<expr>,<true block>,[<expr>,<true block 2>...|<else block>])``. The expression syntax uses conventional C operators ==, !=, <, ,>=, >, <=, and &. Additional expressions after the first true block produce else-if evaluation similar to m4's ``ifelse()`` macro. It is important to guard code blocks with m4 quotes to avoid errors caused by m4 splitting strings with internal commas. The :pb:macro:`if` macro implements a ``COMPARE`` instruction and generates the appropriate branch logic to test the flags. Unique generated labels are inserted into the code to manage the sequencing of the code blocks.
 
 .. code-block:: picoblaze
 
@@ -407,14 +407,14 @@ In addition, the & operator can be used to generate a ``TEST`` instruction inste
   ; Check if MSB is set
   if(s0 & 0x80, `load s1, 00')
 
-You can invoke signed comparison using the ``compares()`` macro by wrapping the expression in ``signed()``:
+You can invoke signed comparison using the :pb:macro:`compares` macro by wrapping the expression in :pb:macro:`signed`:
 
 .. code-block:: picoblaze
 
   load s0 evalh(-10) ; -10 = 0xF6 which evaluates as > 5 in unsigned comparison
   if(signed(s0 < 5),`load s1, 00') ; evaluate as < 5 using signed comparison 
 
-Macros can be used within the code blocks including nested ``if()`` macros:
+Macros can be used within the code blocks including nested :pb:macro:`if` macros:
 
 .. code-block:: picoblaze
 
@@ -433,7 +433,7 @@ Macros can be used within the code blocks including nested ``if()`` macros:
 C-style syntax
 ~~~~~~~~~~~~~~
 
-The m4 syntax for the ``if()`` macro is a little untidy but an alternate C-style syntax can be used. It is implemented using an initial preprocessing step where pattern matching converts C-style control flow statements into m4 syntax. Instead of m4 quotes, code blocks are surrounded by mandatory curly braces. Unlike m4 macros, whitespace is permitted between the ``if`` keyword and its comparison expression.
+The m4 syntax for the :pb:macro:`if` macro is a little untidy but an alternate C-style syntax can be used. It is implemented using an initial preprocessing step where pattern matching converts C-style control flow statements into m4 syntax. Instead of m4 quotes, code blocks are surrounded by mandatory curly braces. Unlike m4 macros, whitespace is permitted between the ``if`` keyword and its comparison expression.
 
 .. code-block:: picoblaze
 
@@ -445,7 +445,7 @@ The m4 syntax for the ``if()`` macro is a little untidy but an alternate C-style
     load s0, "F"
   }
 
-A set of lower level if-then-else macros are provided to expose the internal workings of ``if()``. The macros are ``ifeq()``, ``ifne()``, ``ifge()``, and ``iflt()``. Unlike ``if()``, no ``COMPARE`` or ``TEST`` instruction is generated from an expression. You have to prepare the flags on your own. The first argument is the code to execute for the true condition. An optional second argument is used for the else clause.
+A set of lower level if-then-else macros are provided to expose the internal workings of :pb:macro:`if`. The macros are :pb:macro:`ifeq`, :pb:macro:`ifne`, :pb:macro:`ifge`, and :pb:macro:`iflt`. Unlike :pb:macro:`if`, no ``COMPARE`` or ``TEST`` instruction is generated from an expression. You have to prepare the flags on your own. The first argument is the code to execute for the true condition. An optional second argument is used for the else clause.
 
 .. code-block:: picoblaze
 
@@ -475,7 +475,7 @@ This expands to the following:
 Looping
 -------
 
-Similarly to ``if()`` there are a set of high level looping macros ``for()``, ``while()``, and ``dowhile()``. They implement the corresponding looping constructs using the syntax ``for(<init>,<expr>,<update>,<loop body>)`` and ``[do]while(<expr>,<loop body>)``. Signed comparison is supported just as with ``if()`` using the ``signed()`` macro as a modifier. The for loop macro uses the ``expr()`` :ref:`macro syntax<expression-parser>` for the *init* and *update* fields.
+Similarly to :pb:macro:`if` there are a set of high level looping macros :pb:macro:`for`, :pb:macro:`while`, and :pb:macro:`dowhile`. They implement the corresponding looping constructs using the syntax ``for(<init>,<expr>,<update>,<loop body>)`` and ``[do]while(<expr>,<loop body>)``. Signed comparison is supported just as with :pb:macro:`if` using the :pb:macro:`signed` macro as a modifier. The for loop macro uses the :pb:macro:`expr` :ref:`macro syntax<expression-parser>` for the *init* and *update* fields.
 
 .. code-block:: picoblaze
 
@@ -495,7 +495,7 @@ Similarly to ``if()`` there are a set of high level looping macros ``for()``, ``
 C-style syntax
 ~~~~~~~~~~~~~~~
 
-An alternate C-style syntax is also available for ``for()``, ``while()``, and ``dowhile()``. Note that the ``for()`` macro continues to use commas to separate the sections.
+An alternate C-style syntax is also available for :pb:macro:`for`, :pb:macro:`while`, and :pb:macro:`dowhile`. Note that the :pb:macro:`for` macro continues to use commas to separate the sections.
 
 .. code-block:: picoblaze
 
@@ -516,7 +516,7 @@ An alternate C-style syntax is also available for ``for()``, ``while()``, and ``
     output s0, P_FOO
   } while (s0 < s1)
 
-Two macros, ``break`` and ``continue``, are available to exit the current loop and restart a loop respectively. In a for loop the ``continue`` macro will execute the *update* field expression to prepare the next iteration.
+Two macros, :pb:macro:`break` and :pb:macro:`continue`, are available to exit the current loop and restart a loop respectively. In a for loop the :pb:macro:`continue` macro will execute the *update* field expression to prepare the next iteration.
 
 .. code-block:: picoblaze
 
@@ -538,7 +538,7 @@ A set of macros are available that can streamline the creation of procedures, fu
 proc
 ~~~~
 
-The most basic is the ``proc()`` macro which is a convenience routine creating a labeled code block with an included ``vars()`` macro for variable definitions, a final ``return`` instruction, and automatic ";PRAGMA" comments identifying it as a function.
+The most basic is the :pb:macro:`proc` macro which is a convenience routine creating a labeled code block with an included :pb:macro:`vars` macro for variable definitions, a final ``return`` instruction, and automatic ";PRAGMA" comments identifying it as a function.
 
 .. code-block:: picoblaze
 
@@ -559,12 +559,12 @@ The most basic is the ``proc()`` macro which is a convenience routine creating a
   
   CALL addinc
   
-The "argument" list to proc is passed on to the ``vars()`` macro. It can include local variables used by the procedure. You are responsible for loading arguments into registers and cleaning up temporary registers.
+The "argument" list to proc is passed on to the :pb:macro:`vars` macro. It can include local variables used by the procedure. You are responsible for loading arguments into registers and cleaning up temporary registers.
 
 func
 ~~~~
 
-The ``func()`` macro provides a more elaborate function generator that takes care of handling arguments by passing them on the stack. A dynamically generated macro is created for calling each defined function. ``func()`` takes a list of registers to pass as arguments as well as an optional number of bytes for values returned on the stack. those registers are placed on the stack and then popped into local registers that are saved and restored after the function completes. The argument list is in the same "Sn is Y" syntax used by the ``vars()`` macro but you can also just list register names without providing an alias.
+The :pb:macro:`func` macro provides a more elaborate function generator that takes care of handling arguments by passing them on the stack. A dynamically generated macro is created for calling each defined function. :pb:macro:`func` takes a list of registers to pass as arguments as well as an optional number of bytes for values returned on the stack. those registers are placed on the stack and then popped into local registers that are saved and restored after the function completes. The argument list is in the same "Sn is Y" syntax used by the :pb:macro:`vars` macro but you can also just list register names without providing an alias.
 
 .. code-block:: picoblaze
 
@@ -603,14 +603,14 @@ The ``func()`` macro provides a more elaborate function generator that takes car
                 ADD sf, 01
                 FETCH s5, (sf)                 ; Pop
 
-After the function call the registers will be in the same state they were before the function call and any return values will be on the stack. Unlike with ``proc()`` the parameter list is only used to define arguments. You are responsible for preserving any registers used internally for local variables. The ``retvalue()`` macro takes a register for its first argument and the index of the return byte from the top of the stack starting from 1.
+After the function call the registers will be in the same state they were before the function call and any return values will be on the stack. Unlike with :pb:macro:`proc` the parameter list is only used to define arguments. You are responsible for preserving any registers used internally for local variables. The :pb:macro:`retvalue` macro takes a register for its first argument and the index of the return byte from the top of the stack starting from 1.
 
-You cannot use a ``return`` instruction inside the code body of a ``func()`` macro because the stack cleanup code will not be executed. Instead you must call the ``leave_func`` macro whenever you want to exit early. It will ensure the cleanup code is executed.
+You cannot use a ``return`` instruction inside the code body of a :pb:macro:`func` macro because the stack cleanup code will not be executed. Instead you must call the :pb:macro:`leave_func` macro whenever you want to exit early. It will ensure the cleanup code is executed.
 
 isr
 ~~~
 
-A variant of the ``func()`` macro is available for defining ISRs. The ``isr()`` macro is similar to ``func()`` but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interrupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.
+A variant of the :pb:macro:`func` macro is available for defining ISRs. The :pb:macro:`isr` macro is similar to :pb:macro:`func` but you specify an address for the interrupt vector instead of a name and in place of the return byte count you specify whether the ISR returns with interrupts enabled or disabled. Interrupts are enabled by default if the last parameter is omitted.
 
 .. code-block:: picoblaze
 
@@ -636,13 +636,13 @@ A variant of the ``func()`` macro is available for defining ISRs. The ``isr()`` 
                 RETURNI enable
                 ;PRAGMA function __ISR end
   
-ISRs take no arguments and the variable list only serves to identify which registers are used in the ISR so that they can be saved on the stack. There can only be one ``isr()`` macro call in a program. You can use ``leave_func`` or the equivalent ``leave_isr`` macro to exit early from an ISR. Do not call ``returni`` directly within the ISR code block as that will leave saved registers on the stack without cleaning up.
+ISRs take no arguments and the variable list only serves to identify which registers are used in the ISR so that they can be saved on the stack. There can only be one :pb:macro:`isr` macro call in a program. You can use :pb:macro:`leave_func` or the equivalent :pb:macro:`leave_isr` macro to exit early from an ISR. Do not call ``returni`` directly within the ISR code block as that will leave saved registers on the stack without cleaning up.
 
 
 Delay generators
 ----------------
 
-A set of delay generator macros are available to implement software delays. The simplest is ``delay_cycles()`` which delays by a number of instruction cycles (each being two clock cycles). By default it is implemented with recursive loops and requires no registers to function.
+A set of delay generator macros are available to implement software delays. The simplest is :pb:macro:`delay_cycles` which delays by a number of instruction cycles (each being two clock cycles). By default it is implemented with recursive loops and requires no registers to function.
 
 .. code-block:: picoblaze
 
@@ -671,7 +671,7 @@ This expands to the following recursive code implemented in 13 instructions:
 
 The delay can be from 0 to approximately 100e9 but a practical limit would be to keep the delay less than 200 cycles to restrict the amount of generated code. You must ensure that there is enough space on the call stack to perform the recursive calls. In the example above the 33-cycle delay block extends five calls deep.
 
-An alternate implementation of ``delay_cycles()`` can be invoked by first configuring it with the ``use_delay_reg()`` macro. You call it with a single register to use for a delay counter. This register must be different than the ones used for the long period delay macros described next. With a delay register configured, the ``delay_cycles()`` macro will be implemented as a small loop for delays of 511 cycles or less. Longer delays will fall back to using recursive delay trees.
+An alternate implementation of :pb:macro:`delay_cycles` can be invoked by first configuring it with the :pb:macro:`use_delay_reg` macro. You call it with a single register to use for a delay counter. This register must be different than the ones used for the long period delay macros described next. With a delay register configured, the :pb:macro:`delay_cycles` macro will be implemented as a small loop for delays of 511 cycles or less. Longer delays will fall back to using recursive delay trees.
 
 .. code-block:: picoblaze
 
@@ -691,7 +691,7 @@ An alternate implementation of ``delay_cycles()`` can be invoked by first config
 Time delays
 ~~~~~~~~~~~
 
-Delays by microseconds and milliseconds are implemented with the ``delay_us()`` and ``delay_ms()`` macros. Before using these you must establish the system clock frequency with the ``use_clock()`` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay down by a certain number of instructions if needed to account for function call or loop overhead.
+Delays by microseconds and milliseconds are implemented with the :pb:macro:`delay_us` and :pb:macro:`delay_ms` macros. Before using these you must establish the system clock frequency with the :pb:macro:`use_clock` macro. These delays are cycle accurate if the requested delay is an integer multiple of the clock period. They have the ability to adjust the delay down by a certain number of instructions if needed to account for function call or loop overhead.
 
 .. code-block:: picoblaze
 
@@ -718,12 +718,12 @@ The ``delay_*()`` macros take a delay value, a pair of registers and an optional
 150 MHz  143 ms
 =======  =======
 
-The registers are used for an internal 16-bit counter. The internal delay loop is automatically adjusted to ensure the count value fits within 16-bits. When implementing a delay as a subroutine an adjustment can be added to account for the ``CALL`` and ``RETURN`` instructions.
+The registers are used for an internal 16-bit counter. The internal delay loop is automatically adjusted to ensure the count value fits within 16-bits. When implementing a delay as a subroutine, an adjustment can be added to account for the ``CALL`` and ``RETURN`` instructions.
 
 Variable delays
 ~~~~~~~~~~~~~~~
 
-If you need to use multiple delays it may be desirable to have a common delay routine that supports variable delay counts. This is provided by the ``var_delay_us()`` and ``var_delay_ms()`` macros. They are similar to the fixed delays but are not cycle accurate and have no provision for adjustment.
+If you need to use multiple delays it may be desirable to have a common delay routine that supports variable delay counts. This is provided by the :pb:macro:`var_delay_us` and :pb:macro:`var_delay_ms` macros. They are similar to the fixed delays but are not cycle accurate and have no provision for adjustment.
 
 .. code-block:: picoblaze
 
@@ -745,7 +745,7 @@ If you need to use multiple delays it may be desirable to have a common delay ro
 The first argument to the ``var_delay_*()`` macros is the maximum delay value to support. When a delay is needed you must load the count registers with a constant computed with the ``var_count_*()`` macros. 
 
 .. _string and table ops:
-.. _Portable string and table operations:
+.. _String and table operations:
 
 String and table operations
 ---------------------------
@@ -772,7 +772,7 @@ This expands to the following:
   load s0, "g"
   call write_char
 
-Similarly you can call with arbitrary bytes in a table. The ``pbhex()`` macro is useful here to express hex numbers with less clutter.
+Similarly you can call with arbitrary bytes in a table. The :pb:macro:`pbhex` macro is useful here to express hex numbers with less clutter.
 
 .. code-block:: picoblaze
 
@@ -785,7 +785,7 @@ callstring  outputstring  storestring  storestringat
 calltable   outputtable   storetable   storetableat   insttable_le, insttable_be 
 ==========  ============  ===========  =============  ==========================
 
-The ``storestringat()`` and ``storetableat()`` macros take a register as a pointer to the destination scratchpad address. The pointer register is incremented after storing each byte except for the last.
+The :pb:macro:`storestringat` and :pb:macro:`storetableat` macros take a register as a pointer to the destination scratchpad address. The pointer register is incremented after storing each byte except for the last.
 
 .. code-block:: picoblaze
 
@@ -793,7 +793,7 @@ The ``storestringat()`` and ``storetableat()`` macros take a register as a point
   load s0, M_DATA
   storestringat(s0, sF, `Store this') ; sF is used as a temp register
 
-The ``insttable_le()`` and ``insttable_be()`` macros generate packed INST directives for use as static data. The former generates little-endian instructions while the latter is big-endian.
+The :pb:macro:`insttable_le` and :pb:macro:`insttable_be` macros generate packed INST directives for use as static data. The former generates little-endian instructions while the latter is big-endian.
 
 .. code-block:: picoblaze
 
@@ -805,7 +805,7 @@ The ``insttable_le()`` and ``insttable_be()`` macros generate packed INST direct
   ; Expands to:  inst 00a0b
   ;              inst 00c00
 
-The insttable macros only accept a list of decimal values directly but the ``asciiord()`` macro can be used to convert strings to numeric data.
+The insttable macros only accept a list of decimal values directly but the :pb:macro:`asciiord` macro can be used to convert strings to numeric data.
 
 .. code-block:: picoblaze
 
@@ -825,7 +825,7 @@ This permits the compact storage of data bytes in the PicoBlaze ROM. If synthesi
 Escaped strings
 ~~~~~~~~~~~~~~~
 
-The native PicoBlaze syntax does not permit the use of character escapes in strings. The macros ``estr()`` and ``cstr()`` provide a means for generating escaped strings without and with a NUL terminator respectively. They generate a list of integers representing each character in the string. The following C-style backslash escape codes are supported:
+The native PicoBlaze syntax does not permit the use of character escapes in strings. The macros :pb:macro:`estr` and :pb:macro:`cstr` provide a means for generating escaped strings without and with a NUL terminator respectively. They generate a list of integers representing each character in the string. The following C-style backslash escape codes are supported:
 
 ======  ====================
 Escape  Meaning
@@ -849,15 +849,15 @@ On PicoBlaze-6 you can apply the output of these macros directly in a ``TABLE`` 
   table hello2#, [dec2pbhex(estr(`Hello\r\n'))]
   ; This expands to: table hello2#, [48, 65, 6c, 6c, 6f, 0d, 0a]
 
-For PicoBlaze-3 you can pass the output of ``estr()`` and ``cstr()`` to the ``call/store/outputtable()`` macros or use the portable string macros described next.
+For PicoBlaze-3 you can pass the output of :pb:macro:`estr` and :pb:macro:`cstr` to the ``call/store/outputtable()`` macros or use the portable string macros described next.
 
-If you need know the length of a string constant you can use ``strlenc()`` to generate that value. It takes a single string argument that can contain escaped characters. It is passed through ``estr()`` to remove escapes before characters are counted. ``strlenc()`` only works at compile time when passed a string literal or a named portable/packed string. It does not work at runtime on dynamic string buffers.
+If you need know the length of a string constant you can use :pb:macro:`strlenc` to generate that value. It takes a single string argument that can contain escaped characters. It is passed through :pb:macro:`estr` to remove escapes before characters are counted. :pb:macro:`strlenc` only works at compile time when passed a string literal or a named portable/packed string. It does not work at runtime on dynamic string buffers.
 
 .. code-block:: picoblaze
 
   load s0, strlenc(`foobar\r\n') ; Expands to 8
 
-You can also pass the label to a string defined with ``string()`` or ``packed_string()`` to retrieve their length.
+You can also pass the label to a string defined with :pb:macro:`string` or :pb:macro:`packed_string` to retrieve their length.
 
 .. code-block:: picoblaze
 
@@ -869,20 +869,21 @@ You can also pass the label to a string defined with ``string()`` or ``packed_st
 
   m4 has a builtin macro ``len()`` that also returns the length of strings. However, it does not account for escape characters and will include blackslashes in its count.
 
+.. _Portable string and table operations:
 
 Portable strings
 ~~~~~~~~~~~~~~~~
 
-A simplified system for generating efficient, portable strings is provided by the macro package. With this you can create string handling code that will expand into the most efficient form for PicoBlaze-3 or PicoBlaze-6 allowing you to easily migrate between platforms. You must first setup the portable string system with the ``use_strings()`` macro. It configures the registers and a character handling routine used when processing a string.
+A simplified system for generating efficient, portable strings is provided by the macro package. With this you can create string handling code that will expand into the most efficient form for PicoBlaze-3 or PicoBlaze-6 allowing you to easily migrate between platforms. You must first setup the portable string system with the :pb:macro:`use_strings` macro. It configures the registers and a character handling routine used when processing a string.
 
-``use_strings()`` takes the following arguments:
+:pb:macro:`use_strings` takes the following arguments:
 
 *  Arg1: Register loaded with each character
 *  Arg2, Arg3: MSB, LSB of string address (Only used on PB6. Use dummy registers for PB3)
 *  Arg4: Label of a user provided function called to process each character
 *  Arg5: Optional name of the macro to define new strings (default is "string")
 
-After configuring string handling with ``use_strings()`` you must define each string using the ``string()`` macro. It takes two arguments. The first is a label to identify the string and the second is the string. You can use any of the escapes supported by ``estr()`` and ``cstr()`` in a string. Strings are reproduced by calling them with the label used in their definition. Labels should not end with a "$" like with the ``STRING`` directive.
+After configuring string handling with :pb:macro:`use_strings` you must define each string using the :pb:macro:`string` macro. It takes two arguments. The first is a label to identify the string and the second is the string. You can use any of the escapes supported by :pb:macro:`estr` and :pb:macro:`cstr` in a string. Strings are reproduced by calling them with the label used in their definition. Labels should not end with a "$" like with the ``STRING`` directive.
 
 .. code-block:: picoblaze
 
@@ -965,7 +966,7 @@ When targeting PB3 the following expansion results:
                       ...
                       CALL hello                     ; Call write_char on each character in the "hello" string
 
-The PB3 version does not generate a common handler routine but instead generates code to handle each string in place using the ``calltable()`` macro.
+The PB3 version does not generate a common handler routine but instead generates code to handle each string in place using the :pb:macro:`calltable` macro.
 
 You are limited to a single user provided function for processing each character in a string. If you need to perform different operations on strings then you will have to use a register or scratchpad value to select the desired behavior before calling the string label and write a handler routine that checks what operation is needed for each character it receives.
 
@@ -975,7 +976,7 @@ Packed strings
 
 A set of macros for handling packed strings is available for use. These work similarly to the portable string macros but rely on character data packed with ``INST`` directives. This is the most efficient way to store uncompressed strings in PicoBlaze memory. Access to the data must be implemented with external hardware that can read instruction memory through a second port. The ``picoblaze_dp_rom`` component defined in `picoblaze_rom.vhdl <https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl>`_ shows a way to accomplish that. The same code is generated for both PB3 and PB6.
 
-To configure packed strings you need to call the ``use_packed_strings()`` macro. It is similar to ``use_strings()`` but you also need to provide a function that retrieves character pairs from an address in memory. Its arguments are the following:
+To configure packed strings you need to call the :pb:macro:`use_packed_strings` macro. It is similar to :pb:macro:`use_strings` but you also need to provide a function that retrieves character pairs from an address in memory. Its arguments are the following:
 
 * Arg1: Register to store even characters (0, 2, 4, ...)
 * Arg2: Register to store odd characters  (1, 3, 5, ...)
@@ -988,7 +989,7 @@ Character pairs are stored in big-endian order. The first character in a string 
 
 A common handler routine ``__packed_string_handler`` is generated so you must ensure the execution path bypasses the generated code.
 
-After configuration you define strings with the ``packed_string()`` macro just as with the ``string()`` macro.
+After configuration you define strings with the :pb:macro:`packed_string` macro just as with the :pb:macro:`string` macro.
 
 .. code-block:: picoblaze
 
@@ -1097,7 +1098,7 @@ A set of routines are available for manipulating arrays in scratchpad memory. Th
 memset
 ~~~~~~
 
-The ``use_memset()`` macro creates a function that can set an array to a fixed value.
+The :pb:macro:`use_memset` macro creates a function that can set an array to a fixed value.
 
 .. code-block:: picoblaze
 
@@ -1116,7 +1117,7 @@ After the call every byte of the array will be initialized to the contents of th
 memcopy
 ~~~~~~~
 
-``use_memcopy()`` creates a function to copy an array from one location to another in scratchpad.
+:pb:macro:`use_memcopy` creates a function to copy an array from one location to another in scratchpad.
 
 .. code-block:: picoblaze
 
@@ -1134,7 +1135,7 @@ After the call the bytes from 0x10 to 0x14 contain the data copied from 0x20 to 
 memwrite
 ~~~~~~~~
 
-The ``use_memwrite()`` macro scans an array in scratchpad and writes the raw bytes to a fixed output port.
+The :pb:macro:`use_memwrite` macro scans an array in scratchpad and writes the raw bytes to a fixed output port.
 
 .. code-block:: picoblaze
 
@@ -1151,7 +1152,7 @@ This performs an output to port 0xFE for each of the bytes from 0x20 to 0x24.
 hexwrite
 ~~~~~~~~
 
-Similar to ``memwrite`` is the ``use_hexwrite()`` macro. It writes an array of bytes converted to ASCII hex values. This macro destructively modifies the global _tempreg register.
+Similar to :pb:macro:`use_memwrite` is the :pb:macro:`use_hexwrite` macro. It writes an array of bytes converted to ASCII hex values. This macro destructively modifies the global _tempreg register.
 
 .. code-block:: picoblaze
 
@@ -1173,7 +1174,7 @@ This writes the string "5A1142" to the output port. Every byte expands into two 
 bcdwrite
 ~~~~~~~~
 
-Another similar output routine is the ``use_bcdwrite()`` macro. It writes an array to an output port but treats the bytes
+Another similar output routine is the :pb:macro:`use_bcdwrite` macro. It writes an array to an output port but treats the bytes
 as unpacked BCD digits. Each digit is converted to an ASCII digit before writing to the port. Any leading 0 digits
 are skipped. Invalid BCD digits are not detected.
 
@@ -1200,7 +1201,7 @@ This converts the array to ASCII characters and sends "15" to the output port. T
 BCD conversion
 --------------
 
-A pair of generator macros create functions for converting between unsigned integers and unpacked BCD. They are designed to work with arbitrary sized integers consisting of one or more bytes. The ``use_int2bcd()`` macro takes a list of integer bytes on the stack and writes the BCD representation into a fixed size buffer.
+A pair of generator macros create functions for converting between unsigned integers and unpacked BCD. They are designed to work with arbitrary sized integers consisting of one or more bytes. The :pb:macro:`use_int2bcd` macro takes a list of integer bytes on the stack and writes the BCD representation into a fixed size buffer.
 
 .. code-block:: picoblaze
 
@@ -1224,7 +1225,7 @@ After conversion the array at scratchpad 0x20 contains the hex values ``[03 00 0
   
 The result is ``[00 00 05 01 12]`` at 0x20.
 
-For converting numeric string inputs to binary a pair of generator macros that can be used. First is ``use_ascii2bcd()`` which will convert a numeric ASCII string into BCD format.
+For converting numeric string inputs to binary a pair of generator macros that can be used. First is :pb:macro:`use_ascii2bcd` which will convert a numeric ASCII string into BCD format.
 
 .. code-block:: picoblaze
 
@@ -1243,7 +1244,7 @@ For converting numeric string inputs to binary a pair of generator macros that c
   
 The resulting array contains BCD: ``[00 01 02 04 09]``. Any non-digit characters in the string are converted to 0.
 
-The ``use_bcd2int()`` macro is used to convert from BCD to an integer. This finishes the conversion of numeric string input into a usable integer value after first converting ASCII to BCD using ``ascii2bcd``.
+The :pb:macro:`use_bcd2int` macro is used to convert from BCD to an integer. This finishes the conversion of numeric string input into a usable integer value after first converting ASCII to BCD using ``ascii2bcd``.
   
 .. code-block::  picoblaze
 
@@ -1261,11 +1262,11 @@ The converted integer value is overwritten into the array from left to right, de
 8-bit arithmetic
 ----------------
 
-The ``not()`` and ``negate()`` macros are available to perform logical inversion and 2's complement negation on 8-bit registers. The ``abs()`` macro produces the absolute value of signed registers.
+The :pb:macro:`not` and :pb:macro:`negate` macros are available to perform logical inversion and 2's complement negation on 8-bit registers. The :pb:macro:`abs` macro produces the absolute value of signed registers.
 
-You can perform signed comparison with the ``compares()`` macro. It takes the same arguments as the native ``COMPARE`` instruction. The ``C`` flag is set in accordance with their signed relationship. However, the ``Z`` flag is not set correctly. Use the ``COMPARE`` instruction to test for equality or inequality of signed values.
+You can perform signed comparison with the :pb:macro:`compares` macro. It takes the same arguments as the native ``COMPARE`` instruction. The ``C`` flag is set in accordance with their signed relationship. However, the ``Z`` flag is not set correctly. Use the ``COMPARE`` instruction to test for equality or inequality of signed values.
 
-If you need to convert an 8-bit signed value to 16-bit, use the ``signex(<MSB>, <LSB>)`` macro to extend the sign bit onto the upper register. The 8-bit register to be extended is passed in as the LSB argument.
+If you need to convert an 8-bit signed value to 16-bit, use the :pb:macro:`signex(MSB, LSB) <signex>` macro to extend the sign bit onto the upper register. The 8-bit register to be extended is passed in as the LSB argument.
 
 .. _16-bit arithmetic, logical, and shift operators:
 
@@ -1273,7 +1274,7 @@ If you need to convert an 8-bit signed value to 16-bit, use the ``signex(<MSB>, 
 -----------------
 
 Consider that you need to do some 16-bit arithmetic. You can define aliases for
-pairs of 8-bit registers with ``reg16()`` and then pass them into the 16-bit arithmetic macros:
+pairs of 8-bit registers with :pb:macro:`reg16` and then pass them into the 16-bit arithmetic macros:
 
 .. code-block:: picoblaze
 
@@ -1287,14 +1288,14 @@ pairs of 8-bit registers with ``reg16()`` and then pass them into the 16-bit ari
 
 This is much less obtuse than manually calculating 16-bit constants and repeatedly implementing the operations in pieces.
 
-You can retrieve the upper and lower byte registers indirectly with the ``regupper()`` and ``reglower()`` macros. This makes it easy to reallocate the registers if needed.
+You can retrieve the upper and lower byte registers indirectly with the :pb:macro:`regupper` and :pb:macro:`reglower` macros. This makes it easy to reallocate the registers if needed.
 
 .. code-block:: picoblaze
 
   load s0, reglower(rx) ; s0 = s3
   load s1, regupper(rx) ; s1 = s4
 
-The ``mem16()`` macro defines 16-bit constants for scratchpad and port addresses. Like ``reg16()`` it creates a new m4 macro that lets you refer to the pair of port addresses together. In addition, two constants are created with the same name suffixed with "_H" and "_L" to identify the high and low ports respectively.
+The :pb:macro:`mem16` macro defines 16-bit constants for scratchpad and port addresses. Like :pb:macro:`reg16` it creates a new m4 macro that lets you refer to the pair of port addresses together. In addition, two constants are created with the same name suffixed with "_H" and "_L" to identify the high and low ports respectively.
 
 .. code-block:: picoblaze
 
@@ -1302,7 +1303,7 @@ The ``mem16()`` macro defines 16-bit constants for scratchpad and port addresses
   load16(rx, 1000)
   store16(rx, M_DATA)
 
-The following 16-bit functions are available. All other than ``not16()``, ``negate16()``, and ``abs16()`` take a constant or a 16-bit register as their second argument.
+The following 16-bit functions are available. All other than :pb:macro:`not16`, :pb:macro:`negate16`, and :pb:macro:`abs16` take a constant or a 16-bit register as their second argument.
 
 ======  =====  ========  =====
 load16  reg16  mem16     add16   
@@ -1310,7 +1311,7 @@ sub16   and16  or16      xor16
 test16  not16  negate16  abs16
 ======  =====  ========  =====  
 
-The ``test16()`` macro is implemented differently on PicoBlaze-3 due to the lack of the ``TESTCY`` instruction. The ``Z`` flag is set when the AND of both bytes with the test word is zero but the ``C`` flag does not represent the XOR of all 16 bits.
+The :pb:macro:`test16` macro is implemented differently on PicoBlaze-3 due to the lack of the ``TESTCY`` instruction. The ``Z`` flag is set when the AND of both bytes with the test word is zero but the ``C`` flag does not represent the XOR of all 16 bits.
 
 A full suite of 16-bit shifts and rotates are also available. They work the same as their 8-bit equivalents.
 
@@ -1329,7 +1330,7 @@ rl16    rr16
 16-bit IO
 ---------
 
-16-bit versions of the port and scratchpad I/O operations are available. You can use the ``mem16()`` macro to define pairs of memory and port addresses for simplification. The variants using a pointer register increment by two so that successive calls can be made to work on contiguous ranges of addresses.
+16-bit versions of the port and scratchpad I/O operations are available. You can use the :pb:macro:`mem16` macro to define pairs of memory and port addresses for simplification. The variants using a pointer register increment by two so that successive calls can be made to work on contiguous ranges of addresses.
 
 =======  =======  =======  ========
 fetch16  store16  input16  output16
@@ -1480,7 +1481,7 @@ expr16s  16x16                 +, -, &, `|`, ^, <<, >>, =:          signed >>
 
 `*` *The expr2 macros support 16-bit literals as operands of + and -. The first register after the assignment can be 16-bits.*
 
-16-bit registers must be comma separated register pairs in ``MSB,LSB`` order or named 16-bit registers created with ``reg16()``.
+16-bit registers must be comma separated register pairs in ``MSB,LSB`` order or named 16-bit registers created with :pb:macro:`reg16`.
 
 For multiplication and division support you must initialize the internal functions with one of the following:
 
@@ -1497,7 +1498,7 @@ As an expedient you can invoke "use_expr_all" to include all of them and then el
 
 These macros need to be called before any call to ``expr*()`` that uses multiplication or division. It is best to place them at the start of the program and jump over them to reach the startup code. The stack must be configured (``use_stack(...)``) before calling these macros because additional modified registers must be saved and restored.
 
-By default these macros configure the mul and div functions to use the ``s8,s9`` or ``s7,s8, and s9`` registers for input and output. You can modify the register allocation by passing arguments to the ``use_*`` macros. The registers ``sA``, ``sB``, and sometimes ``sC`` are temporarily altered and restored. The common temp register (default ``sE``) is destructively modified. You can change the tempreg with the ``use_tempreg()`` macro. The MSB of multiplication is ignored by subsequent operations. Division by 0 is not detected.
+By default these macros configure the mul and div functions to use the ``s8,s9`` or ``s7,s8, and s9`` registers for input and output. You can modify the register allocation by passing arguments to the ``use_*`` macros. The registers ``sA``, ``sB``, and sometimes ``sC`` are temporarily altered and restored. The common temp register (default ``sE``) is destructively modified. You can change the tempreg with the :pb:macro:`use_tempreg` macro. The MSB of multiplication is ignored by subsequent operations. Division by 0 is not detected.
 
 An example of signed expressions applied to converting temperatures:
 
@@ -1539,7 +1540,7 @@ An example of signed expressions applied to converting temperatures:
 Random numbers
 --------------
 
-A pair of simple pseudo-random number generators are included in the macro package. They are implemented using the xorshift algorithm with coefficients selected for minimal code on PicoBlaze. They generate a full cycle of every value in their range except 0. One generates 8-bit numbers and the other 16-bit. You must set a non-zero seed value to initialize the PRNGs.
+A pair of simple pseudo-random number generators are included in the macro package. They are implemented using the xorshift algorithm with coefficients selected for minimal code on PicoBlaze. They generate a full cycle of every value in their range except 0. :pb:macro:`use_random8` generates 8-bit numbers and :pb:macro:`use_random16` generates 16-bit. You must set a non-zero seed value to initialize the PRNGs.
 
 .. code-block:: picoblaze
 
@@ -1567,6 +1568,22 @@ The 16-bit PRNG is similar but you must provide two additional registers for tem
   ...
   call random
 
+If you don't want to dedicate a register to storing the seed you can create a wrapper that fetches from scratchpad:
+
+.. code-block:: picoblaze
+
+  constant M_SEED, 00  ; Address to store seed variable
+  use_random8(random_core, s0)
+  
+  proc random(s0) {
+    fetch s0, M_SEED
+    call random_core
+    store s0, M_SEED
+  }
+  
+  load_store(M_SEED, 0x5A)    ; You should use an entropy source to set the initial seed
+  ...
+  call random
 
 
 Miscellaneous
@@ -1574,20 +1591,20 @@ Miscellaneous
 
 A few miscellaneous utility macros are included:
 
-==========  ============================  ==============================
-Macro       Description                   Example
-==========  ============================  ==============================
-nop         No-operation              
-clearcy     Clear the carry flag      
-setcy       Set the carry flag            ``setcy or setcy(<tmpreg>)``
-isnum       Test if a string is a number 
-load_out    Load and output value         ``load_out(0x01, P_uart)`` 
-load_store  Load and store value          ``load_store(0x01, M_var)``   
-reverse     Reverse arguments             ``reverse(1,2,3)``             
-swap        Swap registers                ``swap(s0, s1)``               
-randlabel   Random label name             ``randlabel(PREFIX_)``        
-uniqlabel   Unique label name             ``uniqlabel(PREFIX_)``
-==========  ============================  ==============================
+======================  ============================  ==============================
+Macro                   Description                   Example
+======================  ============================  ==============================
+:pb:macro:`nop`         No-operation              
+:pb:macro:`clearcy`     Clear the carry flag      
+:pb:macro:`setcy`       Set the carry flag            ``setcy or setcy(<tmpreg>)``
+:pb:macro:`isnum`       Test if a string is a number 
+:pb:macro:`load_out`    Load and output value         ``load_out(0x01, P_uart)`` 
+:pb:macro:`load_store`  Load and store value          ``load_store(0x01, M_var)``   
+:pb:macro:`reverse`     Reverse arguments             ``reverse(1,2,3)``             
+:pb:macro:`swap`        Swap registers                ``swap(s0, s1)``               
+:pb:macro:`randlabel`   Random label name             ``randlabel(PREFIX_)``        
+:pb:macro:`uniqlabel`   Unique label name             ``uniqlabel(PREFIX_)``
+======================  ============================  ==============================
 
 Manually running m4
 -------------------

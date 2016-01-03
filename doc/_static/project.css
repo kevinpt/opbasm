@@ -13,9 +13,10 @@ div.document {
     padding: 0 0em 0 1em;
 }
 
-pre, tt, code {
+pre, code {
     font-size: small;
 }
+
 
 div.body h1,
 div.body h2,
@@ -59,12 +60,21 @@ table.docutils th {
   border-bottom: 1px solid #92a6c4;
 }
 
+
+tt.descname {
+  font-size: 1.25em;
+}
+
 pre {
   background: #E9ECF5;
   
   -webkit-box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
    -moz-box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
         box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+}
+
+dl.macro {
+  margin-top: 5em;
 }
 
 

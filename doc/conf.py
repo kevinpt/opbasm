@@ -76,7 +76,7 @@ exclude_patterns = ['_build']
 #default_role = None
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
-#add_function_parentheses = True
+add_function_parentheses = True
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).
@@ -289,5 +289,7 @@ texinfo_documents = [
 def setup(sphinx):
     sys.path.insert(0, os.path.abspath('./util'))
     from PicoBlazeLexer import PicoBlazeLexer
+    import pbDomain
     
-    sphinx.add_lexer("picoblaze", PicoBlazeLexer())
+    sphinx.add_lexer('picoblaze', PicoBlazeLexer())
+    pbDomain.setup(sphinx)

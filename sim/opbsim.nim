@@ -22,7 +22,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 ## This module implements a rudimentary PicoBlaze-3 and -6 simulator primarily meant
-## to run validation teats against the Opbasm macro library. It supports the full
+## to run validation tests against the Opbasm macro library. It supports the full
 ## instruction set for both architectures.
 
 ## Hardware differences:

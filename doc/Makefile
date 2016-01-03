@@ -52,7 +52,12 @@ clean:
 gh-pages: html
 	cp -r $(BUILDDIR)/html/* ../../opbasm-html
 
-html:
+rst/library.rst: ../opbasm_lib/picoblaze.m4
+	util/extract_lib_docs.py $< > $@
+
+docgen: rst/library.rst
+
+html: docgen
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."

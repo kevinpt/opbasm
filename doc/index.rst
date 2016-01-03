@@ -44,13 +44,13 @@ Files generated on non-Windows platforms will not have DOS line endings and Pico
 Requirements
 ------------
 
-Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn't currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package. The source is written in Python 2.7 syntax but will convert cleanly to Python 3 when the installer passes it through 2to3.
+Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn't currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package. The source is written in Python 2.7 syntax but will convert cleanly to Python 3 when the installer passes it through ``2to3``.
 
 
 Download
 --------
 
-You can access the Opbasm Git repository from `Github <https://github.com/kevinpt/opbasm>`_. `Packaged source code <https://goo.gl/tz2vwz>`_ is also available for download. You can install direct from PyPI with the "pip" command if you have it available.
+You can access the Opbasm Git repository from `Github <https://github.com/kevinpt/opbasm>`_. `Packaged source code <https://goo.gl/tz2vwz>`_ is also available for download. You can install direct from PyPI with the ``pip`` command if you have it available.
 
 
 Installation
@@ -66,11 +66,17 @@ The easiest way to install Opbasm is from `PyPI <https://pypi.python.org/pypi/op
 
   > pip install --upgrade opbasm
 
-This will download and install the latest release, upgrading if you already have it installed. If you don't have "pip" you may have the "easy_install" command available which can be used to install "pip" on your system:
+This will download and install the latest release, upgrading if you already have it installed. If you don't have ``pip`` you may have the ``easy_install`` command available which can be used to install ``pip`` on your system:
 
 .. code-block:: sh
 
   > easy_install pip
+  
+You can also use ``pip`` to get the latest development code from Github:
+
+.. code-block:: sh
+
+  > pip install --upgrade https://github.com/kevinpt/opbasm/tarball/master
 
 If you manually downloaded a source package or created a clone with Git you can install Opbasm with the following command run from the base Opbasm directory:
 
@@ -111,7 +117,7 @@ For PicoBlaze-3 you *CANNOT* use the following:
   * STRING and TABLE directives
   * PicoBlaze-6 instructions (``CALL@, COMPARECY, HWBUILD, JUMP@, LOAD&RETURN, OUTPUTK, REGBANK, STAR, TESTCY``)
 
-Note that the included m4 macros have :ref:`alternative string operations <string and table ops>` that do work on PicoBlaze-3.
+Note that the included m4 macros have :ref:`alternative string operations <string and table ops>` that do work on PicoBlaze-3 as well as a :ref:`portable string system <Portable string and table operations>` that is optimized for both target processors.
 
 Refer to the file "all_kcpsm6_syntax.psm" distributed with KCPSM6 for a detailed
 explanation of the new PicoBlaze-6 syntax.
@@ -125,7 +131,7 @@ The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory.
 Syntax extensions
 -----------------
 
-Two non-standard syntax extensions have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a ".". Local labels do not have to be globally unique making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately preceeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.
+Two non-standard syntax extensions have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a ".". Local labels do not have to be globally unique, making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately preceeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.
 
 .. code-block:: picoblaze
 
@@ -371,7 +377,7 @@ Updating bit files
 
 The KCPSM3 assembler included a program and batch file that automated the process of updating a PicoBlaze ROM in a bit file without requiring a resynthesis. For PicoBlaze-6 that process has been abandoned in favor of using the JTAG loader.
 
-Because some platforms don't readily support the use of the JTAG loader, the old system of updating bit files has been reimplemented as a utility script *pb_update*. You will need to have a new *.mem* file along with the top level *.ncd* and *.bit* files for the design. The Xilinx ISE tools *xdl* and *data2mem* must be accessible from your command line path.
+Because some platforms don't readily support the use of the JTAG loader, the old system of updating bit files has been reimplemented as a utility script ``pb_update``. You will need to have a new *.mem* file along with the top level *.ncd* and *.bit* files for the design. The Xilinx ISE tools ``xdl`` and ``data2mem`` must be accessible from your command line path.
 
 .. image:: images/pb_update.png
 
@@ -379,7 +385,7 @@ When run, the *pb_update* script will convert the *.ncd* netlist to the textual 
 
 If the ROM is divided amongst multiple BRAMs the interactive selection process lets you describe the layout of the memory array. You select the BRAM instances needed to fill out a row of memory until 18 bits for an instruction word are allocated. If the required memory depth isn't satisfied a new row of memory is started where you continue to add BRAMs. The required depth is derived from the number of words present in the assembled *.mem* file.
 
-Once the layout is described, *pb_update* runs the *data2mem* program with the contents for each BRAM generated according to the layout. After the first run with the interactive BRAM selection, *pb_update* outputs a string describing the layout specification that can be passed with the *-l "<specification string>"* option to bypass the interactive mode on future runs.
+Once the layout is described, ``pb_update`` runs the ``data2mem`` program with the contents for each BRAM generated according to the layout. After the first run with the interactive BRAM selection, ``pb_update`` outputs a string describing the layout specification that can be passed with the ``-l "<specification string>"`` option to bypass the interactive mode on future runs.
 
 .. parsed-literal::
 
@@ -437,9 +443,16 @@ PicoBlaze syntax highlighting rules for Gedit and Notepad++ have been included i
 
    rst/m4
    rst/opbsim
+   rst/library
 
 
 Licensing
 ---------
 
 Opbasm and the included VHDL source is licensed for free commercial and non-commercial use under the terms of the MIT license.
+
+Indices and tables
+------------------
+
+* :ref:`genindex`
+* :ref:`search`
