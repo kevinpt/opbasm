@@ -27,9 +27,8 @@
 
 ## Hardware differences:
 ## * Overflowing or underflowing the call stack causes termination
-## * Scratchpad is limited to 64 bytes
 
-import strutils, sequtils, tables, unsigned, times, parseopt2, json, sets, math, re, os
+import strutils, sequtils, tables, times, parseopt2, json, sets, math, nre, os, options
 import engineering
 
 
@@ -37,7 +36,7 @@ proc readMemFile(fname: string): ref seq[int32] =
   ## Read the contents of a MEM file into a seq
   var r = new seq[int32]
   try:
-    r[] = toSeq(fname.lines).filterIt(not it.startsWith("@")).mapIt(int32, it.parseHexInt.int32)
+    r[] = toSeq(fname.lines).filterIt(not it.startsWith("@")).mapIt(it.parseHexInt.int32)
   except IOError:
     r[] = @[]
 
@@ -48,12 +47,12 @@ proc extractSymbols(fname: string): Table[int32, string] =
   ## Read the symbol definitions from a log file
   var s = initTable[int32, string]()
 
-  let symRe = re(r"\s+[*]?\s+(\w+)\s+([0-9A-F]{3})\s+([\w.]+)")
+  let symRe = nre.re(r"\s+[*]?\s+(\w+)\s+([0-9A-F]{3})\s+([\w.]+)")
 
   for ln in fname.lines:
-    if ln =~ symRe:
-      s[matches[1].parseHexInt.int32] = "$# ($#)" % [matches[0], matches[2]]
-      #echo matches[0], "  ", matches[1], "  ",  matches[2]
+    let m = ln.match(symRe)
+    if isSome(m):
+      s[m.get.captures[1].parseHexInt.int32] = "$# ($#)" % [m.get.captures[0], m.get.captures[2]]
 
   result = s
 
@@ -63,7 +62,8 @@ type
   CommandOptions = tuple
     memFile: string
     logFile: string
-    instLimit:int
+    scratchSize: int
+    instLimit: int
     verbose: bool
     trace: bool
     quiet: bool
@@ -112,7 +112,8 @@ type ProcState = object
   portsIn: array[0..255, uint8]
   portsOut: array[0..255, uint8]
   kports: array[0..15, uint8]
-  scratchpad: array[0..63, uint8]
+  scratchpad: array[0..255, uint8]
+  scratchMask: uint8
 
   rom: ref RomInfo
   hwbuild : uint8
@@ -140,16 +141,16 @@ proc getSymbol(state: ref ProcState, address: int32): string =
 
 #### Peripheral base methods ####
 #################################
-method init(periph: Peripheral, state: ref ProcState, quiet: bool) =
+method init(periph: Peripheral, state: ref ProcState, quiet: bool) {.base.} =
   discard
   
-method portWrite(periph: Peripheral, port: uint8, state: ref ProcState, quiet: bool): bool =
+method portWrite(periph: Peripheral, port: uint8, state: ref ProcState, quiet: bool): bool {.base.} =
   result = true
 
-method portRead(periph: Peripheral, port: uint8, state: ref ProcState, quiet: bool): bool =
+method portRead(periph: Peripheral, port: uint8, state: ref ProcState, quiet: bool): bool {.base.} =
   result = true
 
-method activateInterrupt(periph: Peripheral, state: ref ProcState, quiet: bool) =
+method activateInterrupt(periph: Peripheral, state: ref ProcState, quiet: bool) {.base.} =
   if state.intActive:
     state.intFlag = true
 
@@ -499,7 +500,7 @@ template do_input(n:expr): expr =
   # Call the read peripherals to let them alter the input port value
   if state.periphReadIndex.hasKey(n.int):
     for periph in state.periphReadIndex[n.int][]:
-      success = success and periph.portRead(n, state, options.quiet)
+      success = success and periph.portRead(n, state, cmdOpts.quiet)
   if not success: # Stop simulation loop
     break
 
@@ -514,7 +515,7 @@ template do_output(n:expr): expr =
   # Notify the write peripherals of the new output port value
   if state.periphWriteIndex.hasKey(n.int):
     for periph in state.periphWriteIndex[n.int][]:
-      success = success and periph.portWrite(n, state, options.quiet)
+      success = success and periph.portWrite(n, state, cmdOpts.quiet)
   if not success: # Stop simulation loop
     break
   
@@ -527,20 +528,11 @@ template do_outputk(): expr =
 
 template do_store(n:expr): expr =
   reportInst("Store  sp[" & toHex(n.int,2) & "] = s" & toHex(x,1))
-  #if n.int < len(state.scratchpad):
-  state.scratchpad[(n and 0x3F).uint8] = state.regs[state.curFlags.activeBank][x] # FIXME: Allow for variable SP size
-#  else:
-#    state.termination = termInvalidScratchpad
-#    do_terminate()
+  state.scratchpad[(n and state.scratchMask).uint8] = state.regs[state.curFlags.activeBank][x]
 
 template do_fetch(n:expr): expr =
-  reportInst("Fetch  s" & toHex(x,1) & " = sp[" & toHex(n.int,2) & "]  (" & toHex(state.scratchpad[(n and 0x3F).uint8].int,2) & ")")
-  #n = n and 0x3F # FIXME
-  #if n.int < len(state.scratchpad):
-  state.regs[state.curFlags.activeBank][x] = state.scratchpad[(n and 0x3F).uint8] # FIXME: Allow for variable SP size
-  #else:
-  #  state.termination = termInvalidScratchpad
-  #  do_terminate()
+  reportInst("Fetch  s" & toHex(x,1) & " = sp[" & toHex(n.int,2) & "]  (" & toHex(state.scratchpad[(n and state.scratchMask).uint8].int,2) & ")")
+  state.regs[state.curFlags.activeBank][x] = state.scratchpad[(n and state.scratchMask).uint8]
 
 
 template do_jump(): expr =
@@ -675,7 +667,8 @@ template do_hwbuild(): expr =
 
 
 
-proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8], intVec: int32 = 0x3FF, hwbuild: uint8 = 0): ref ProcState =
+proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8], scratchSize: int,
+                  intVec: int32 = 0x3FF, hwbuild: uint8 = 0): ref ProcState =
   ## Initialize a procState object
   var state: ref ProcState
   new state
@@ -686,6 +679,8 @@ proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8
   state.callStack = @[]
   state.portsIn = jsonInput
   state.peripherals = @periphs
+  
+  state.scratchMask = (scratchSize - 1).uint8
   
   state.intActive = true
   state.intFlag = false
@@ -725,7 +720,7 @@ template simulateLoop(): expr =
     
   state.rom = romData # FIXME: relocate?
   
-  for i in 0..<options.instLimit:
+  for i in 0..<cmdOpts.instLimit:
 
     # Fetch next instruction
     if state.intFlag:
@@ -753,7 +748,7 @@ template simulateLoop(): expr =
     state.totalInsts += 1
     state.executed.incl(state.pc)
 
-    if options.usePB6:
+    if cmdOpts.usePB6:
       address = w and 0xFFF # Let memory wrap at 4K
 
       # Decode PB6 opcodes
@@ -939,17 +934,17 @@ template simulateLoop(): expr =
     
     state.pc = next_pc
 
-    if not show_trace and not options.quiet and (state.totalInsts mod 1_000_000 == 0):
+    if not show_trace and not cmdOpts.quiet and (state.totalInsts mod 1_000_000 == 0):
       stdout.write(".")
       stdout.flushFile()
 
-  if not show_trace and not options.quiet: echo ""
+  if not show_trace and not cmdOpts.quiet: echo ""
 
-  if state.totalInsts == options.instLimit:
+  if state.totalInsts == cmdOpts.instLimit:
     state.termination = termInstLimit
 
 
-proc simulate(state: ref ProcState, romData: ref RomInfo, options: CommandOptions) =
+proc simulate(state: ref ProcState, romData: ref RomInfo, cmdOpts: CommandOptions) =
   ## Run a simulation with a program in ROM
   var
     w, opc, x, y, address, next_pc: int32
@@ -958,7 +953,7 @@ proc simulate(state: ref ProcState, romData: ref RomInfo, options: CommandOption
   # Instantiate two versions of the simulation loop
   # This avoids testing the trace setting on every instruction and instead uses
   # templates to expand two variants of the simulation loop.
-  if options.trace:
+  if cmdOpts.trace:
     const show_trace = true
     simulateLoop
   else:
@@ -993,27 +988,29 @@ Open PicoBlaze simulator
 Usage: opbsim [OPTIONS]
 
 Options:
-  -m:MEM_FILE --mem:MEM_FILE    Input mem file
-  -i:JSON_IN  --input:JSON_IN   JSON input string
-  --log:LOG_FILE                Log file with symbol table
-  -L:NUM        --limit:NUM     Limit to NUM instructions executed
-  -v            --verbose       Verbose output
-  -t            --trace         Print execution trace
-  -q            --quiet         Quiet output
-  -j            --json          JSON report [forces quiet too]
-  -p            --list-periphs  Print peripheral information
-  --pb3                         Simulate PicoBlaze-3 code
-  --pb6                         Simulate PicoBlaze-6 code [default]
-  --version                     Report version information
+  -m:MEM_FILE --mem:MEM_FILE        Input mem file
+  -i:JSON_IN  --input:JSON_IN       JSON input string
+  --log:LOG_FILE                    Log file with symbol table
+  -s:NUM        --scratch-size:NUM  Set scratchpad memory size
+  -L:NUM        --limit:NUM         Limit to NUM instructions executed
+  -v            --verbose           Verbose output
+  -t            --trace             Print execution trace
+  -q            --quiet             Quiet output
+  -j            --json              JSON report [forces quiet too]
+  -p            --list-periphs      Print peripheral information
+  --pb3                             Simulate PicoBlaze-3 code
+  --pb6                             Simulate PicoBlaze-6 code [default]
+  --version                         Report version information
 """
 
 
 
 proc main() =
 
-  var options : CommandOptions
+  var cmdOpts : CommandOptions
   
-  options.instLimit = 100_000_000
+  cmdOpts.instLimit = 100_000_000
+  cmdOpts.scratchSize = 64;
   
   # Parse command line
   for kind, key, val in getopt():
@@ -1021,38 +1018,50 @@ proc main() =
     of cmdShortOption, cmdLongOption:
       case key
       of "h"           : echo usageString; return
-      of "mem", "m"  : options.memFile = val
-      of "limit", "L"  : options.instLimit = parseInt(val)
-      of "log",        : options.logFile = val
-      of "verbose", "v": options.verbose = true
-      of "trace", "t"  : options.trace = true
-      of "quiet", "q"  : options.quiet = true
-      of "input", "i"  : options.jsonInput = val
-      of "json", "j"   : options.jsonOutput = true
-      of "list-periphs", "p": options.listPeriphs = true
-      of "pb3"         : options.usePB3 = true
-      of "pb6"         : options.usePB6 = true
-      of "version"     : options.version = true
+      of "mem", "m"    : cmdOpts.memFile = val
+      of "scratch-size", "s" : cmdOpts.scratchSize = parseInt(val)
+      of "limit", "L"  : cmdOpts.instLimit = parseInt(val)
+      of "log",        : cmdOpts.logFile = val
+      of "verbose", "v": cmdOpts.verbose = true
+      of "trace", "t"  : cmdOpts.trace = true
+      of "quiet", "q"  : cmdOpts.quiet = true
+      of "input", "i"  : cmdOpts.jsonInput = val
+      of "json", "j"   : cmdOpts.jsonOutput = true
+      of "list-periphs", "p": cmdOpts.listPeriphs = true
+      of "pb3"         : cmdOpts.usePB3 = true
+      of "pb6"         : cmdOpts.usePB6 = true
+      of "version"     : cmdOpts.version = true
       else             : discard
     else: discard
     
-  if options.version: echo "OPBSIM version 1.3"; return
+  if cmdOpts.version: echo "OPBSIM version 1.3"; return
 
-  if options.memFile == "" or options.memFile == nil: echo usageString; return
-  if options.usePB3 and options.usePB6:
+  if cmdOpts.memFile == "" or cmdOpts.memFile == nil: echo usageString; return
+  if cmdOpts.usePB3 and cmdOpts.usePB6:
     echo "Invalid options: Select only one PicoBlaze architecture"
-  if not (options.usePB3 or options.usePB6): options.usePB6 = true
+    return
+  if not (cmdOpts.usePB3 or cmdOpts.usePB6): cmdOpts.usePB6 = true
+  
+  var scratchSizes : seq[int]
+  if cmdOpts.usePB6:
+    scratchSizes = @[64,128,256]
+  else:
+    scratchSizes = @[64]
 
+  if not (cmdOpts.scratchSize in scratchSizes):
+    echo "Invalid scratchpad size. Must be ", scratchSizes.mapIt($it).join(", "), "."
+    return
+  
 
-  if options.jsonOutput:
-    options.verbose = false
-    options.trace = false
-    options.quiet = true
+  if cmdOpts.jsonOutput:
+    cmdOpts.verbose = false
+    cmdOpts.trace = false
+    cmdOpts.quiet = true
   
   var jsonInput : array[0..255, uint8]
   
-  if options.jsonInput != "" and options.jsonInput != nil:
-    let jobj = parseJson(options.jsonInput)
+  if cmdOpts.jsonInput != "" and cmdOpts.jsonInput != nil:
+    let jobj = parseJson(cmdOpts.jsonInput)
     assert jobj.kind == JObject
     
     for f in jobj.pairs:
@@ -1065,28 +1074,28 @@ proc main() =
         offset.inc
     
 
-  if not options.quiet:
+  if not cmdOpts.quiet:
     echo "PicoBlaze simulator"
-    echo "Running in ", (if options.usePB6: "PicoBlaze-6" else: "PicoBlaze-3"), " mode"
-    echo "Input: ", options.memFile
+    echo "Running in ", (if cmdOpts.usePB6: "PicoBlaze-6" else: "PicoBlaze-3"), " mode"
+    echo "Input: ", cmdOpts.memFile
 
 
   # Look for log file if one wasn't provided in arguments
-  if options.logFile == "" or options.logFile == nil:
-    let elems = splitFile(options.memFile)
+  if cmdOpts.logFile == "" or cmdOpts.logFile == nil:
+    let elems = splitFile(cmdOpts.memFile)
     let logFile = elems.dir / (elems.name & ".log")
     if fileExists(logFile):
-      options.logFile = logFile
+      cmdOpts.logFile = logFile
 
-  var romData = newRomInfo(options.memFile, options.logFile)
+  var romData = newRomInfo(cmdOpts.memFile, cmdOpts.logFile)
 
   if len(romData.data) == 0: echo "ERROR: Invalid MEM file"; quit(1)
 
-  if not options.quiet:
+  if not cmdOpts.quiet:
     echo "Read $# words\n" % [$len(romData.data)]
 
-    if options.logFile != nil and options.logFile != "":
-      echo "Found $# symbols in $#\n" % [$len(romData.symbolTable), options.logFile]
+    if cmdOpts.logFile != nil and cmdOpts.logFile != "":
+      echo "Found $# symbols in $#\n" % [$len(romData.symbolTable), cmdOpts.logFile]
 
 
   # Instantiate the peripherals
@@ -1100,32 +1109,32 @@ proc main() =
                 newCounterPeriph("Counter", @[0xF0'u8], @[0xF0'u8, 0xF1'u8, 0xF2'u8, 0xF3'u8,])
                 ]
 
-  var state = newProcState(periphs, jsonInput)
+  var state = newProcState(periphs, jsonInput, cmdOpts.scratchSize)
 
   # Run the simulator
   let t1 = cpuTime()
-  state.simulate(romData, options)
+  state.simulate(romData, cmdOpts)
   let t2 = cpuTime()
   
   let cpuRuntime = t2 - t1
   
-  if options.verbose:
+  if cmdOpts.verbose:
     # Report results
     echo "\n     A    B"
     for i in 0..15:
       echo "s$1 = $2   $3" % [toHex(i,1), toHex(state.regs[0][i].int32,2), toHex(state.regs[1][i].int32,2)]
 
     echo "\nScratchpad:"
-    for i in 0..<len(state.scratchpad) /% 16:
-      echo toHex(i*16, 2), " : ", state.scratchpad[i*16..<(i+1)*16].mapIt(string, toHex(it.int32,2)).join(" ")
+    for i in 0..<cmdOpts.scratchSize /% 16:
+      echo toHex(i*16, 2), " : ", state.scratchpad[i*16..<(i+1)*16].mapIt(toHex(it.int32,2)).join(" ")
 
     echo "\nOut ports:"
     for i in 0..<len(state.portsOut) /% 16:
-      echo toHex(i*16, 2), " : ", state.portsOut[i*16..<(i+1)*16].mapIt(string, toHex(it.int32,2)).join(" ")
+      echo toHex(i*16, 2), " : ", state.portsOut[i*16..<(i+1)*16].mapIt(toHex(it.int32,2)).join(" ")
 
   let instCount = countInstructions(state)
       
-  if not options.quiet:
+  if not cmdOpts.quiet:
     let simTime = state.totalInsts.float * 2.0 / 50.0e6
     echo "\nExecuted $1 instructions ($2 @ 50 MHz, CPU time = $3, $4x realtime)" %
         [$state.totalInsts, formatSI(simTime, "s", 0), formatSI(cpuRuntime, "s", 0), formatFloat(simTime / cpuRuntime, ffDecimal, 2)]
@@ -1144,7 +1153,7 @@ proc main() =
     of termStackOverflow:     echo "UNEXPECTED TERMINATION: PC stack overflow"
     else:                     echo "UNEXPECTED TERMINATION: UNKNOWN"
     
-    if options.listPeriphs:
+    if cmdOpts.listPeriphs:
       echo "\nPeripherals:"
       
       # Get the longest peripheral name
@@ -1154,19 +1163,19 @@ proc main() =
         
       for p in state.peripherals:
         echo "  " & p.name & ' '.repeat(maxLen - len(p.name)) &
-             " W: " & p.writePorts.mapIt(string, toHex(it.int32,2)).join(",") &
-             "  R: " & p.readPorts.mapIt(string, toHex(it.int32,2)).join(",")
+             " W: " & p.writePorts.mapIt(toHex(it.int32,2)).join(",") &
+             "  R: " & p.readPorts.mapIt(toHex(it.int32,2)).join(",")
     
     
-  if options.jsonOutput:
+  if cmdOpts.jsonOutput:
     let
       jsonData = newJObject()
 
-    jsonData["regs_a"] = %(state.regs[0].mapIt(JsonNode, %(it.int)))
-    jsonData["regs_b"] = %(state.regs[1].mapIt(JsonNode, %(it.int)))
-    jsonData["scratchpad"] = %(state.scratchpad.mapIt(JsonNode, %(it.int)))
-    jsonData["ports_in"] = %(state.portsIn.mapIt(JsonNode, %(it.int)))
-    jsonData["ports_out"] = %(state.portsOut.mapIt(JsonNode, %(it.int)))
+    jsonData["regs_a"] = %(state.regs[0].mapIt(%(it.int)))
+    jsonData["regs_b"] = %(state.regs[1].mapIt(%(it.int)))
+    jsonData["scratchpad"] = %(state.scratchpad[0..cmdOpts.scratchSize].mapIt(%(it.int)))
+    jsonData["ports_in"] = %(state.portsIn.mapIt(%(it.int)))
+    jsonData["ports_out"] = %(state.portsOut.mapIt(%(it.int)))
     jsonData["total_insts"] = %state.totalInsts
     jsonData["cpu_runtime"] = %cpuRuntime
     jsonData["executed"] = %state.executed.len
