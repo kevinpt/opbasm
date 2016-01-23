@@ -58,6 +58,7 @@ proc extractSymbols(fname: string): Table[int32, string] =
   result = s
 
 
+
 type 
   CommandOptions = tuple
     memFile: string
@@ -78,30 +79,6 @@ type
     termNormal, termInstLimit, termInvalidOpcode, termUnsupportedOpcode, termInvalidAddress,
     termStackOverflow, termStackUnderflow, termInvalidScratchpad
 
-type
-  # Base class for peripheral objects
-  Peripheral = ref object of RootObj
-    name       : string
-    writePorts*: seq[uint8]
-    readPorts* : seq[uint8]
-
-  # Receive characters through a port and write to stdout
-  ConsolePeriph = ref object of Peripheral
-    charBuf*: string
-    charLog*: seq[string]
-
-  # Terminate the simulation when a port is written to    
-  QuitPeriph = ref object of Peripheral
-  
-  # Copy output port values to the input port
-  LoopbackPeriph = ref object of Peripheral
-
-  # Access program memory as a 16-bit ROM
-  ROMPeriph = ref object of Peripheral
-
-  # Generate an interrupt when written to
-  InterruptPeriph = ref object of Peripheral
-
 type RomInfo = tuple
   data        : seq[int32]
   symbolTable : Table[int32, string]
@@ -111,6 +88,13 @@ type ExecFlags = tuple
   z : bool
   c : bool
   activeBank : range[0..1]
+
+type
+  # Base class for peripheral objects
+  Peripheral = ref object of RootObj
+    name       : string
+    writePorts*: seq[uint8]
+    readPorts* : seq[uint8]
 
   
 type ProcState = object
@@ -144,36 +128,18 @@ type ProcState = object
 
 
 
-
-proc newQuitPeriph(name: string, writePorts: seq[uint8]): QuitPeriph =
-  new result
-  result.name = name
-  result.writePorts = writePorts
-
-proc newConsolePeriph(name: string, writePorts: seq[uint8]): ConsolePeriph =
-  new result
-  result.name = name
-  result.writePorts = writePorts
-  result.charBuf = ""
-  result.charLog = @[]
-
-proc newLoopbackPeriph(name: string, writePorts: seq[uint8]): LoopbackPeriph =
-  new result
-  result.name = name
-  result.writePorts = writePorts
-
-proc newROMPeriph(name: string, writePorts: seq[uint8], readPorts: seq[uint8]): ROMPeriph =
-  new result
-  result.name = name
-  result.writePorts = writePorts
-  result.readPorts = readPorts
-
-proc newInterruptPeriph(name: string, writePorts: seq[uint8]): InterruptPeriph =
-  new result
-  result.name = name
-  result.writePorts = writePorts
+proc getSymbol(state: ref ProcState, address: int32): string =
+  ## Lookup the name of a symbol associated with an address.
+  ## Returns an empty string if no symbol is found.
+  if state.rom.symbolTable.hasKey(address):
+    result = state.rom.symbolTable[address]
+  else:
+    result = ""
 
 
+
+#### Peripheral base methods ####
+#################################
 method init(periph: Peripheral, state: ref ProcState, quiet: bool) =
   discard
   
@@ -187,7 +153,22 @@ method activateInterrupt(periph: Peripheral, state: ref ProcState, quiet: bool) 
   if state.intActive:
     state.intFlag = true
 
-  
+
+#### Console peripheral ####
+############################
+type
+  # Receive characters through a port and write to stdout
+  ConsolePeriph = ref object of Peripheral
+    charBuf*: string
+    charLog*: seq[string]
+
+proc newConsolePeriph(name: string, writePorts: seq[uint8]): ConsolePeriph =
+  new result
+  result.name = name
+  result.writePorts = writePorts
+  result.charBuf = ""
+  result.charLog = @[]
+
 method portWrite(periph: ConsolePeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
   let ch = chr(state.portsOut[port])
   
@@ -200,18 +181,52 @@ method portWrite(periph: ConsolePeriph, port: uint8, state: ref ProcState, quiet
     periph.charBuf.add(ch)
     
   result = true
- 
-  
+
+
+#### Quit peripheral ####
+#########################
+type
+  # Terminate the simulation when a port is written to
+  QuitPeriph = ref object of Peripheral
+
+proc newQuitPeriph(name: string, writePorts: seq[uint8]): QuitPeriph =
+  new result
+  result.name = name
+  result.writePorts = writePorts
+
 method portWrite(periph: QuitPeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
   if not quiet: echo "Quitting simulation"
   result = false
 
+
+#### Loopback peripheral ####
+#############################
+type
+  # Copy output port values to the input port
+  LoopbackPeriph = ref object of Peripheral
+
+proc newLoopbackPeriph(name: string, writePorts: seq[uint8]): LoopbackPeriph =
+  new result
+  result.name = name
+  result.writePorts = writePorts
 
 method portWrite(periph: LoopbackPeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
   #echo "#### LOOPBACK: ", toHex(port.int, 2)
   state.portsIn[port] = state.portsOut[port]
   result = true
 
+
+#### ROM peripheral ####
+########################
+type
+  # Access program memory as a 16-bit ROM
+  ROMPeriph = ref object of Peripheral
+
+proc newROMPeriph(name: string, writePorts: seq[uint8], readPorts: seq[uint8]): ROMPeriph =
+  new result
+  result.name = name
+  result.writePorts = writePorts
+  result.readPorts = readPorts
 
 method portWrite(periph: ROMPeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
   let address : int32 = state.portsOut[periph.writePorts[0]].int32 shl 8 + state.portsOut[periph.writePorts[1]].int32
@@ -226,21 +241,56 @@ method portWrite(periph: ROMPeriph, port: uint8, state: ref ProcState, quiet: bo
     result = false
 
 
+#### Interrupt peripheral ####
+##############################
+type
+  # Generate an interrupt when written to
+  InterruptPeriph = ref object of Peripheral
+
+proc newInterruptPeriph(name: string, writePorts: seq[uint8]): InterruptPeriph =
+  new result
+  result.name = name
+  result.writePorts = writePorts
+
 method portWrite(periph: InterruptPeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
   periph.activateInterrupt(state, quiet);
   result = true
 
 
+#### Counter peripheral ####
+############################
+type  
+  # Count instruction cycles
+  CounterPeriph = ref object of Peripheral
+    startTime: int
 
-proc getSymbol(state: ref ProcState, address: int32): string =
-  if state.rom.symbolTable.hasKey(address):
-    result = state.rom.symbolTable[address]
-  else:
-    result = ""
+proc newCounterPeriph(name: string, writePorts: seq[uint8], readPorts: seq[uint8]): CounterPeriph =
+  new result
+  result.name = name
+  result.writePorts = writePorts
+  result.readPorts = readPorts
+
+method portWrite(periph: CounterPeriph, port: uint8, state: ref ProcState, quiet: bool): bool =
+  let value = state.portsOut[periph.writePorts[0]]
+
+  if value == 1: # Start timer
+    periph.startTime = state.totalInsts
+
+  elif value == 0: # End timer
+    let cycles = state.totalInsts - periph.startTime
+    state.portsIn[periph.readPorts[0]] = (cycles and 0xFF).uint8
+    state.portsIn[periph.readPorts[1]] = ((cycles shr 8) and 0xFF).uint8
+    state.portsIn[periph.readPorts[2]] = ((cycles shr 16) and 0xFF).uint8
+    state.portsIn[periph.readPorts[3]] = ((cycles shr 24) and 0xFF).uint8
+    periph.startTime = 0
+
+  result = true
 
 
 
-# Instruction templates
+
+#### Instruction templates ####
+###############################
 
 template reportInst(i:expr): expr =
   if show_trace:
@@ -670,10 +720,10 @@ proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8
 
 
 template simulateLoop(): expr =
-  ## Main simulation loop
-  #  Terminates normally when an OUTPUT instruction targeting quitPort executes 
+  ## Main simulation loop.
+  ## Terminates normally when an OUTPUT instruction targeting quitPort executes.
     
-  state.rom = romData # FIXME: reloacte?
+  state.rom = romData # FIXME: relocate?
   
   for i in 0..<options.instLimit:
 
@@ -704,7 +754,7 @@ template simulateLoop(): expr =
     state.executed.incl(state.pc)
 
     if options.usePB6:
-      address = w and 0xFFF
+      address = w and 0xFFF # Let memory wrap at 4K
 
       # Decode PB6 opcodes
       case opc
@@ -797,8 +847,8 @@ template simulateLoop(): expr =
       next_pc = next_pc and 0xFFF
       
       
-    else:
-      address = w and 0x3FF
+    else: # PB3
+      address = w and 0x3FF # Let memory wrap at 1K
       # Decode PB3 opcodes
       case opc
       of 0x01: do_load(state.regs[state.curFlags.activeBank][y])
@@ -927,6 +977,17 @@ proc newRomInfo(memFile: string, logFile: string): ref RomInfo =
     result.symbolTable = initTable[int32, string]()
 
 
+proc countInstructions(state: ref ProcState): int =
+  # Determine the number of valid instructions in the ROM
+  # Assume the last instruction is a default_jump or uninitialized 0's
+  # FIXME: This breaks if last instruction is the interrupt vector
+  let nonInst = state.rom.data[state.rom.data.high]
+  var instCount = 0
+  for i in 0..state.rom.data.high:
+    if state.rom.data[i] != nonInst:
+      instCount = instCount + 1
+  result = instCount
+
 const usageString = """
 Open PicoBlaze simulator
 Usage: opbsim [OPTIONS]
@@ -992,9 +1053,7 @@ proc main() =
   
   if options.jsonInput != "" and options.jsonInput != nil:
     let jobj = parseJson(options.jsonInput)
-    #echo "### ", $jobj.kind
     assert jobj.kind == JObject
-    #echo "JSON: ", $jobj
     
     for f in jobj.pairs:
       var offset = parseHexInt(f.key)
@@ -1005,8 +1064,6 @@ proc main() =
         jsonInput[offset] = i.getNum.uint8
         offset.inc
     
-    #echo "Input: ", $(@jsonInput)
-  
 
   if not options.quiet:
     echo "PicoBlaze simulator"
@@ -1034,12 +1091,13 @@ proc main() =
 
   # Instantiate the peripherals
   const quitPort: uint8 = 0xFF
-  let con = newConsolePeriph("console", @[0xFE'u8])
+  let con = newConsolePeriph("Console", @[0xFE'u8])
   let periphs = [con,
-                newQuitPeriph("quit", @[quitPort]),
-                newLoopbackPeriph("loopback", toSeq(0x00'u8 .. 0x0F'u8)),
+                newQuitPeriph("Quit", @[quitPort]),
+                newLoopbackPeriph("Loopback", toSeq(0x00'u8 .. 0x0F'u8)),
                 newROMPeriph("ROM", @[0xFA'u8, 0xFB'u8], @[0xFA'u8, 0xFB'u8]),
-                newInterruptPeriph("IntGen", @[0xFC'u8])
+                newInterruptPeriph("IntGen", @[0xFC'u8]),
+                newCounterPeriph("Counter", @[0xF0'u8], @[0xF0'u8, 0xF1'u8, 0xF2'u8, 0xF3'u8,])
                 ]
 
   var state = newProcState(periphs, jsonInput)
@@ -1065,13 +1123,7 @@ proc main() =
     for i in 0..<len(state.portsOut) /% 16:
       echo toHex(i*16, 2), " : ", state.portsOut[i*16..<(i+1)*16].mapIt(string, toHex(it.int32,2)).join(" ")
 
-  # Determine the number of valid instructions in the ROM
-  # Assume the last instruction is a default_jump or uninitialized 0's
-  let nonInst = state.rom.data[state.rom.data.high]
-  var instCount = 0
-  for i in 0..state.rom.data.high:
-    if state.rom.data[i] != nonInst:
-      instCount = instCount + 1
+  let instCount = countInstructions(state)
       
   if not options.quiet:
     let simTime = state.totalInsts.float * 2.0 / 50.0e6
