@@ -1,0 +1,117 @@
+include(`setup.m4')
+
+;VALIDATES: push, pop, dropstack, addstack, putstack, putstackat, getstack, getstackat
+
+;:::::::::: push pop ::::::::::
+
+load s0, 10
+load s1, 11
+load s2, 12
+load sA, SP
+push(s0, s1, s2)
+assert_true(SP < sA)
+pop(s3,s4,s5)
+assert_true(SP == sA)
+assert_true(s3 == s0)
+assert_true(s4 == s1)
+assert_true(s5 == s2)
+
+;:::::::::: dropstack ::::::::::
+load sA, SP
+push(s2,s3,s4,s5)
+dropstack(2)
+assert_true(SP < sA)
+load s0, 02
+dropstack(s0)
+assert_true(SP == sA)
+
+
+;:::::::::: addstack ::::::::::
+
+load sA, SP
+addstack(3)
+assert_true(SP < sA)
+pop(s0, s1, s2)
+assert_true(SP == sA)
+load s3, 03
+addstack(s3)
+pop(s4,s5,s6)
+assert_true(s4 == s0)
+assert_true(s5 == s1)
+assert_true(s6 == s2)
+
+;:::::::::: putstack ::::::::::
+load s0, A5
+load s1, 01
+load s2, 02
+load sA, SP
+putstack(s0, s1, s2)
+assert_true(SP == sA)
+
+;:::::::::: getstack ::::::::::
+getstack(s4, s5, s6)
+assert_true(s4 == s0)
+assert_true(s5 == s1)
+assert_true(s6 == s2)
+assert_true(SP == sA)
+
+;:::::::::: getstackat constant ::::::::::
+getstackat(sB, 1)
+assert_true(sB == s2)
+getstackat(sB, 2)
+assert_true(sB == s1)
+getstackat(sB, 3)
+assert_true(sB == s0)
+
+;:::::::::: getstackat register ::::::::::
+load s4, 01
+getstackat(sB, s4)
+assert_true(sB == s2)
+load s4, 02
+getstackat(sB, s4)
+assert_true(sB == s1)
+load s4, 03
+getstackat(sB, s4)
+assert_true(sB == s0)
+
+
+;:::::::::: putstackat constant ::::::::::
+load sB, 5A
+putstackat(sB, 1)
+load sB, 5B
+putstackat(sB, 2)
+load sB, 5C
+putstackat(sB, 3)
+
+getstack(s7,s8,s9)
+assert_true(s7 == 0x5C)
+assert_true(s8 == 0x5B)
+assert_true(s9 == 0x5A)
+
+;:::::::::: putstackat register ::::::::::
+load sB, 5D
+load sC, 01
+putstackat(sB, sC)
+load sB, 5E
+load sC, 02
+putstackat(sB, sC)
+load sB, 5F
+load sC, 03
+putstackat(sB, sC)
+
+getstack(s7,s8,s9)
+assert_true(s7 == 0x5F)
+assert_true(s8 == 0x5E)
+assert_true(s9 == 0x5D)
+
+
+
+push(s0, s1, s2)
+assert_true(SP < sA)
+dropstack(3)
+assert_true(SP == sA)
+
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate

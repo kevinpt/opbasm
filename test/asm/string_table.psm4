@@ -1,0 +1,91 @@
+include(`setup.m4')
+
+;VALIDATES: storetable, storetableat, calltable, storestring, storestringat, callstring
+
+;outputstring, outputtable
+
+constant M_RESULT, 00
+constant M_VERIFY, 10
+constant M_VERIFY2, 20
+constant P_LOOP, 00
+
+;:::::::::: string and table operations ::::::::::
+jump main
+
+proc write_char(s0) {
+  output s0, P_LOOP ; Write to loopback port
+  output s0, FC ; Trigger interrupt to save result
+}
+
+isr 0x3FF(): enable {
+  ; Save loopback data in scratchpad
+  input s3, P_LOOP
+  store s3, (s1)
+  add s1, 01
+}
+
+main:
+
+load s1, M_RESULT
+define(`data', `1,2,3')
+storetable(M_VERIFY, _tempreg, data)
+calltable(write_char, s0, data)
+
+load s3, M_VERIFY
+for(s1 := M_RESULT, s1 < 3, s1 := s1 + 1) {
+  fetch s2, (s1)
+  fetch s4, (s3)
+  assert_true(s2 == s4)
+  add s3, 01
+}
+
+load s5, M_VERIFY2
+storetableat(s5, _tempreg, data)
+
+for(s1 := 0, s1 < 3, s1 := s1 + 1) {
+  fetch s2, (s1)
+  add s1, M_VERIFY
+  fetch s4, (s1)
+  sub s1, M_VERIFY
+  assert_true(s2 == s4)
+}
+
+
+
+load s1, M_RESULT
+define(`tstring', `Hello world')
+storestring(M_VERIFY, _tempreg, tstring)
+callstring(write_char, s0, tstring)
+
+load s3, M_VERIFY
+for(s1 := M_RESULT, s1 < 11, s1 := s1 + 1) {
+  fetch s2, (s1)
+  fetch s4, (s3)
+  assert_true(s2 == s4)
+  add s3, 01
+}
+
+load s5, M_VERIFY2
+storestringat(s5, _tempreg, tstring)
+
+for(s1 := 0, s1 < 11, s1 := s1 + 1) {
+  fetch s2, (s1)
+  add s1, M_VERIFY
+  fetch s4, (s1)
+  sub s1, M_VERIFY
+  assert_true(s2 == s4)
+}
+
+
+
+; output*()
+; These aren't verified because we can't capture the output
+
+outputtable(P_LOOP, _tempreg, data)
+
+outputstring(P_LOOP, _tempreg, tstring)
+
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate
