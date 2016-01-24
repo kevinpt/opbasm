@@ -1,12 +1,139 @@
 include(`setup.m4')
 
-use_clock(50)
+;VALIDATES: delay_cycles, delay_us, delay_ms, var_delay_us, var_delay_ms, var_count_us, var_count_ms, use_delay_reg
+
+constant P_COUNTER0, 0xF0 ; Control port for instruction counter periph
+constant P_COUNTER1, 0xF1
+constant P_COUNTER2, 0xF2
+constant P_COUNTER3, 0xF3
+
+define(`clock_freq', 50)
+use_clock(clock_freq)
 use_delay_reg(s9)
 
-;:::::::::: delay_us ::::::::::
+;:::::::::: delay_cycles ::::::::::
 
-delay_us(1000, s4,s5)
-; FIXME: add validation
+load_out(0x01, P_COUNTER0)
+delay_cycles(40)
+load_out(0x00, P_COUNTER0)
+input sA, P_COUNTER0
+assert_true(sA == 40+2)
+
+load_out(0x01, P_COUNTER0)
+delay_cycles(250)
+load_out(0x00, P_COUNTER0)
+input sA, P_COUNTER0
+assert_true(sA == 250+2)
+
+load_out(0x01, P_COUNTER0)
+delay_cycles(2000)
+load_out(0x00, P_COUNTER0)
+input sA, P_COUNTER0
+input sB, P_COUNTER1
+sub16(sB,sA, 2000+2)
+assert_true(sA == 0)
+assert_true(sB == 0)
+
+
+;:::::::::: delay_us ::::::::::
+define(`test_delay_us', dnl
+  `define(`dtime',$1)'
+  `define(`dcount', `eval(dtime * clock_freq / 2)')'
+  `load_out(0x01, P_COUNTER0)
+  delay_us(dtime, s4,s5, 2)
+  load_out(0x00, P_COUNTER0)
+  input sA, P_COUNTER0
+  input sB, P_COUNTER1
+  assert_true(sA == constlower(dcount))
+  assert_true(sB == constupper(dcount))')
+
+test_delay_us(1)
+test_delay_us(24)
+test_delay_us(240)
+test_delay_us(2400)
+
+;:::::::::: delay_ms ::::::::::
+define(`test_delay_ms', dnl
+  `define(`dtime',$1)'
+  `define(`dcount', `eval(dtime * 1000 * clock_freq / 2)')'
+  `load_out(0x01, P_COUNTER0)
+  delay_ms(dtime, s4,s5, 2)
+  load_out(0x00, P_COUNTER0)
+  input sA, P_COUNTER0
+  input sB, P_COUNTER1
+  assert_true(sA == constlower(dcount))
+  assert_true(sB == constupper(dcount))')
+
+test_delay_ms(1)
+test_delay_ms(2)
+
+;:::::::::: var_delay_us ::::::::::
+
+jump start_var_delay
+
+define(MAX_US_DELAY, 2000)
+var_dly_us: var_delay_us(MAX_US_DELAY, s4,s5)
+          return
+
+define(MAX_MS_DELAY, 10)
+var_dly_ms: var_delay_ms(MAX_MS_DELAY, s4,s5)
+          return
+
+start_var_delay:
+
+define(`test_var_delay_us', dnl
+  `define(`dtime', $1)'
+  `define(`dcount', `eval(dtime * clock_freq / 2)')'
+  `load16(s4,s5, var_count_us(dtime, MAX_US_DELAY))
+  load_out(0x01, P_COUNTER0)
+  call var_dly_us
+  load_out(0x00, P_COUNTER0)
+  input sA, P_COUNTER0
+  input sB, P_COUNTER1
+  sub sA, evalh(constlower(dcount))
+  subcy sB, evalh(constupper(dcount))
+  abs16(sB,sA)
+  assert_true(sA <= 4)
+  assert_true(sB == 0)')
+
+test_var_delay_us(24)
+test_var_delay_us(50)
+test_var_delay_us(700)
+test_var_delay_us(1671)
+
+;:::::::::: var_delay_ms ::::::::::
+
+define(`test_var_delay_ms', dnl
+  `define(`dtime', $1)'
+  `define(`dcount', `eval(dtime * 1000 * clock_freq / 2)')'
+  `load16(s4,s5, var_count_ms(dtime, MAX_MS_DELAY))
+  load_out(0x01, P_COUNTER0)
+  call var_dly_ms
+  load_out(0x00, P_COUNTER0)
+  input sA, P_COUNTER0
+  input sB, P_COUNTER1
+  input sC, P_COUNTER2
+  load s7, evalh(constlower(dcount))
+  load s8, evalh(constupper(dcount))
+  load s9, evalh((dcount >> 16) & 0xFF)
+  sub sA, s7
+  subcy sB, s8
+  subcy sC, s9
+  ;abs24
+  if(sC & 0x80,`xor sA, FF
+  xor sB, FF
+  xor sC, FF
+  add sA, 01
+  addcy sB, 00
+  addcy sC, 00')
+  assert_true(sA <= 6)
+  assert_true(sB == 0)
+  assert_true(sC == 0)')
+
+test_var_delay_ms(1)
+test_var_delay_ms(2)
+test_var_delay_ms(5)
+test_var_delay_ms(9)
 
 ;:::::::::: Finish testcase ::::::::::
 jump terminate
