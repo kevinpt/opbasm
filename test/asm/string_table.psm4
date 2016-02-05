@@ -54,7 +54,7 @@ for(s1 := 0, s1 < 3, s1 := s1 + 1) {
 
 load s1, M_RESULT
 define(`tstring', `Hello world')
-storestring(M_VERIFY, _tempreg, tstring)
+storestring(M_VERIFY, tstring)
 callstring(write_char, s0, tstring)
 
 load s3, M_VERIFY
@@ -66,7 +66,7 @@ for(s1 := M_RESULT, s1 < 11, s1 := s1 + 1) {
 }
 
 load s5, M_VERIFY2
-storestringat(s5, _tempreg, tstring)
+storestringat(s5, tstring)
 
 for(s1 := 0, s1 < 11, s1 := s1 + 1) {
   fetch s2, (s1)
