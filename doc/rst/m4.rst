@@ -17,8 +17,7 @@ Around 200 predefined macros are provided with Opbasm covering the following are
 | * `Delay generators`_                              | * `Random numbers`_                                  |
 +----------------------------------------------------+------------------------------------------------------+
 
-
-
+None of the macros use the PicoBlaze-6 inactive bank registers. They are all portable to both targets although a few lose some functionality on PicoBlaze-3.
 
 Using these macros you can write code in a higher-level style like the following Fibonacci generator.
 
@@ -95,7 +94,7 @@ Char          "A"            A or ```A'``
 
 In general you use m4 syntax for literals passed as arguments to macros within parentheses. The only exception is :pb:macro:`pbhex` which takes a list of hex values in PicoBlaze format. Be careful not to use PicoBlaze hex format in other m4 contexts as it will be misinterpreted as decimal if only digits 0-9 are used.
 
-m4 includes the ability to evaluate arbitrary integer expressions using the ``eval()`` macro. Its default output is an m4 decimal integer so the similar ``evalh()`` and ``evald()`` are provided to evaluate expressions resulting in PicoBlaze hex or decimal format.
+m4 includes the ability to evaluate arbitrary integer expressions using the builtin ``eval()`` macro. Its default output is an m4 decimal integer so the similar :pb:macro:`evalh` and :pb:macro:`evald` are provided to evaluate expressions resulting in PicoBlaze hex or decimal format.
 
 .. code-block:: picoblaze
 
@@ -108,7 +107,7 @@ The expression evaluator permits the natural use of negative decimal literals:
   load s0, evalh(-20)           ; Expands to "load s0, ec"
 
 
-The ``evala()`` macro works like ``evalh()`` but expands to a 12-bit PicoBlaze address.
+The :pb:macro:`evala` macro works like :pb:macro:`evalh` but expands to a 12-bit PicoBlaze address.
 
 .. code-block:: picoblaze
 
@@ -117,7 +116,7 @@ The ``evala()`` macro works like ``evalh()`` but expands to a 12-bit PicoBlaze a
 
 m4 expressions support all of the C language operators as well as ``**`` for exponentiation.
 
-An ``evalx()`` macro is available which works like the builtin ``eval()`` but also accepts strings that are not valid expressions.
+An :pb:macro:`evalx` macro is available which works like the builtin ``eval()`` but also accepts strings that are not valid expressions.
 
 .. code-block:: picoblaze
 
@@ -205,7 +204,7 @@ This will define "VARNAME" as an empty string and "MAXVAL" with the string "42" 
 General purpose macros
 ----------------------
 
-A few of the macros depend on modifying a temporary register. To simplify the macro calls, a preallocated temp register is used. It is set to `sE` by default. You can change it to another register by calling ``use_tempreg(<reg>)``. The temp register can be accessed in your own macros by using the ``_tempreg`` macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros. 
+A few of the macros depend on modifying a temporary register. To simplify the macro calls, a preallocated temp register is used. It is set to `sE` by default. You can change it to another register by calling :pb:macro:`use_tempreg`. The temp register can be accessed in your own macros by using the ``_tempreg`` macro. The temp register is never preserved on the stack and you should not store data you want preserved across invocations of Opbasm macros. 
 
 .. code-block:: picoblaze
 
@@ -231,10 +230,11 @@ You can guard against accidentally using the temp register for long term storage
 
 Now you can't accidentally assign something to ``sE`` that will be overwritten by a macro using the ``_tempreg`` macro.
 
-PicoBlaze programs commonly contain lists of constant declarations for IO port addresses. The ``iodefs(<start port>, [port names]+)`` macro simplifies their declaration by allowing contiguous sequences of ports to be named in one statement. It can also be used to define scratchpad addresses.
+PicoBlaze programs commonly contain lists of constant declarations for IO port addresses. The :pb:macro:`iodefs` macro simplifies their declaration by allowing contiguous sequences of ports to be named in one statement. It can also be used to define scratchpad addresses.
 
 .. code-block:: picoblaze
 
+  ; Usage: iodefs(<start port>, [port names]+)
   iodefs(0, P_control, P_read, P_write)
 
   ; Expands to:
@@ -242,16 +242,17 @@ PicoBlaze programs commonly contain lists of constant declarations for IO port a
     constant P_read, 01
     constant P_write, 02
 
-The ``vars([<reg> is <alias> [:= <init>]]+)`` macro allows you to associate alias names with a register. Unlike the ``NAMEREG`` directive, the original register name is still available. An optional initial value can be provided:
+The :pb:macro:`vars` macro allows you to associate alias names with a register. Unlike the ``NAMEREG`` directive, the original register name is still available. An optional initial value can be provided:
 
 .. code-block:: picoblaze
 
+  ; Usage: vars([<reg> is <alias> [:= <init>]]+)
   vars(`s0 is count := 0', `s1 is sum')
 
   ; Expands to:
     load s0, 00
 
-Symbols "count" and "sum" can now be used in place of s0 and s1. You should quote each variable declaration to avoid macro expansion errors when redefining an existing variable. Use the ``popvars`` macro to remove all variables defined in the previous call to :pb:macro:`vars`. 
+Symbols "count" and "sum" can now be used in place of s0 and s1. You should quote each variable declaration to avoid macro expansion errors when redefining an existing variable. Use the :pb:macro:`popvars` macro to remove all variables defined in the previous call to :pb:macro:`vars`. 
 
 
 Stack operations
@@ -350,10 +351,10 @@ Shifts and rotates are inconvenient in PicoBlaze assembly because they must be p
 
 All 10 of the PicoBlaze shift and rotate instructions have macro equivalents. The original instructions can still be used as usual.
 
-=== === === === ==
-sl0 sl1 sla slx rl
-sr0 sr1 sra srx rr
-=== === === === ==
+=============== =============== =============== =============== ===============
+:pb:macro:`sl0` :pb:macro:`sl1` :pb:macro:`sla` :pb:macro:`slx` :pb:macro:`rl`
+:pb:macro:`sr0` :pb:macro:`sr1` :pb:macro:`sra` :pb:macro:`srx` :pb:macro:`rr`
+=============== =============== =============== =============== ===============
 
 .. _Conditional jump, call, and return:
 
@@ -849,7 +850,7 @@ On PicoBlaze-6 you can apply the output of these macros directly in a ``TABLE`` 
   table hello2#, [dec2pbhex(estr(`Hello\r\n'))]
   ; This expands to: table hello2#, [48, 65, 6c, 6c, 6f, 0d, 0a]
 
-For PicoBlaze-3 you can pass the output of :pb:macro:`estr` and :pb:macro:`cstr` to the ``call/store/outputtable()`` macros or use the portable string macros described next.
+For PicoBlaze-3 you can pass the output of :pb:macro:`estr` and :pb:macro:`cstr` to the :pb:macro:`calltable`, :pb:macro:`storetable`, and :pb:macro:`outputtable` macros or use the portable string macros described next.
 
 If you need know the length of a string constant you can use :pb:macro:`strlenc` to generate that value. It takes a single string argument that can contain escaped characters. It is passed through :pb:macro:`estr` to remove escapes before characters are counted. :pb:macro:`strlenc` only works at compile time when passed a string literal or a named portable/packed string. It does not work at runtime on dynamic string buffers.
 
@@ -1244,7 +1245,7 @@ For converting numeric string inputs to binary a pair of generator macros that c
   
 The resulting array contains BCD: ``[00 01 02 04 09]``. Any non-digit characters in the string are converted to 0.
 
-The :pb:macro:`use_bcd2int` macro is used to convert from BCD to an integer. This finishes the conversion of numeric string input into a usable integer value after first converting ASCII to BCD using ``ascii2bcd``.
+The :pb:macro:`use_bcd2int` macro is used to convert from BCD to an integer. This finishes the conversion of numeric string input into a usable integer value after first converting ASCII to BCD using :pb:macro:`ascii2bcd <use_ascii2bcd>`.
   
 .. code-block::  picoblaze
 
@@ -1305,21 +1306,21 @@ The :pb:macro:`mem16` macro defines 16-bit constants for scratchpad and port add
 
 The following 16-bit functions are available. All other than :pb:macro:`not16`, :pb:macro:`negate16`, and :pb:macro:`abs16` take a constant or a 16-bit register as their second argument.
 
-======  =====  ========  =====
-load16  reg16  mem16     add16   
-sub16   and16  or16      xor16   
-test16  not16  negate16  abs16
-======  =====  ========  =====  
+==================== ==================== ==================== ====================
+:pb:macro:`load16`   :pb:macro:`reg16`    :pb:macro:`mem16`    :pb:macro:`add16`
+:pb:macro:`sub16`    :pb:macro:`and16`    :pb:macro:`or16`     :pb:macro:`xor16`
+:pb:macro:`test16`   :pb:macro:`not16`    :pb:macro:`negate16` :pb:macro:`abs16`
+==================== ==================== ==================== ====================
 
 The :pb:macro:`test16` macro is implemented differently on PicoBlaze-3 due to the lack of the ``TESTCY`` instruction. The ``Z`` flag is set when the AND of both bytes with the test word is zero but the ``C`` flag does not represent the XOR of all 16 bits.
 
 A full suite of 16-bit shifts and rotates are also available. They work the same as their 8-bit equivalents.
 
-======  ======  ======  ======
-sl0_16  sl1_16  sla_16  slx_16 
-sr0_16  sr1_16  sra_16  srx_16 
-rl16    rr16   
-======  ======  ======  ======
+================== ================== ================== ================== 
+:pb:macro:`sl0_16` :pb:macro:`sl1_16` :pb:macro:`sla_16` :pb:macro:`slx_16`
+:pb:macro:`sr0_16` :pb:macro:`sr1_16` :pb:macro:`sra_16` :pb:macro:`srx_16`
+:pb:macro:`rl16`   :pb:macro:`rr16`
+================== ================== ================== ================== 
 
 .. code-block:: picoblaze
 
@@ -1332,9 +1333,9 @@ rl16    rr16
 
 16-bit versions of the port and scratchpad I/O operations are available. You can use the :pb:macro:`mem16` macro to define pairs of memory and port addresses for simplification. The variants using a pointer register increment by two so that successive calls can be made to work on contiguous ranges of addresses.
 
-=======  =======  =======  ========
-fetch16  store16  input16  output16
-=======  =======  =======  ======== 
+=================== =================== =================== =================== 
+:pb:macro:`fetch16` :pb:macro:`store16` :pb:macro:`input16` :pb:macro:`output16`
+=================== =================== =================== =================== 
 
 .. code-block:: picoblaze
 
@@ -1366,18 +1367,18 @@ Multiply and divide
 
 The general purpose PicoBlaze 8x8 multiply and divide routines are made available with arbitrary register allocations to suit your needs. A set of constant multiply and divide routines can also be generated for faster results than the general purpose functions. The following macros are available:
 
-=====================  =======================================
-use_multiply8x8        8x8-bit unsigned 
-use_multiply8x8s       8x8-bit signed 
-use_multiply8x8su      8-bit signed x 8-bit unsigned 
-use_divide8x8          8/8-bit unsigned 
-use_divide8x8s         8/8-bit signed 
-use_divide16x8         16/8-bit unsigned 
-use_divide16x8s        16/8-bit signed 
-use_multiply8xk        8-bit x constant 
-use_multiply8xk_small  8-bit x constant (result less than 256) 
-use_divide8xk          8-bit / constant 
-=====================  =======================================
+=================================  =======================================
+:pb:macro:`use_multiply8x8`        8x8-bit unsigned 
+:pb:macro:`use_multiply8x8s`       8x8-bit signed 
+:pb:macro:`use_multiply8x8su`      8-bit signed x 8-bit unsigned 
+:pb:macro:`use_divide8x8`          8/8-bit unsigned 
+:pb:macro:`use_divide8x8s`         8/8-bit signed 
+:pb:macro:`use_divide16x8`         16/8-bit unsigned 
+:pb:macro:`use_divide16x8s`        16/8-bit signed 
+:pb:macro:`use_multiply8xk`        8-bit x constant 
+:pb:macro:`use_multiply8xk_small`  8-bit x constant (result less than 256) 
+:pb:macro:`use_divide8xk`          8-bit / constant 
+=================================  =======================================
 
 
 .. code-block:: picoblaze
@@ -1418,7 +1419,7 @@ use_divide8xk          8-bit / constant
 Expressions
 -----------
 
-A family of expression evaluator macros are provided that can implement arithmetic and other operations using pseudo-infix notation. The basic principle is borrowed from the PL360 high level assembler. You can write an assignment expression of the form ``expr(<target register> := <val> op <val> [op <val>]*)``. Spaces are required between all symbols.
+A family of :pb:macro:`expression evaluator <expr>` macros are provided that can implement arithmetic and other operations using pseudo-infix notation. The basic principle is borrowed from the PL360 high level assembler. You can write an assignment expression of the form ``expr(<target register> := <val> op <val> [op <val>]*)``. Spaces are required between all symbols.
 
 ``val`` is one of:
 
@@ -1468,16 +1469,16 @@ If you want to use the existing value of a register use it as the first operand 
 
 Here are all of the expression macros available:
 
-=======  ====================  ===================================  ================================
-Macro    Target x Operand      Supported operators                  Notes
-=======  ====================  ===================================  ================================
-expr     8x8                   +, -, `*`, /, &, `|`, ^, <<, >>, =: 
-exprs    8x8                   +, -, `*`, /, &, `|`, ^, <<, >>, =:  signed `*`, /, and >>  
-expr2    16x8 `*`              +, -, `*`, /, <<, >>, =: 
-expr2s   16x8 `*`              +, -, `*`, /, <<, >>, =:             signed for all except << 
-expr16   16x16                 +, -, &, `|`, ^, <<, >>, =: 
-expr16s  16x16                 +, -, &, `|`, ^, <<, >>, =:          signed >> 
-=======  ====================  ===================================  ================================
+===================  ====================  ===================================  ================================
+Macro                Target x Operand      Supported operators                  Notes
+===================  ====================  ===================================  ================================
+:pb:macro:`expr`     8x8                   +, -, `*`, /, &, `|`, ^, <<, >>, =: 
+:pb:macro:`exprs`    8x8                   +, -, `*`, /, &, `|`, ^, <<, >>, =:  signed `*`, /, and >>  
+:pb:macro:`expr2`    16x8 `*`              +, -, `*`, /, <<, >>, =: 
+:pb:macro:`expr2s`   16x8 `*`              +, -, `*`, /, <<, >>, =:             signed for all except << 
+:pb:macro:`expr16`   16x16                 +, -, &, `|`, ^, <<, >>, =: 
+:pb:macro:`expr16s`  16x16                 +, -, &, `|`, ^, <<, >>, =:          signed >> 
+===================  ====================  ===================================  ================================
 
 `*` *The expr2 macros support 16-bit literals as operands of + and -. The first register after the assignment can be 16-bits.*
 
@@ -1485,18 +1486,18 @@ expr16s  16x16                 +, -, &, `|`, ^, <<, >>, =:          signed >>
 
 For multiplication and division support you must initialize the internal functions with one of the following:
 
-======  ================================  ===============
-Macro   Multiply                          Divide
-======  ================================  ===============
-expr    use_expr_mul                      use_expr_div 
-exprs   use_expr_muls                     use_expr_divs 
-expr2   use_expr_mul                      use_expr_div16 
-expr2s  use_expr_muls and use_expr_mulsu  use_expr_div16s 
-======  ================================  ===============
+======  ========================================================  ========================================================
+Macro   Multiply                                                  Divide
+======  ========================================================  ========================================================
+expr    :pb:macro:`use_expr_mul`                                  :pb:macro:`use_expr_div` 
+exprs   :pb:macro:`use_expr_muls`                                 :pb:macro:`use_expr_divs` 
+expr2   :pb:macro:`use_expr_mul`                                  :pb:macro:`use_expr_div16` 
+expr2s  :pb:macro:`use_expr_muls` and :pb:macro:`use_expr_mulsu`  :pb:macro:`use_expr_div16s` 
+======  ========================================================  ========================================================
 
-As an expedient you can invoke "use_expr_all" to include all of them and then eliminate any unused mul or div routines with the ``--remove-dead-code`` option to Opbasm.
+As an expedient you can invoke :pb:macro:`use_expr_all` to include all of them and then eliminate any unused mul or div routines with the ``--remove-dead-code`` option to Opbasm.
 
-These macros need to be called before any call to ``expr*()`` that uses multiplication or division. It is best to place them at the start of the program and jump over them to reach the startup code. The stack must be configured (``use_stack(...)``) before calling these macros because additional modified registers must be saved and restored.
+These macros need to be called before any call to ``expr*()`` that uses multiplication or division. It is best to place them at the start of the program and jump over them to reach the startup code. The stack must be configured (:pb:macro:`use_stack`) before calling these macros because additional modified registers must be saved and restored.
 
 By default these macros configure the mul and div functions to use the ``s8,s9`` or ``s7,s8, and s9`` registers for input and output. You can modify the register allocation by passing arguments to the ``use_*`` macros. The registers ``sA``, ``sB``, and sometimes ``sC`` are temporarily altered and restored. The common temp register (default ``sE``) is destructively modified. You can change the tempreg with the :pb:macro:`use_tempreg` macro. The MSB of multiplication is ignored by subsequent operations. Division by 0 is not detected.
 
