@@ -32,6 +32,17 @@ import strutils, sequtils, tables, times, parseopt2, json, sets, math, nre, os, 
 import engineering
 
 
+# FIXME: At some point Nim will be able to do file IO at compile time 
+#proc getVersion(fname: string): string {.compileTime.} =
+#  for ln in fname.lines:
+#    if ln.startsWith("__version__"):
+#      return ln.split('=')[1].strip().strip(chars={'\''})
+#  return "??"
+#
+#const buildVersion = getVersion("../opbasm.py")
+const buildVersion = "1.3.1"
+
+
 proc readMemFile(fname: string): ref seq[int32] =
   ## Read the contents of a MEM file into a seq
   var r = new seq[int32]
@@ -41,6 +52,7 @@ proc readMemFile(fname: string): ref seq[int32] =
     r[] = @[]
 
   result = r
+
 
 
 proc extractSymbols(fname: string): Table[int32, string] =
@@ -1004,9 +1016,7 @@ Options:
 """
 
 
-
-proc main() =
-
+proc parseCommandLine() : CommandOptions =
   var cmdOpts : CommandOptions
   
   cmdOpts.instLimit = 100_000_000
@@ -1017,7 +1027,7 @@ proc main() =
     case kind
     of cmdShortOption, cmdLongOption:
       case key
-      of "h"           : echo usageString; return
+      of "h"           : echo usageString; quit(0)
       of "mem", "m"    : cmdOpts.memFile = val
       of "scratch-size", "s" : cmdOpts.scratchSize = parseInt(val)
       of "limit", "L"  : cmdOpts.instLimit = parseInt(val)
@@ -1034,12 +1044,12 @@ proc main() =
       else             : discard
     else: discard
     
-  if cmdOpts.version: echo "OPBSIM version 1.3"; return
+  if cmdOpts.version: echo "OPBSIM version ", buildVersion; quit(0)
 
-  if cmdOpts.memFile == "" or cmdOpts.memFile == nil: echo usageString; return
+  if cmdOpts.memFile == "" or cmdOpts.memFile == nil: echo usageString; quit(1)
   if cmdOpts.usePB3 and cmdOpts.usePB6:
     echo "Invalid options: Select only one PicoBlaze architecture"
-    return
+    quit(1)
   if not (cmdOpts.usePB3 or cmdOpts.usePB6): cmdOpts.usePB6 = true
   
   var scratchSizes : seq[int]
@@ -1050,17 +1060,25 @@ proc main() =
 
   if not (cmdOpts.scratchSize in scratchSizes):
     echo "Invalid scratchpad size. Must be ", scratchSizes.mapIt($it).join(", "), "."
-    return
+    quit(1)
   
 
   if cmdOpts.jsonOutput:
     cmdOpts.verbose = false
     cmdOpts.trace = false
     cmdOpts.quiet = true
+
+  return cmdOpts
+
+
+
+proc main() =
+  var cmdOpts = parseCommandLine()
   
   var jsonInput : array[0..255, uint8]
   
   if cmdOpts.jsonInput != "" and cmdOpts.jsonInput != nil:
+    # Initialize input data
     let jobj = parseJson(cmdOpts.jsonInput)
     assert jobj.kind == JObject
     
@@ -1077,6 +1095,7 @@ proc main() =
   if not cmdOpts.quiet:
     echo "PicoBlaze simulator"
     echo "Running in ", (if cmdOpts.usePB6: "PicoBlaze-6" else: "PicoBlaze-3"), " mode"
+    echo "Scratchpad size: ", cmdOpts.scratchSize
     echo "Input: ", cmdOpts.memFile
 
 
@@ -1173,7 +1192,7 @@ proc main() =
 
     jsonData["regs_a"] = %(state.regs[0].mapIt(%(it.int)))
     jsonData["regs_b"] = %(state.regs[1].mapIt(%(it.int)))
-    jsonData["scratchpad"] = %(state.scratchpad[0..cmdOpts.scratchSize].mapIt(%(it.int)))
+    jsonData["scratchpad"] = %(state.scratchpad[0..<cmdOpts.scratchSize].mapIt(%(it.int)))
     jsonData["ports_in"] = %(state.portsIn.mapIt(%(it.int)))
     jsonData["ports_out"] = %(state.portsOut.mapIt(%(it.int)))
     jsonData["total_insts"] = %state.totalInsts
