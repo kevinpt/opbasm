@@ -75,16 +75,17 @@ def indent(text, spaces=2):
 def build_signature(macro, body):
   '''Generate a macro signature from the parameter list'''
   params = []
-  
   for l in body.split('\n'):
     m = re.search(r':param\s+([^:]*)\s*:', l)
     if m:
       p = m.group(1)
-      if 'optional' in l.lower():
-        p = '[{}]'.format(p)
-      params.append(p)
+      if p not in params:
+        if 'optional' in l.lower():
+          p = '[{}]'.format(p)
+        params.append(p)
   
   sig = '{}({})'.format(macro, ', '.join(params))
+  sig = sig.replace('], [', ', ')
   return sig
 
 
