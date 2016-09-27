@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.3.1'
+__version__ = '1.3.2'
 
 
 class FatalError(Exception):
@@ -554,6 +554,7 @@ class Assembler(object):
     self.m4_file_num = 0
     self.output_dir = options.output_dir
     self.timestamp = timestamp
+    self.verbose = options.verbose
 
     self.constants = self._init_constants()
     self.labels = {}
@@ -669,6 +670,9 @@ class Assembler(object):
 
     m4_cmd = find_m4()
     cmd = '"{}" {} {} "{}" -'.format(m4_cmd, m4_options, m4_def_args, macro_defs)
+    if self.verbose:
+      print('  Running m4 on file "{}":\n\t{}'.format(source_file, cmd))
+
     p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     m4_result, m4_err = p.communicate(input=pure_m4.encode('utf-8'))
     if p.returncode:
@@ -786,8 +790,16 @@ class Assembler(object):
             active_file = source_file
           source_lines[active_file] = int(m.group(1))
         else: # Expanded macro
+          if active_file is None: # This shouldn't happen
+            print(error(_('ERROR:')) + ' Missing file name from expanded m4 source "{}"'.format(l))
+            sys.exit(2)
+
           source_lines[active_file] = int(m.group(1))
       else: # Ordinary source line
+        if active_file is None: # This shouldn't happen
+          print(error(_('ERROR:')) + ' Missing file name from expanded m4 source "{}"'.format(l))
+          sys.exit(3)
+
         elines.append(l)
         index.append((cur_line, source_lines[active_file], active_file))
         cur_line += 1
@@ -1511,7 +1523,7 @@ def parse_command_line():
   usage = _('''{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
               [-d] [-r] [-e <address>]
               [-o <output dir>] [-q] [--m4]
-              [--debug-preproc <file>]
+              [-v] [-V] [--debug-preproc <file>]
        {} -g''').format(progname, progname)
   parser = OptionParser(usage=usage)
 
@@ -1548,6 +1560,8 @@ def parse_command_line():
         help=_('Show OPBASM version'))
   parser.add_option('-q', '--quiet', dest='quiet', action='store_true', default=False, \
         help=_('Quiet output'))
+  parser.add_option('-V', '--verbose', dest='verbose', action='store_true', default=False, \
+        help=_('Verbose output'))
   parser.add_option('--m4', dest='use_m4', action='store_true', default=False, \
         help=_('Use m4 preprocessor on all source files'))
   parser.add_option('-D', '--define', dest='m4_defines', action='append', default=[], \
