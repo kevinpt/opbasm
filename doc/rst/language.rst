@@ -5,65 +5,7 @@ PicoBlaze assembly language reference
 
 This is an overview of the assembly language used for the PicoBlaze-6 and PicoBlaze-3 microcontrollers.
 
-If you've never written assembly code before it may be confusing where to start. A typical PicoBlaze assembly program will follow a pattern like that shown below. You should follow this general plan when starting out with PicoBlaze programming.
 
-.. code-block:: picoblaze
-
-  ;==============================
-  ;== Preamble
-
-  <Directives to set up constants, rename registers, and include other files>
-  <Initialization code executed once at startup>
-  
-  ; Skip over subroutines so they don't execute at startup.
-  ; They can also be placed after the main program but this
-  ; style is necessary when using some of the Opbasm macros.
-  jump main
-  
-  ;==============================
-  ;== Subroutines
-  
-  my_function:
-    <Function body>
-    return
-    
-  my_other_function:
-    <Function body>
-    return
-  
-  ; Interrupt handler (optional)
-  my_ISR:
-    <Save registers in scratchpad RAM or switch register banks>
-    <ISR body>
-    <Restore registers or switch register banks back>
-    returni enable ; Restore interrupts after returning
-  
-  ;=============================
-  ;== Main application code
-  main:
-    ...
-    ; Prepare arguments passed through registers
-    load s1, 42'd
-    load s2, "0"
-    call my_function
-    ; Handle possible return value in a register or placed in scratchpad RAM
-    ...
-    ; There is no OS to return to so the main program typically loops over itself
-    jump main
-
-  ;=============================
-  ;== Special code
-  
-  ; Guard to avoid falling into the ISR code.
-  ; You could also try to recover or restart.
-  default_jump fatal_error
-  fatal_error: jump fatal_error
-  
-  ; Jump into the ISR from the default interrupt vector
-  ; at the end of 1K address space.
-  address 3FF
-  jump my_ISR
-    
 
 Instructions
 ------------
@@ -80,6 +22,8 @@ The following instruction mnemonics are used in the PicoBlaze processors:
 `slx`_      `sr0`_      `sr1`_      `sra`_      `srx`_
 `store`_    `sub`_      `subcy`_    `test`_     `xor`_
 =========== =========== =========== =========== ===========
+
+.. _inst-pb6:
 
 .. rubric:: PicoBlaze-6 only
 
@@ -101,7 +45,7 @@ The following instruction mnemonics are used in the PicoBlaze processors:
 `string`_  `table`_
 ========== ===========
 
-The assembler is case insensitive. Uppercase or mixed case mnemonics can also be used.
+The assembler is case insensitive for commands. Uppercase or mixed case mnemonics can also be used. Labels and renamed registers are case sensitive.
 
 
 Instruction formats
@@ -111,29 +55,29 @@ PicoBlaze assembly follows the usual convention of having a single instruction o
 An optional label creates a named reference that can be referred to by other instructions. An optional single line comment can appear at the end prefixed by a ";" character.
 
   Basic syntax
-    ``[label:] [<instruction> <operands>*] [; comment]``
-  
+    .. image:: ../images/statement.svg
+    
 Blank lines are ignored. Labels and comments can be used without an instruction.
 
 Instructions generally use the following formats with a few minor exceptions:
 
   Register
-    ``<instruction> <register> [, <register>]``
+    .. image:: ../images/register.svg
 
   Immediate
-    ``<instruction> <register>, <literal>``
+    .. image:: ../images/immediate.svg
   
   Indirect scratchpad / I/O port
-    ``<instruction> <register>, (<register>)``
+    .. image:: ../images/indirect_sp.svg
     
   Indirect jump / call
-    ``<instruction> (<register>, <register>)``
+    .. image:: ../images/indirect_jump.svg
 
   Conditional
-    ``<instruction> <flag state>``
+    .. image:: ../images/conditional.svg
 
   Outputk
-    ``OUTPUTK <literal>, <literal>``
+    .. image:: ../images/outputk.svg
   
 The fields have the following meanings:
 
@@ -147,19 +91,37 @@ The fields have the following meanings:
 Literal syntax
 --------------
 
+The language supports a number of different formats for representing literal values. These are constant numeric and character values that are used as operands to many instructions.
+
+  Hexadecimal
+
+    A hex byte is the default format for literal numbers. It is represented by two hex digits with no additional
+    syntactic marker. The :ref:`inst-address` directive takes a special 12-bit hex literal as an address.
+    
+  Decimal
+  
+    Decimal byte values are written in the form ``nnn'd``.
+    
+  Binary
+  
+    Binary byte values are written in the form ``nnnnnnnn'b``.
+    
+  Characters
+  
+    Printable ASCII character literals are written in the form ``"c"``.
+    
+
 Address spaces
 --------------
 
 The PicoBlaze has a simple architecture that operates on information stored in the following address spaces:
 
   Registers
-    A set of 16 8-bit registers. They default to the registers named s0-sF but can be renamed with the ``namereg`` directive.
-    The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out.
+    A set of 16 8-bit registers. They default to the registers named s0-sF but can be renamed with the :ref:`inst-namereg` directive.
+    The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the :ref:`inst-regbank` instruction.
 
   Instruction memory
-    Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6.
-    This is not directly accessible from within the PicoBlaze program but a dual ported memory can be implemented to access data
-    stored in instruction memory or to modify instructions through the I/O port interface.
+    Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6. This memory is implemented outside the Picoblaze core component and attached to the instruction memory port. Because the Picoblaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.
     
   Scratchpad memory
     A small pool of RAM used as a local memory. This is 64 bytes on the PicoBlaze-3 and
@@ -167,17 +129,24 @@ The PicoBlaze has a simple architecture that operates on information stored in t
     
   I/O ports
     A set of 256 input and 256 output ports are used to interact with external hardware. This memory is
-    accessed with the `input`_ and `output`_ instructions.
+    accessed with the `input`_ and `output`_ instructions. Additional logic must be provided to decode these ports.
     
   Outputk ports
     The PicoBlaze-6 has a special set of 16 output ports intended for directly driving constant values with minimal overhead.
     This is accessed with the `outputk`_ instruction.
     
   Call stack
-    A hardware call stack is maintained to track return addresses.
+    A hardware call stack is maintained to track return addresses. You can have a call depth of up to 31 functions on PicoBlaze-3 and 30 functions on PicoBlaze-6.
 
 Flags
------  
+-----
+
+The PicoBlaze processor has two internal status flags that represent metadata from ALU operations. They are used to evaluate the result of an operation and execute conditional code. These are the the zero "Z" flag and the carry "C" flag.
+
+The Z flag is set when the result of an operation is zero and cleared otherwise. The C flag is set when an arithmetic carry or borrow (for subtration) is generated. As a special case the C flag is set by the :ref:`inst-test` and :ref:`inst-testcy` instructions to reflect the odd parity of their result. The :ref:`inst-hwbuild` instruction always sets the C flag unconditionally.
+
+The most common application of the flags is to execute conditional code after a :ref:`inst-compare` instruction. The table shown for ``compare`` indicates how to interpret the flags for various Boolean comparison operations. Not all comparisons are possible with a single instruction because PicoBlaze can only test one flag at a time.
+
 
 Initialization
 --------------
@@ -189,24 +158,30 @@ Interrupts
 Directives
 ----------
 
+The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are used instead to alter the behavior of the assembler.
+
+.. _inst-address:
+
 address
 ~~~~~~~
 
-The address directive is used to change the address where the next instruction will be assembled to.
+The ``address`` directive is used to change the address where the next instruction will be assembled to.
 
 ===================================== ================= ========================================
 Format                                Example           Result
 ===================================== ================= ========================================
 ``address <address>``                 address 3FF       The instruction offset is moved to 0x3FF
+``address <label>``                   address MyISR     The instruction offset is addr. of MyISR
 ===================================== ================= ========================================
 
-This is useful for placing code at the interrupt vector location or implementing complex memory layouts such as bank switched pages.
+This is useful for placing code at the interrupt vector location or implementing complex memory layouts such as bank switched pages. The second veriant with a label as ab operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a `jump`_ for the entry point.
 
+.. _inst-constant:
 
 constant
 ~~~~~~~~
 
-Define a named constant. The name cannot be any 1-3 character string that is a valid hex number.
+Define a named constant. The name cannot be any 1-3 character string that is a valid hex number. Constants can be used in place of any literal operand.
 
 ===================================== ======================== ========================================
 Format                                Example                  Result
@@ -214,27 +189,99 @@ Format                                Example                  Result
 ``constant <name>, <literal>``        constant foo, 5A         The name "foo" is substituted with 0x5A
 *(decimal literals)*                  constant bar, 20'd       bar is 0x14
 *(binary literals)*                   constant baz, 01000010'b baz is 0x42
-*(char literals)*                     conatant bat, "0"        bat is 0x30
+*(char literals)*                     constant bat, "0"        bat is 0x30
 ===================================== ======================== ========================================
 
+.. _inst-default_jump:
 
 default_jump
 ~~~~~~~~~~~~
 
+By default, unused memory is filled with zeros. On PB3 this equates to "LOAD s0, 00". On PB6 it is "LOAD s0, s0" (a NOP). This can be problematic in high reliability code that needs to recover from accidentally falling into these unused areas of memory. To protect against this the ``default_jump`` directive lets you fill unused memory with a jump to a specified label or address.
+
+===================================== ======================== ========================================
+Format                                Example                  Result
+===================================== ======================== ========================================
+``default_jump <label>``              default_jump handle_err  Unused memory is filled with JUMP
+                                                               instructions to handle_err
+*(address target)*                    default_jump 001         Fill with JUMP to address 0x001
+===================================== ======================== ========================================
+
+.. _inst-include:
+
 include
 ~~~~~~~
+
+The ``include`` directive lets you incorporate the contents of other source files into your final program. It inserts the contents of the specified file at the location of the directive.
+
+===================================== ======================== ========================================
+Format                                Example                  Result
+===================================== ======================== ========================================
+``include "<file>"``                  include "lib.psm"        The contents of lib.psm are added to the
+                                                               program
+===================================== ======================== ========================================
+
+
+.. _inst-inst:
 
 inst
 ~~~~
 
+The ``inst`` directive is used to manually construct an instruction from its hex encoding. This is primarily of value for encoding non-instruction data into the instruction memory. Note that the instruction size is 18-bits so the fifth nibble of the hex value is truncated down to 2-bits.
+
+===================================== ======================== ========================================
+Format                                Example                  Result
+===================================== ======================== ========================================
+``inst <hex literal>``                inst 3AABB               Place 0x3AABB at the current point in
+                                                               memory
+===================================== ======================== ========================================
+
+
+.. _inst-namereg:
+
 namereg
 ~~~~~~~
+
+The ``namereg`` directive lets you rename a register mnemonic. This allows you to create more descriptive register names rather the default s0-sF. Once namereg has been applied the affected register can only be referenced by its new name. Another call to ``namereg`` is needed to change its name again. The new name is case sensitive unlike the default where both "sn" "Sn" are accepted.
+
+===================================== ======================== ========================================
+Format                                Example                  Result
+===================================== ======================== ========================================
+``namereg <cur. name>, <new name>``   namereg sF, TEMP         rename sF to "TEMP"
+===================================== ======================== ========================================
+
+As an alternative, the m4 macro processor used with Opbasm has a :ref:`define() <m4-define>` macro that can be used to create alternate register names without replacing the original. 
+
+
+.. _inst-string:
 
 string
 ~~~~~~
 
+Available on PicoBlaze-6 only. This directive creates a text string. It must be used in conjunction with the `load&return`_ or `outputk`_ instructions. When a string name is an argument to these instructions they are expanded into multiple instructions with each character as their literal operand.
+
+===================================== ============================ ========================================
+Format                                Example                      Result
+===================================== ============================ ========================================
+``string <name>$, "<string text>"``   string hello$, "Hello world" Create string named hello$
+===================================== ============================ ========================================
+
+The Opbasm macro package has :ref:`additional methods <Portable string and table operations>` for generating strings that are portable across PB3 and PB6.
+
+.. _inst-table:
+
 table
 ~~~~~
+
+Available on PicoBlaze-6 only. This directive creates a data array. It must be used in conjunction with the `load&return`_ or `outputk`_ instructions. When a table name is an argument to these instructions they are expanded into multiple instructions with each byte as their literal operand.
+
+======================================= ==================================== ================================
+Format                                  Example                              Result
+======================================= ==================================== ================================
+``table <name>#, [<hex values>]``       table hex#, [01, 02, AA]             Table named hex#
+``table <name>#, [<decimal values>]'d`` table dec#, [50, 100, 200]'d         Table named dec#
+``table <name>#, [<bin values>]'b``     table bin#, [11110000, 00100110]'b   Table named bin#
+======================================= ==================================== ================================
 
 
 Register assignment instructions
@@ -242,11 +289,13 @@ Register assignment instructions
 
 PicoBlaze has a minimal set of instructions for moving data into and between registers.
 
+.. _inst-load:
+
 load
 ~~~~
 
 The ``load`` instruction copies the value of its second argument into the register of the first argument.
-This is the only to set a register to an arbitrary constant value.
+This is the only way to directly set a register to an arbitrary constant value.
 
 ===================================== ====================== =================================
 Format                                Example                Result
@@ -257,29 +306,32 @@ Format                                Example                Result
 ``load <dest. register>, <register>`` load s0, s2            s0 ⇐ s2
 ===================================== ====================== =================================
 
+.. _inst-star:
+
 star
 ~~~~
 
 The ``star`` instruction is specific to the PicoBlaze-6. It is used to transfer register values between
-register banks A and B. A register in the active bank is copied into a register in the inactive bank.
-There is no way to transfer in the other direction without switching banks using ``regbank``.
+register banks A and B. When executed, a register in the active bank is copied into a register in the inactive bank.
+There is no way to transfer in the other direction without switching banks using `regbank`_.
 
 ===================================== ================= ======================================
 Format                                Example           Result
 ===================================== ================= ======================================
-``load <dest. register>, <register>`` star s0, s3       (inactive bank) s0 ⇐ (active bank) s3
+``star <dest. register>, <register>`` star s0, s3       (inactive bank) s0 ⇐ (active bank) s3
 ===================================== ================= ======================================
 
-``star`` has special behavior for its first operand. Because the ``namereg`` directive can obscure
-the actual register locations, you can only use the default register names s0-sF for the first operand.
-This is the only case where the ``namereg`` directive is ignored. The second register operand follows
-the usual register naming behavior.
+.. note::
+
+   ``star`` has special behavior for its first operand. Because the `namereg`_ directive can obscure the actual register locations, you can *only* use the default register names s0-sF for the first operand. This is the only case where the ``namereg`` directive is ignored. The second register operand follows the usual register naming behavior.
 
 
 ALU instructions
 ----------------
 
 The following set of instructions perform arithmetic and logical operations on registers.
+
+.. _inst-add:
 
 add
 ~~~
@@ -297,6 +349,7 @@ Format                                  Example              Result
 The C flag is set if an overflow occurs. i.e. the arithmetic result is greater than 255. The Z flag is set when
 the result is zero.
 
+.. _inst-addcy:
 
 addcy
 ~~~~~
@@ -314,6 +367,14 @@ Format                                 Example              Result
 The C flag is set if an overflow occurs. i.e. the arithmetic result is greater than 255. On PicoBlaze-6 The Z flag is set when
 the result is zero and the previous Z flag was set. On PicoBlaze-3 the Z flag disregards the previous state of Z.
 
+.. code-block:: picoblaze
+
+  add   s0, 01
+  addcy s1, 00  ; Add carry bit from s0 into s1
+  
+  jump  Z, foo  ; PB6: Jump when s1,s0 == 0x0000;  PB3: Jump when s1 == 0x00
+
+.. _inst-sub:
 
 sub
 ~~~
@@ -331,6 +392,7 @@ Format                                Example              Result
 The C flag is set if an underflow occurs. i.e. the arithmetic result is less than 0. The Z flag is set when
 the result is zero.
 
+.. _inst-subcy:
 
 subcy
 ~~~~~
@@ -348,6 +410,14 @@ Format                                 Example              Result
 The C flag is set if an underflow occurs. i.e. the arithmetic result is less than 0. On PicoBlaze-6 the Z flag is set when
 the result is zero and the previous Z flag was set. On PicoBlaze-3 the Z flag disregards the previous state of Z.
 
+.. code-block:: picoblaze
+
+  sub   s0, 01
+  subcy s1, 00  ; Subtract with borrow from s0
+  
+  jump  Z, foo  ; PB6: Jump when s1,s0 == 0x0000;  PB3: Jump when s1 == 0x00
+
+.. _inst-and:
 
 and
 ~~~
@@ -364,6 +434,7 @@ Format                                Example                Result
 
 The C flag is always cleared. The Z flag is set when the result is zero.
 
+.. _inst-or:
 
 or
 ~~
@@ -379,6 +450,8 @@ Format                                Example              Result
 ===================================== ==================== =================================
 
 The C flag is always cleared. The Z flag is set when the result is zero.
+
+.. _inst-xor:
 
 xor
 ~~~
@@ -400,6 +473,8 @@ Comparson instructions
 ----------------------
 
 The comparison instructions are used to compare values without modifying registers. They are only used to set and clear flags that will be inspected by subsequent instructions.
+
+.. _inst-compare:
 
 compare
 ~~~~~~~
@@ -430,13 +505,40 @@ Z    C    Meaning
 1    1    ≤ first is less or equal to second
 ==== ==== =====================================
 
-Note that you cannot determine > "greater than" or ≤ "less than or equal" without inspecting both flags.
+Note that you cannot determine > "greater than" or ≤ "less than or equal" without inspecting both flags. It is best to structure your code to avoid these comparisons. If both operands are registers you can always swap them and use the complementary comparison operator. If the second operand is a literal you can implement ">" or "≤" by incrementing the literal and using "≥" or "<" instead. This will fail, however, when the literal is 0xFF. For this case you have to rearrange your logic to avoid these comparisons.
 
+  .. code-block:: picoblaze
+
+    ; Loop from 0 to 0xFE with < operation
+            load s0, 00
+    loop_a: <do something>
+            add s0, 01       ; Increment counter
+            compare s0, FF
+            jump C, loop_a   ; jump if s0 < 0xFF
+            
+    ; Loop from 0 to 0xFF with simulated ≤ operation
+            load s0, 00
+    loop_b: <do something>
+            add s0, 01       ; Increment counter
+            compare s0, 00
+            jump NZ, loop_b  ; Jump if s0 ≠ 0x00 (Same as s0 ≤ 0xFF)
+            
+    ; Alternatively, since overflow from 0xFF to 0x00 sets the C flag
+    ; you can skip the compare instruction:
+    
+    ; Loop from 0 to 0xFF with simulated ≤ operation
+            load s0, 00
+    loop_c: <do something>
+            add s0, 01       ; Increment counter
+            jump NC, loop_c  ; Jump if s0 didn't overflow (Same as s0 ≤ 0xFF)
+  
+
+.. _inst-comparecy:
 
 comparecy
 ~~~~~~~~~
 
-Compare two 8-bit values with carry. It is only available on PicoBlaze-6. This is the same as subtraction with carry without modifying the first operand. It extends comparison to support values larger than 8-bits.
+Compare two 8-bit values with carry. Available on PicoBlaze-6 only. This is the same as subtraction with carry without modifying the first operand. It extends comparison to support values larger than 8-bits.
 
 ===================================== ====================== ===============================
 Format                                Example                Result
@@ -449,6 +551,7 @@ Format                                Example                Result
 The C flag is set if an underflow occurs. i.e. the arithmetic result is less than 0. The Z flag is set when
 the result is zero and the previous Z flag was set.
 
+.. _inst-test:
 
 test
 ~~~~
@@ -465,12 +568,23 @@ Format                                Example                Result
 
 The C flag is set to the odd parity of the bits in the result (set for an odd number of '1' bits). The Z flag is set when the result is zero.
 
+This instruction is primarily used to test if certain bits in a register are set by non-destructively ANDing it with a constant mask.
 
+.. code-block:: picoblaze
+
+  constant my_mask, 02
+  load s0, 23
+  test s0, my_mask
+  jump NZ, bit_1_is_set
+  
+
+
+.. _inst-testcy:
 
 testcy
 ~~~~~~
 
-Perform the logical bitwise AND of two 8-bit values without modifying the first operand. It is only available on PicoBlaze-6. This extends the `test`_ instruction by combining the previous Z and C flag values into the result.
+Perform the logical bitwise AND of two 8-bit values without modifying the first operand. Available on PicoBlaze-6 only. This extends the `test`_ instruction by combining the previous Z and C flag values into the result.
 
 ======================================= ====================== ================================
 Format                                  Example                Result
@@ -486,7 +600,9 @@ The C flag is set to the odd parity of the bits in the result and the previous C
 Shift/rotate instructions
 -------------------------
 
-Owing to space constraints, the PicoBlaze does not have a barrel shifter. This means that shifts and rotations can only be performed one bit at a time. Multiple shifts and rotates must be performed with repeated instructions.
+Owing to space constraints, the PicoBlaze does not have a barrel shifter. This means that shifts and rotations can only be performed one bit at a time. Multiple shifts and rotates must be performed with repeated instructions. The Opbasm m4 package :ref:`has macros <Shift and rotate by multiple bits>` to do this for you.
+
+.. _inst-rl:
 
 rl
 ~~
@@ -501,6 +617,8 @@ Format                                Example                Result
 
 The C flag gets the old MSB from the register. The Z flag is set if the result is zero.
 
+.. _inst-rr:
+
 rr
 ~~
 
@@ -513,6 +631,8 @@ Format                                Example                Result
 ===================================== ====================== ================================
 
 The C flag gets the old LSB from the register. The Z flag is set if the result is zero.
+
+.. _inst-sl0:
 
 sl0
 ~~~
@@ -527,6 +647,7 @@ Format                                Example                Result
 
 The C flag gets the old MSB from the register. The Z flag is set if the result is zero.
 
+.. _inst-sl1:
 
 sl1
 ~~~
@@ -541,6 +662,7 @@ Format                                Example                Result
 
 The C flag gets the old MSB from the register. The Z flag is always cleared.
 
+.. _inst-sla:
 
 sla
 ~~~
@@ -555,6 +677,13 @@ Format                                Example                Result
 
 The C flag gets the old MSB from the register. The Z flag is set if the result is zero.
 
+.. code-block:: picoblaze
+
+  sl0 s0 ; MSB -> C
+  sla s1 ; Shift former MSB from s0 into LSB of s1
+
+
+.. _inst-slx:
 
 slx
 ~~~
@@ -569,6 +698,7 @@ Format                                Example                Result
 
 The C flag gets the old MSB from the register. The Z flag is set if the result is zero.
 
+.. _inst-sr0:
 
 sr0
 ~~~
@@ -583,6 +713,7 @@ Format                                Example                Result
 
 The C flag gets the old LSB from the register. The Z flag is set if the result is zero.
 
+.. _inst-sr1:
 
 sr1
 ~~~
@@ -597,6 +728,7 @@ Format                                Example                Result
 
 The C flag gets the old LSB from the register. The Z flag is set if the result is zero.
 
+.. _inst-sra:
 
 sra
 ~~~
@@ -611,6 +743,13 @@ Format                                Example                Result
 
 The C flag gets the old LSB from the register. The Z flag is set if the result is zero.
 
+.. code-block:: picoblaze
+
+  sr0 s1 ; LSB -> C
+  sra s0 ; Shift former LSB from s1 into MSB of s0
+
+
+.. _inst-srx:
 
 srx
 ~~~
@@ -625,11 +764,19 @@ Format                                Example                Result
 
 The C flag gets the old LSB from the register. The Z flag is set if the result is zero.
 
+.. code-block:: picoblaze
+
+  load s0, F0 ; -16
+  sra  s0     ; s0 == 0xF8  == -8
+
 
 Branching instructions
 ----------------------
 
 The following instructions are used to change the flow of execution.
+
+
+.. _inst-call:
 
 call
 ~~~~
@@ -641,18 +788,19 @@ Format                                Example                Result
 ===================================== ====================== =============================================
 ``call <address>``                    call my_label          PC is saved and jump to my_label address
 *(hardcoded address)*                 call 12A               PC is saved and jump to address 0x12A
-``call <flag code> <address>``        call Z, my_label       Conditional call to my_label if Z flag is set
+``call <flag code>, <address>``       call Z, my_label       Conditional call to my_label if Z flag is set
 ===================================== ====================== =============================================
 
 This is similar to `jump`_ but the program counter (PC) is saved on the hardware stack. This allows execution to resume at the next instruction when the subroutine completes with a `return`_ instruction.
 
-The address of the subroutine is typically provided through a label but a hardcoded address can also be used. A conditional call can be implemented by using one of the flag codes (Z, NZ, C, NC) as the first operand. The conditional call is only made if the flag matches the state in the instruction. Otherwise execution continues with the next instruction.
+The address of the subroutine is typically provided through a label but a hardcoded 12-bit address can also be used. A conditional call can be implemented by using one of the flag codes (Z, NZ, C, NC) as the first operand. The conditional call is only made if the flag matches the state in the instruction. Otherwise execution continues with the next instruction.
 
+.. _inst-call-at:
 
 call@
 ~~~~~
 
-Execute a subroutine at a variable address. The target address is determined at runtime. It is only available on PicoBlaze-6.
+Execute a subroutine at a variable address. The target address is determined at runtime. Available on PicoBlaze-6 only.
 
 =========================================== ====================== =============================================
 Format                                      Example                Result
@@ -674,6 +822,8 @@ This is a variation of an unconditional `call`_ that takes the address from a pa
   addcy s0, 00
   call@ (s0, s1)          ; Branch into my_func offset by sA number of instruction words
 
+.. _inst-jump:
+
 jump
 ~~~~
 
@@ -684,16 +834,17 @@ Format                                Example                Result
 ===================================== ====================== =============================================
 ``jump <address>``                    jump my_label          Jump to my_label address
 *(hardcoded address)*                 jump 12A               Jump to address 0x12A
-``jump <flag code> <address>``        jump Z, my_label       Conditional jump to my_label if Z flag is set
+``jump <flag code>, <address>``       jump Z, my_label       Conditional jump to my_label if Z flag is set
 ===================================== ====================== =============================================
 
 The target address is typically provided through a label but a hardcoded address can also be used. A conditional jump can be implemented by using one of the flag codes (Z, NZ, C, NC) as the first operand. The conditional jump is only made if the flag matches the state in the instruction. Otherwise execution continues with the next instruction.
 
+.. _inst-jump-at:
 
 jump@
 ~~~~~
 
-Jump to a variable address. The target address is determined at runtime. It is only available on PicoBlaze-6.
+Jump to a variable address. The target address is determined at runtime. Available on PicoBlaze-6 only.
 
 =========================================== ====================== =============================================
 Format                                      Example                Result
@@ -703,6 +854,7 @@ Format                                      Example                Result
 
 This is a variation of an unconditional `jump`_ that takes the address from a pair of registers. This is used to compute the target dynamically. Addresses are typically generated by initializing with the ``'upper`` and ``'lower`` modifiers on a label and then adding an offset.
 
+.. _inst-return:
 
 return
 ~~~~~~
@@ -717,6 +869,8 @@ Format                                Example                Result
 ===================================== ====================== =====================================================
 
 A conditional return can be implemented by using one of the flag codes (Z, NZ, C, NC) as the first operand. The conditional return is only made if the flag matches the state in the instruction. Otherwise execution continues with the next instruction.
+
+.. _inst-returni:
 
 returni
 ~~~~~~~
@@ -735,6 +889,8 @@ This performs an unconditional return from an interrupt handler. Interrupts are 
 Memory access instructions
 --------------------------
 
+.. _inst-fetch:
+
 fetch
 ~~~~~
 
@@ -747,6 +903,7 @@ Format                                   Example                Result
 ``fetch <dest. register>, (<register>)`` fetch s0, (sA)         s0 ⇐ scratchpad[sA]
 ======================================== ====================== ================================
 
+.. _inst-store:
 
 store
 ~~~~~
@@ -760,6 +917,8 @@ Format                                    Example                Result
 ``store <source register>, (<register>)`` store s0, (sA)         scratchpad[sA] ⇐ s0
 ========================================= ====================== ================================
 
+.. _inst-input:
+
 input
 ~~~~~
 
@@ -772,6 +931,7 @@ Format                                   Example                Result
 ``input <dest. register>, (<register>)`` input s0, (sA)         s0 ⇐ in_port[sA]
 ======================================== ====================== ==============================
 
+.. _inst-output:
 
 output
 ~~~~~~
@@ -785,10 +945,12 @@ Format                                     Example                Result
 ``output <source register>, (<register>)`` output s0, (sA)         out_port[sA] ⇐ s0
 ========================================== ====================== ==============================
 
+.. _inst-outputk:
+
 outputk
 ~~~~~~~
 
-Write to a constant optimized output port.
+Write to a constant optimized output port. Available on PicoBlaze-6 only.
 
 ========================================== ======================== ==============================
 Format                                     Example                  Result
@@ -796,10 +958,14 @@ Format                                     Example                  Result
 ``outputk <literal>, <address>``           outputk 5A, B            out_port[B] ⇐ 0x5A
 ========================================== ======================== ==============================
 
-This writes a constant value to the dedicated outputk ports. This avoids the `load`_, `output`_ pair required to write a constant to a normal output port. There are only 16 outputk ports 0-F.
+This writes a constant value to the dedicated outputk ports. This avoids the `load`_, `output`_ instruction pair required to write a constant to a normal output port. Useful if you want to write static data as fast as possible. There are only 16 outputk ports 0-F.
+
+When the literal is a string or table name this instruction is expanded into multiple copies for each character or byte.
 
 Miscellaneous instructions
 --------------------------
+
+.. _inst-disable:
 
 disable
 ~~~~~~~
@@ -812,6 +978,7 @@ Format                               Example                Result
 ``disable interrupt``                disable interrupt      Interrupts are no longer handled.
 ==================================== ====================== ==================================================
 
+.. _inst-enable:
 
 enable
 ~~~~~~
@@ -824,11 +991,12 @@ Format                               Example                Result
 ``enable interrupt``                 enable interrupt       Interrupts are handled.
 ==================================== ====================== ==================================================
 
+.. _inst-hwbuild:
 
 hwbuild
 ~~~~~~~
 
-Generate the hardware build version number. This is a PicoBlaze-6 only instruction.
+Generate the hardware build version number. Available on PicoBlaze-6 only.
 
 ==================================== ====================== ==================================================
 Format                               Example                Result
@@ -840,10 +1008,12 @@ The C flag is always set to '1'. The Z flag is set when the result is zero. This
 
 The build number is specified in the KCPSM6 "hwbuild" generic when it is instantiated.
 
+.. _inst-load_return:
+
 load&return
 ~~~~~~~~~~~
 
-Load a register and return. This is a PicoBlaze-6 only instruction.
+Load a register and return. Available on PicoBlaze-6 only.
 
 ===================================== ====================== ==================================================
 Format                                Example                Result
@@ -877,7 +1047,7 @@ This is used to do a constant load and return in a single instruction. It is pri
     jump loop
   done:
 
-You ordinarily wouldn't implement tables by manually writing each load&return instruction. The assembler has built in support for generating sequences of load&return instructions when the literal operand is the name of a defined string or table
+You ordinarily wouldn't implement tables by manually writing each ``load&return`` instruction. The assembler has built in support for generating sequences of ``load&return`` instructions when the literal operand is the name of a defined string or table.
 
 .. code-block:: picoblaze
 
@@ -894,10 +1064,12 @@ You ordinarily wouldn't implement tables by manually writing each load&return in
   ...
   <call@ code to access my_table and message>
 
+.. _inst-regbank:
+
 regbank
 ~~~~~~~
 
-Switch between register banks. Only for PicoBlaze-6.
+Switch between register banks. Available on PicoBlaze-6 only.
 
 ===================================== ====================== ==================================================
 Format                                Example                Result

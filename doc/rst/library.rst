@@ -367,7 +367,7 @@ Opbasm PicoBlaze macro library reference
   
   Carry flag is set in accordance with signed relation.
   
-  Zero flag is indeterminate. Use normal compare instruction for == and !=
+  Zero flag is indeterminate. Use normal :ref:`inst-compare` instruction for == and !=
   
   .. note:: This calls the setcy() macro and depends on the tempreg
   
@@ -446,7 +446,7 @@ Opbasm PicoBlaze macro library reference
   This can generate two types of delay loops. The default is a recursive
   delay implemented without any registers. For delays of 511 cycles or less
   a more efficient loop can be generated if a loop count register is defined
-  first by calling the use_delay_reg() macro.
+  first by calling the :pb:macro:`use_delay_reg` macro.
   
   .. rubric:: Example:
   
@@ -928,7 +928,7 @@ Opbasm PicoBlaze macro library reference
   A macro is generated to prepare the stack arguments and call the function.
   The function will save registers automatically and load the stack arguments.
   The saved registers and call frame are cleaned up at the end.
-  Do not use RETURN instructions in the code body. Instead call the
+  Do not use :ref:`inst-return` instructions in the code body. Instead call the
   leave_func() macro. Use the retvalue() macro to store return values
   on the stack.
   
@@ -992,7 +992,7 @@ Opbasm PicoBlaze macro library reference
   Signed comparison is invoked with ``signed(comparison expr.)``
   With signed comparison the right operand cannot be a named constant.
   
-  With the & operator, a test instruction is used in place of compare. The true
+  With the & operator, a :ref:`inst-test` instruction is used in place of compare. The true
   clause is executed when the result is non-zero.
   
   This macro performs a comparison of the left and right operands and then inserts
@@ -1014,7 +1014,7 @@ Opbasm PicoBlaze macro library reference
   :param Arg1: True clause
   :param Arg2: Optional else clause
   
-  These macros insert labels and jump instructions to implement the behavior of
+  These macros insert labels and :ref:`inst-jump` instructions to implement the behavior of
   an if-then or if-then-else statement testing for equality, inequality,
   greater-or-equal, or less-than.
   
@@ -1191,7 +1191,7 @@ Opbasm PicoBlaze macro library reference
   ISR definition.
   
   This creates an ISR that takes care of saving registers on the stack.
-  Do not use RETURNI instructions in the code body. Instead call the
+  Do not use :ref:`inst-returni` instructions in the code body. Instead call the
   leave_func() macro.
   By default the ISR returns with interrupts enabled. You can leave them
   disabled by passing "disable" as Arg3.

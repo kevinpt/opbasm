@@ -49,7 +49,7 @@ def do_test(self):
   # Run the test
   opbsim = FindOpbsim()
   cmd = '{} -m:{} -j --{}'.format(opbsim, mem_file, self.target)
-  #print('Running opbsim:', cmd)
+  print('Running opbsim:', cmd)
   try:
     json_out = subprocess.check_output(cmd, shell=True)
   except subprocess.CalledProcessError as e:

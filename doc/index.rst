@@ -7,7 +7,7 @@
 Open PicoBlaze Assembler
 ========================
 
-Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers `provided by Xilinx <http://www.xilinx.com/products/intellectual-property/picoblaze.htm>`_. It will run readily on any platform with a Python interpreter. Opbasm provides a better performing solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.
+Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers `provided by Xilinx <http://www.xilinx.com/products/intellectual-property/picoblaze.html>`_. It will run readily on any platform with a Python interpreter. Opbasm provides a better performing solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.
 
 .. raw:: html
 
@@ -34,12 +34,17 @@ Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaz
  
  * A basic :doc:`command line simulator Opbsim <rst/opbsim>` is included.
 
-
 Support for the full PicoBlaze-6 syntax is provided as well as `enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code`_. The original templating system for ROM components is supported as well as a more flexible `generic ROM component`_ that can read *.mem* and *.hex* files directly during synthesis and simulation. A utility script is included that permits `updating the ROM contents of a bitstream file`_ without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.
 
 Files generated on non-Windows platforms will not have DOS line endings and PicoBlaze-3 files are not restricted to 8.3 file names. Opbasm also runs significantly faster than the native implementation:
 
 .. image:: images/opbasm_perf.png
+
+
+Learning about PicoBlaze
+------------------------
+
+If you are unfamiliar with the PicoBlaze architecture you can review the :doc:`reference guide <rst/language>` that describes its inner workings. The official documentation for KCPSM6 is also useful as Opbasm supports its syntax completely with a few extensions. If you are unfamiliar with assembly language programming in general there is a :doc:`tutorial <rst/tutorial>` that can guide you through the process of writing in assembly and demonstrates the steps needed to develop a working program.
 
 Requirements
 ------------
@@ -109,13 +114,13 @@ For PicoBlaze-3 you can use the following syntax extensions from PicoBlaze-6:
   * Predefined char constants and date/time stamp fields (``CR, LF, HT, datestamp_day``, etc.)
   * Inverted constants ( ``~my_const`` )
   * Environment variable constants ( ``constant foo, %my_env_const`` )
-  * INCLUDE, DEFAULT_JUMP, and INST directives
+  * :ref:`INCLUDE <inst-include>`, :ref:`DEFAULT_JUMP <inst-default_jump>`, and :ref:`INST <inst-inst>` directives
   * Address label constants ( ``my_label'upper  my_label'lower`` )
 
 For PicoBlaze-3 you *CANNOT* use the following:
 
-  * STRING and TABLE directives
-  * PicoBlaze-6 instructions (``CALL@, COMPARECY, HWBUILD, JUMP@, LOAD&RETURN, OUTPUTK, REGBANK, STAR, TESTCY``)
+  * :ref:`STRING <inst-string>` and :ref:`TABLE <inst-table>` directives
+  * :ref:`PicoBlaze-6 instructions <inst-pb6>` (``CALL@, COMPARECY, HWBUILD, JUMP@, LOAD&RETURN, OUTPUTK, REGBANK, STAR, TESTCY``)
 
 Note that the included m4 macros have :ref:`alternative string operations <string and table ops>` that do work on PicoBlaze-3 as well as a :ref:`portable string system <Portable string and table operations>` that is optimized for both target processors.
 
@@ -152,7 +157,7 @@ Two non-standard syntax extensions have been implemented in Opbasm. The first is
     
   jump my_proc.loop ; Access the local label by referring to its expanded name
   
-Another small extension to the syntax is that the ADDRESS directive can take a label as a parameter as well as a numeric address. This is most useful when defining an ISR by inserting a ``jump`` instruction at the vector address and then returning back to a labeled address to resume assembling code from the the next point in memory.
+Another small extension to the syntax is that the :ref:`inst-address` directive can take a label as a parameter as well as a numeric address. This is most useful when defining an ISR by inserting a :ref:`inst-jump` instruction at the vector address and then returning back to a labeled address to resume assembling code from the the next point in memory.
 
 .. code-block:: picoblaze
 
@@ -176,15 +181,15 @@ Opbasm provides static code analysis to identify unreachable "dead" instructions
 
 The *-d* (*--report-dead-code*) option activates static code analysis and shows dead instructions in the log file with "DEAD" after the assembled instruction. Instructions identified as dead will be reported and also removed when *-r* (*--remove-dead-code*) is used. Removed instructions appear in the log as comments starting with ";REMOVED:".
 
-Static analysis is performed by following all possible execution paths from a set of initial entry points. There are three possible entry points for PicoBlaze code: address 0, the ``DEFAULT_JUMP`` target (if used), and the ISR. The *-e* (*--entry-point*) option provides the address of the ISR entry point. It should be a decimal integer or a hex value in 0xnnn format. The ISR entry point defaults to 0x3FF. You will see a summary of the entry point addresses and the number of dead instructions found reported to standard output.
+Static analysis is performed by following all possible execution paths from a set of initial entry points. There are three possible entry points for PicoBlaze code: address 0, the :ref:`inst-default_jump` target (if used), and the ISR. The *-e* (*--entry-point*) option provides the address of the ISR entry point. It should be a decimal integer or a hex value in 0xnnn format. The ISR entry point defaults to 0x3FF. You will see a summary of the entry point addresses and the number of dead instructions found reported to standard output.
 
-The static analysis can't follow the computed destination of ``CALL@`` and ``JUMP@`` instructions. A *";PRAGMA keep"* meta-comment can be used to prevent removal of code they jump to. Surround blocks of code with *";PRAGMA keep on"* and *";PRAGMA keep off"* to preserve them. These meta-comments are case insensitive. The log file will show kept instructions with "KEEP" after the assembled instruction.
+The static analysis can't follow the computed destination of :ref:`call@ <inst-call-at>` and :ref:`jump@ <inst-jump-at>` instructions. A *";PRAGMA keep"* meta-comment can be used to prevent removal of code they jump to. Surround blocks of code with *";PRAGMA keep on"* and *";PRAGMA keep off"* to preserve them. These meta-comments are case insensitive. The log file will show kept instructions with "KEEP" after the assembled instruction.
 
 .. figure:: images/static_analysis.png
   
   *Static analysis example*
 
-As an aid to the user, the static analyzer will automatically keep any code that is called or jumped to from a user annotated "keep" block. These blocks are identified with the name "keep_auto" in the log file. In addition, "keep_auto" is automatically applied to blocks of ``LOAD&RETURN`` instructions that are associated with a label in use. The result is that only unreferenced strings and tables will be marked as dead and potentially removed. "keep_auto" is also automatically applied to any ``INST`` directives.
+As an aid to the user, the static analyzer will automatically keep any code that is called or jumped to from a user annotated "keep" block. These blocks are identified with the name "keep_auto" in the log file. In addition, "keep_auto" is automatically applied to blocks of :ref:`load&return <inst-load_return>` instructions that are associated with a label in use. The result is that only unreferenced strings and tables will be marked as dead and potentially removed. "keep_auto" is also automatically applied to any :ref:`inst-inst` directives.
 
 On the first assembly pass it is possible that the amount of extra code present causes spillover beyond the total memory available. When dead code removal is active the bounds checking is suspended on the first pass to allow for the possibility that the code will fit after it is trimmed down. Address bounds checking will still be applied on the final result.
 
@@ -299,6 +304,8 @@ To save the bother of hunting down templates when you start a new project, you c
   ROM_form_S3_1K.vhdl,picoblaze_rom.vhdl
     COPYING:  /usr/local/lib/python2.7/dist-packages/opbasm-1.0-py2.7.egg/templates/ROM_form_S3_1K.vhdl
     COPYING:  /usr/local/lib/python2.7/dist-packages/opbasm-1.0-py2.7.egg/templates/picoblaze_rom.vhdl
+
+.. _generic_rom:
 
 Generic ROM component
 ~~~~~~~~~~~~~~~~~~~~~
@@ -444,6 +451,8 @@ PicoBlaze syntax highlighting rules for Gedit and Notepad++ have been included i
    rst/m4
    rst/opbsim
    rst/library
+   rst/language
+   rst/tutorial
 
 
 Licensing

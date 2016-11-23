@@ -1,0 +1,1 @@
+line('/instruction', '/register', ',', '/literal')
