@@ -1,6 +1,6 @@
 include(`setup.m4')
 
-;VALIDATES: sl0, sr0, sla, sra, slx, srx, rl, rr
+;VALIDATES: sl0, sr0, sl1, sr1, sla, sra, slx, srx, rl, rr
 
 ;:::::::::: Shifts and rotates ::::::::::
 
@@ -10,6 +10,13 @@ sl0(s0, 1)
 assert_true(s0 == 0x80)
 sr0(s0, 2)
 assert_true(s0 == 0x20)
+
+load s0, 40
+
+sl1(s0, 1)
+assert_true(s0 == 0x81)
+sr1(s0, 2)
+assert_true(s0 == 0xE0)
 
 load s0, 0F
 sla(s0, 3)
