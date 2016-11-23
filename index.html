@@ -25,8 +25,8 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link href='//fonts.googleapis.com/css?family=Kreon:400,300,700' rel='stylesheet' type='text/css'>
-
+    <link rel="top" title="Opbasm 1.3 documentation" href="#" />
+    <link rel="next" title="m4 support in Opbasm" href="rst/m4.html" />
 
    
   
@@ -57,7 +57,7 @@
             
   <div class="section" id="open-picoblaze-assembler">
 <h1>Open PicoBlaze Assembler<a class="headerlink" href="#open-picoblaze-assembler" title="Permalink to this headline">¶</a></h1>
-<p>Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers <a class="reference external" href="http://www.xilinx.com/products/intellectual-property/picoblaze.htm">provided by Xilinx</a>. It will run readily on any platform with a Python interpreter. Opbasm provides a better performing solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.</p>
+<p>Opbasm is a free cross-platform assembler for the PicoBlaze-3 (PB3) and PicoBlaze-6 (PB6) microcontrollers <a class="reference external" href="http://www.xilinx.com/products/intellectual-property/picoblaze.html">provided by Xilinx</a>. It will run readily on any platform with a Python interpreter. Opbasm provides a better performing solution to assembling PicoBlaze code without resorting to DOS or Windows emulation to run the native KCPSM assemblers.</p>
 <tty-player autoplay loop controls src="_static/tty/demo.ttyrec"></tty-player><p><strong>Special features of Opbasm:</strong></p>
 <blockquote>
 <div><ul class="simple">
@@ -83,13 +83,17 @@
 <p>Support for the full PicoBlaze-6 syntax is provided as well as <a class="reference internal" href="#enabling-most-of-the-new-pb6-syntax-enhancements-in-picoblaze-3-code">enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code</a>. The original templating system for ROM components is supported as well as a more flexible <a class="reference internal" href="#generic-rom-component">generic ROM component</a> that can read <em>.mem</em> and <em>.hex</em> files directly during synthesis and simulation. A utility script is included that permits <a class="reference internal" href="#updating-the-rom-contents-of-a-bitstream-file">updating the ROM contents of a bitstream file</a> without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.</p>
 <p>Files generated on non-Windows platforms will not have DOS line endings and PicoBlaze-3 files are not restricted to 8.3 file names. Opbasm also runs significantly faster than the native implementation:</p>
 <img alt="_images/opbasm_perf.png" src="_images/opbasm_perf.png" />
+<div class="section" id="learning-about-picoblaze">
+<h2>Learning about PicoBlaze<a class="headerlink" href="#learning-about-picoblaze" title="Permalink to this headline">¶</a></h2>
+<p>If you are unfamiliar with the PicoBlaze architecture you can review the <a class="reference internal" href="rst/language.html"><em>reference guide</em></a> that describes its inner workings. The official documentation for KCPSM6 is also useful as Opbasm supports its syntax completely with a few extensions. If you are unfamiliar with assembly language programming in general there is a <a class="reference internal" href="rst/tutorial.html"><em>tutorial</em></a> that can guide you through the process of writing in assembly and demonstrates the steps needed to develop a working program.</p>
+</div>
 <div class="section" id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
-<p>Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn&#8217;t currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package. The source is written in Python 2.7 syntax but will convert cleanly to Python 3 when the installer passes it through 2to3.</p>
+<p>Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn&#8217;t currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package. The source is written in Python 2.7 syntax but will convert cleanly to Python 3 when the installer passes it through <tt class="docutils literal"><span class="pre">2to3</span></tt>.</p>
 </div>
 <div class="section" id="download">
 <h2>Download<a class="headerlink" href="#download" title="Permalink to this headline">¶</a></h2>
-<p>You can access the Opbasm Git repository from <a class="reference external" href="https://github.com/kevinpt/opbasm">Github</a>. <a class="reference external" href="https://goo.gl/tz2vwz">Packaged source code</a> is also available for download. You can install direct from PyPI with the &#8220;pip&#8221; command if you have it available.</p>
+<p>You can access the Opbasm Git repository from <a class="reference external" href="https://github.com/kevinpt/opbasm">Github</a>. <a class="reference external" href="https://goo.gl/tz2vwz">Packaged source code</a> is also available for download. You can install direct from PyPI with the <tt class="docutils literal"><span class="pre">pip</span></tt> command if you have it available.</p>
 </div>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
@@ -99,8 +103,12 @@
 <div class="highlight-sh"><div class="highlight"><pre>&gt; pip install --upgrade opbasm
 </pre></div>
 </div>
-<p>This will download and install the latest release, upgrading if you already have it installed. If you don&#8217;t have &#8220;pip&#8221; you may have the &#8220;easy_install&#8221; command available which can be used to install &#8220;pip&#8221; on your system:</p>
+<p>This will download and install the latest release, upgrading if you already have it installed. If you don&#8217;t have <tt class="docutils literal"><span class="pre">pip</span></tt> you may have the <tt class="docutils literal"><span class="pre">easy_install</span></tt> command available which can be used to install <tt class="docutils literal"><span class="pre">pip</span></tt> on your system:</p>
 <div class="highlight-sh"><div class="highlight"><pre>&gt; easy_install pip
+</pre></div>
+</div>
+<p>You can also use <tt class="docutils literal"><span class="pre">pip</span></tt> to get the latest development code from Github:</p>
+<div class="highlight-sh"><div class="highlight"><pre>&gt; pip install --upgrade https://github.com/kevinpt/opbasm/tarball/master
 </pre></div>
 </div>
 <p>If you manually downloaded a source package or created a clone with Git you can install Opbasm with the following command run from the base Opbasm directory:</p>
@@ -125,18 +133,18 @@
 <li>Predefined char constants and date/time stamp fields (<tt class="docutils literal"><span class="pre">CR,</span> <span class="pre">LF,</span> <span class="pre">HT,</span> <span class="pre">datestamp_day</span></tt>, etc.)</li>
 <li>Inverted constants ( <tt class="docutils literal"><span class="pre">~my_const</span></tt> )</li>
 <li>Environment variable constants ( <tt class="docutils literal"><span class="pre">constant</span> <span class="pre">foo,</span> <span class="pre">%my_env_const</span></tt> )</li>
-<li>INCLUDE, DEFAULT_JUMP, and INST directives</li>
+<li><a class="reference internal" href="rst/language.html#inst-include"><em>INCLUDE</em></a>, <a class="reference internal" href="rst/language.html#inst-default-jump"><em>DEFAULT_JUMP</em></a>, and <a class="reference internal" href="rst/language.html#inst-inst"><em>INST</em></a> directives</li>
 <li>Address label constants ( <tt class="docutils literal"><span class="pre">my_label'upper</span>&nbsp; <span class="pre">my_label'lower</span></tt> )</li>
 </ul>
 </div></blockquote>
 <p>For PicoBlaze-3 you <em>CANNOT</em> use the following:</p>
 <blockquote>
 <div><ul class="simple">
-<li>STRING and TABLE directives</li>
-<li>PicoBlaze-6 instructions (<tt class="docutils literal"><span class="pre">CALL&#64;,</span> <span class="pre">COMPARECY,</span> <span class="pre">HWBUILD,</span> <span class="pre">JUMP&#64;,</span> <span class="pre">LOAD&amp;RETURN,</span> <span class="pre">OUTPUTK,</span> <span class="pre">REGBANK,</span> <span class="pre">STAR,</span> <span class="pre">TESTCY</span></tt>)</li>
+<li><a class="reference internal" href="rst/language.html#inst-string"><em>STRING</em></a> and <a class="reference internal" href="rst/language.html#inst-table"><em>TABLE</em></a> directives</li>
+<li><a class="reference internal" href="rst/language.html#inst-pb6"><em>PicoBlaze-6 instructions</em></a> (<tt class="docutils literal"><span class="pre">CALL&#64;,</span> <span class="pre">COMPARECY,</span> <span class="pre">HWBUILD,</span> <span class="pre">JUMP&#64;,</span> <span class="pre">LOAD&amp;RETURN,</span> <span class="pre">OUTPUTK,</span> <span class="pre">REGBANK,</span> <span class="pre">STAR,</span> <span class="pre">TESTCY</span></tt>)</li>
 </ul>
 </div></blockquote>
-<p>Note that the included m4 macros have <a class="reference internal" href="rst/m4.html#string-and-table-ops"><em>alternative string operations</em></a> that do work on PicoBlaze-3.</p>
+<p>Note that the included m4 macros have <a class="reference internal" href="rst/m4.html#string-and-table-ops"><em>alternative string operations</em></a> that do work on PicoBlaze-3 as well as a <a class="reference internal" href="rst/m4.html#portable-string-and-table-operations"><em>portable string system</em></a> that is optimized for both target processors.</p>
 <p>Refer to the file &#8220;all_kcpsm6_syntax.psm&#8221; distributed with KCPSM6 for a detailed
 explanation of the new PicoBlaze-6 syntax.</p>
 </div>
@@ -146,7 +154,7 @@ explanation of the new PicoBlaze-6 syntax.</p>
 </div>
 <div class="section" id="syntax-extensions">
 <h2>Syntax extensions<a class="headerlink" href="#syntax-extensions" title="Permalink to this headline">¶</a></h2>
-<p>Two non-standard syntax extensions have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a &#8221;.&#8221;. Local labels do not have to be globally unique making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately preceeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.</p>
+<p>Two non-standard syntax extensions have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a &#8221;.&#8221;. Local labels do not have to be globally unique, making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately preceeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_proc:</span>
   <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">04</span>
 <span class="nl">.loop:</span>            <span class="c">; Local label for this procedure</span>
@@ -165,7 +173,7 @@ explanation of the new PicoBlaze-6 syntax.</p>
 <span class="k">jump</span> <span class="n">my_proc.loop</span> <span class="c">; Access the local label by referring to its expanded name</span>
 </pre></div>
 </div>
-<p>Another small extension to the syntax is that the ADDRESS directive can take a label as a parameter as well as a numeric address. This is most useful when defining an ISR by inserting a <tt class="docutils literal"><span class="pre">jump</span></tt> instruction at the vector address and then returning back to a labeled address to resume assembling code from the the next point in memory.</p>
+<p>Another small extension to the syntax is that the <a class="reference internal" href="rst/language.html#inst-address"><em>address</em></a> directive can take a label as a parameter as well as a numeric address. This is most useful when defining an ISR by inserting a <a class="reference internal" href="rst/language.html#inst-jump"><em>jump</em></a> instruction at the vector address and then returning back to a labeled address to resume assembling code from the the next point in memory.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_isr:</span>
   <span class="k">address</span> <span class="mh">3FF</span>
   <span class="k">jump</span> <span class="n">my_isr</span>     <span class="c">; Assemble instruction at interrupt vector location</span>
@@ -183,13 +191,13 @@ explanation of the new PicoBlaze-6 syntax.</p>
 <h2>Static code analysis<a class="headerlink" href="#static-code-analysis" title="Permalink to this headline">¶</a></h2>
 <p>Opbasm provides static code analysis to identify unreachable &#8220;dead&#8221; instructions and potentially remove them to eliminate wasted memory. There are three command line options <em>-d</em> (<em>&#8211;report-dead-code</em>), <em>-r</em> (<em>&#8211;remove-dead-code</em>), and <em>-e</em> (<em>&#8211;entry-point</em>) used to control static code analysis.</p>
 <p>The <em>-d</em> (<em>&#8211;report-dead-code</em>) option activates static code analysis and shows dead instructions in the log file with &#8220;DEAD&#8221; after the assembled instruction. Instructions identified as dead will be reported and also removed when <em>-r</em> (<em>&#8211;remove-dead-code</em>) is used. Removed instructions appear in the log as comments starting with &#8221;;REMOVED:&#8221;.</p>
-<p>Static analysis is performed by following all possible execution paths from a set of initial entry points. There are three possible entry points for PicoBlaze code: address 0, the <tt class="docutils literal"><span class="pre">DEFAULT_JUMP</span></tt> target (if used), and the ISR. The <em>-e</em> (<em>&#8211;entry-point</em>) option provides the address of the ISR entry point. It should be a decimal integer or a hex value in 0xnnn format. The ISR entry point defaults to 0x3FF. You will see a summary of the entry point addresses and the number of dead instructions found reported to standard output.</p>
-<p>The static analysis can&#8217;t follow the computed destination of <tt class="docutils literal"><span class="pre">CALL&#64;</span></tt> and <tt class="docutils literal"><span class="pre">JUMP&#64;</span></tt> instructions. A <em>&#8221;;PRAGMA keep&#8221;</em> meta-comment can be used to prevent removal of code they jump to. Surround blocks of code with <em>&#8221;;PRAGMA keep on&#8221;</em> and <em>&#8221;;PRAGMA keep off&#8221;</em> to preserve them. These meta-comments are case insensitive. The log file will show kept instructions with &#8220;KEEP&#8221; after the assembled instruction.</p>
+<p>Static analysis is performed by following all possible execution paths from a set of initial entry points. There are three possible entry points for PicoBlaze code: address 0, the <a class="reference internal" href="rst/language.html#inst-default-jump"><em>default_jump</em></a> target (if used), and the ISR. The <em>-e</em> (<em>&#8211;entry-point</em>) option provides the address of the ISR entry point. It should be a decimal integer or a hex value in 0xnnn format. The ISR entry point defaults to 0x3FF. You will see a summary of the entry point addresses and the number of dead instructions found reported to standard output.</p>
+<p>The static analysis can&#8217;t follow the computed destination of <a class="reference internal" href="rst/language.html#inst-call-at"><em>call&#64;</em></a> and <a class="reference internal" href="rst/language.html#inst-jump-at"><em>jump&#64;</em></a> instructions. A <em>&#8221;;PRAGMA keep&#8221;</em> meta-comment can be used to prevent removal of code they jump to. Surround blocks of code with <em>&#8221;;PRAGMA keep on&#8221;</em> and <em>&#8221;;PRAGMA keep off&#8221;</em> to preserve them. These meta-comments are case insensitive. The log file will show kept instructions with &#8220;KEEP&#8221; after the assembled instruction.</p>
 <div class="figure">
 <img alt="_images/static_analysis.png" src="_images/static_analysis.png" />
 <p class="caption"><em>Static analysis example</em></p>
 </div>
-<p>As an aid to the user, the static analyzer will automatically keep any code that is called or jumped to from a user annotated &#8220;keep&#8221; block. These blocks are identified with the name &#8220;keep_auto&#8221; in the log file. In addition, &#8220;keep_auto&#8221; is automatically applied to blocks of <tt class="docutils literal"><span class="pre">LOAD&amp;RETURN</span></tt> instructions that are associated with a label in use. The result is that only unreferenced strings and tables will be marked as dead and potentially removed. &#8220;keep_auto&#8221; is also automatically applied to any <tt class="docutils literal"><span class="pre">INST</span></tt> directives.</p>
+<p>As an aid to the user, the static analyzer will automatically keep any code that is called or jumped to from a user annotated &#8220;keep&#8221; block. These blocks are identified with the name &#8220;keep_auto&#8221; in the log file. In addition, &#8220;keep_auto&#8221; is automatically applied to blocks of <a class="reference internal" href="rst/language.html#inst-load-return"><em>load&amp;return</em></a> instructions that are associated with a label in use. The result is that only unreferenced strings and tables will be marked as dead and potentially removed. &#8220;keep_auto&#8221; is also automatically applied to any <a class="reference internal" href="rst/language.html#inst-inst"><em>inst</em></a> directives.</p>
 <p>On the first assembly pass it is possible that the amount of extra code present causes spillover beyond the total memory available. When dead code removal is active the bounds checking is suspended on the first pass to allow for the possibility that the code will fit after it is trimmed down. Address bounds checking will still be applied on the final result.</p>
 </div>
 <div class="section" id="using-opbasm">
@@ -289,7 +297,7 @@ ROM_form_S3_1K.vhdl,picoblaze_rom.vhdl
 </div>
 </div>
 <div class="section" id="generic-rom-component">
-<h3>Generic ROM component<a class="headerlink" href="#generic-rom-component" title="Permalink to this headline">¶</a></h3>
+<span id="generic-rom"></span><h3>Generic ROM component<a class="headerlink" href="#generic-rom-component" title="Permalink to this headline">¶</a></h3>
 <p>As an alternative to the templating system, a generic, synthesizable VHDL ROM is provided in the <a class="reference external" href="https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl">picoblaze_rom.vhdl</a>  file. This component uses XSTs limited support for textio during synthesis to read a <em>.mem</em> or <em>.hex</em> file directly without the use of a template file. It takes advantage of XSTs support for automatically partitioning memories that exceed the maximum size of a BRAM. This provides a simplification of the synthesis flow and you do not need to manually switch to different template files if you change the size of the ROM for PicoBlaze-6 designs. For simulation, this component has the advantage that it doesn&#8217;t have to be recompiled for every change to the PicoBlaze source code in a design and is portable across Xilinx families. It automatically re-reads the latest <em>.mem</em> or <em>.hex</em> whenever the simulation is reset. A generic can be set to select the implementation as BRAM or distributed RAM.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
@@ -348,11 +356,11 @@ ROM_form_S3_1K.vhdl,picoblaze_rom.vhdl
 <div class="section" id="updating-bit-files">
 <span id="updating-the-rom-contents-of-a-bitstream-file"></span><h2>Updating bit files<a class="headerlink" href="#updating-bit-files" title="Permalink to this headline">¶</a></h2>
 <p>The KCPSM3 assembler included a program and batch file that automated the process of updating a PicoBlaze ROM in a bit file without requiring a resynthesis. For PicoBlaze-6 that process has been abandoned in favor of using the JTAG loader.</p>
-<p>Because some platforms don&#8217;t readily support the use of the JTAG loader, the old system of updating bit files has been reimplemented as a utility script <em>pb_update</em>. You will need to have a new <em>.mem</em> file along with the top level <em>.ncd</em> and <em>.bit</em> files for the design. The Xilinx ISE tools <em>xdl</em> and <em>data2mem</em> must be accessible from your command line path.</p>
+<p>Because some platforms don&#8217;t readily support the use of the JTAG loader, the old system of updating bit files has been reimplemented as a utility script <tt class="docutils literal"><span class="pre">pb_update</span></tt>. You will need to have a new <em>.mem</em> file along with the top level <em>.ncd</em> and <em>.bit</em> files for the design. The Xilinx ISE tools <tt class="docutils literal"><span class="pre">xdl</span></tt> and <tt class="docutils literal"><span class="pre">data2mem</span></tt> must be accessible from your command line path.</p>
 <img alt="_images/pb_update.png" src="_images/pb_update.png" />
 <p>When run, the <em>pb_update</em> script will convert the <em>.ncd</em> netlist to the textual <em>.xdl</em> format and scan it for any block RAM instances. If one BRAM is found it is assumed to be the PicoBlaze ROM. If multiple BRAMs are in the design, a list is provided with their instance names and you are prompted to select which one(s) are part of the PicoBlaze ROM.</p>
 <p>If the ROM is divided amongst multiple BRAMs the interactive selection process lets you describe the layout of the memory array. You select the BRAM instances needed to fill out a row of memory until 18 bits for an instruction word are allocated. If the required memory depth isn&#8217;t satisfied a new row of memory is started where you continue to add BRAMs. The required depth is derived from the number of words present in the assembled <em>.mem</em> file.</p>
-<p>Once the layout is described, <em>pb_update</em> runs the <em>data2mem</em> program with the contents for each BRAM generated according to the layout. After the first run with the interactive BRAM selection, <em>pb_update</em> outputs a string describing the layout specification that can be passed with the <em>-l &#8220;&lt;specification string&gt;&#8221;</em> option to bypass the interactive mode on future runs.</p>
+<p>Once the layout is described, <tt class="docutils literal"><span class="pre">pb_update</span></tt> runs the <tt class="docutils literal"><span class="pre">data2mem</span></tt> program with the contents for each BRAM generated according to the layout. After the first run with the interactive BRAM selection, <tt class="docutils literal"><span class="pre">pb_update</span></tt> outputs a string describing the layout specification that can be passed with the <tt class="docutils literal"><span class="pre">-l</span> <span class="pre">&quot;&lt;specification</span> <span class="pre">string&gt;&quot;</span></tt> option to bypass the interactive mode on future runs.</p>
 <div class="highlight-python"><div class="highlight"><pre>&gt; pb_update -m foobar.mem -n foobar.ncd
 PicoBlaze ROM updater
 Running XDL...
@@ -408,6 +416,13 @@ Generated updated bit file: new_foobar.bit
 <h2>Licensing<a class="headerlink" href="#licensing" title="Permalink to this headline">¶</a></h2>
 <p>Opbasm and the included VHDL source is licensed for free commercial and non-commercial use under the terms of the MIT license.</p>
 </div>
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
 </div>
 
 
@@ -457,6 +472,7 @@ Generated updated bit file: new_foobar.bit
   <h3><a href="#">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Open PicoBlaze Assembler</a><ul>
+<li><a class="reference internal" href="#learning-about-picoblaze">Learning about PicoBlaze</a></li>
 <li><a class="reference internal" href="#requirements">Requirements</a></li>
 <li><a class="reference internal" href="#download">Download</a></li>
 <li><a class="reference internal" href="#installation">Installation</a></li>
@@ -474,6 +490,7 @@ Generated updated bit file: new_foobar.bit
 <li><a class="reference internal" href="#updating-bit-files">Updating bit files</a></li>
 <li><a class="reference internal" href="#syntax-highlighting">Syntax highlighting</a></li>
 <li><a class="reference internal" href="#licensing">Licensing</a></li>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
 </ul>
 </li>
 </ul>
@@ -571,7 +588,6 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
       </div>
       <div class="clearer"></div>
     </div>
-
     <div class="footer">
       &copy;2015, Kevin Thibedeau.
       
@@ -583,17 +599,5 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
     
 
     
-
-<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-  ga('create', 'UA-52148206-1', 'auto');
-  ga('send', 'pageview');
-
-</script>
-
   </body>
 </html>

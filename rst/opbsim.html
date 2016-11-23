@@ -25,8 +25,9 @@
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
-    <link href='//fonts.googleapis.com/css?family=Kreon:400,300,700' rel='stylesheet' type='text/css'>
-
+    <link rel="top" title="Opbasm 1.3 documentation" href="../index.html" />
+    <link rel="next" title="Opbasm PicoBlaze macro library reference" href="library.html" />
+    <link rel="prev" title="m4 support in Opbasm" href="m4.html" />
 
    
   
@@ -100,7 +101,7 @@ Options:
   --pb6                         Simulate PicoBlaze-6 code [default]
 </pre></div>
 </div>
-<p>You have to provide a MEM file with the <tt class="docutils literal"><span class="pre">-m</span></tt> option. As a guard against infinite loops, there is a default execution limit of 100 million instructions (4 seconds of simulation time at 50 MHz). You can increase or decrease this limit with <tt class="docutils literal"><span class="pre">-L</span></tt>. PB6 is the default processor target. You have to use the <tt class="docutils literal"><span class="pre">--pb3</span></tt> option to simulate PB3 code. Note that Opbsim cannot detect the difference between PB3 and PB6 code and will produce erroneous results if you simulate with the wrong target.</p>
+<p>You have to provide a MEM file with the <tt class="docutils literal"><span class="pre">-m</span></tt> option. As a guard against infinite loops, there is a default execution limit of 100 million instructions (4 seconds of simulation time at 50 MHz). You can increase or decrease this limit with <tt class="docutils literal"><span class="pre">-L</span></tt>. PB6 is the default processor target. You have to use the <tt class="docutils literal"><span class="pre">--pb3</span></tt> option to simulate PB3 code. Opbsim cannot detect the difference between PB3 and PB6 code and will produce erroneous results if you simulate with the wrong target.</p>
 <div class="highlight-python"><div class="highlight"><pre>&gt; opbasm -6 carry_flag.psm4
 ...
 &gt; opbsim --pb6 -m:carry_flag.mem
@@ -216,7 +217,7 @@ to the output as the number of testbench errors.</dd>
 </dl>
 <div class="section" id="peripheral-interface">
 <h3>Peripheral Interface<a class="headerlink" href="#peripheral-interface" title="Permalink to this headline">¶</a></h3>
-<p>You can add your own peripherals by modifying the Opbsim source. They are implemented as objects initialized with a sequence of input and output ports they are attached to. Whenever an <tt class="docutils literal"><span class="pre">input</span></tt> or <tt class="docutils literal"><span class="pre">output</span></tt> instruction is executed, the associated port is checked for attached peripherals and portRead or portWrite method is called on the perioheral object. The methods have access to the processor state and can modify port values as needed. Multiple peripherals can be attached to a single port. They will be called in the order that they were defined during initialization of the processor state.</p>
+<p>You can add your own peripherals by modifying the Opbsim source. They are implemented as objects initialized with a sequence of input and output ports they are attached to. Whenever an <tt class="docutils literal"><span class="pre">input</span></tt> or <tt class="docutils literal"><span class="pre">output</span></tt> instruction is executed, the associated port is checked for attached peripherals and portRead or portWrite method is called on the peripheral object. The methods have access to the processor state and can modify port values as needed. Multiple peripherals can be attached to a single port. They will be called in the order that they were defined during initialization of the processor state.</p>
 </div>
 </div>
 <div class="section" id="test-suite">
@@ -256,6 +257,7 @@ to the output as the number of testbench errors.</dd>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
       <li>Previous: <a href="m4.html" title="previous chapter">m4 support in Opbasm</a></li>
+      <li>Next: <a href="library.html" title="next chapter">Opbasm PicoBlaze macro library reference</a></li>
   </ul></li>
 </ul>
 </div>
@@ -366,7 +368,6 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
       </div>
       <div class="clearer"></div>
     </div>
-
     <div class="footer">
       &copy;2015, Kevin Thibedeau.
       
@@ -378,17 +379,5 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
     
 
     
-
-<script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-  ga('create', 'UA-52148206-1', 'auto');
-  ga('send', 'pageview');
-
-</script>
-
   </body>
 </html>

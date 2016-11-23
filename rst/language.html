@@ -1,0 +1,1996 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PicoBlaze assembly language reference &mdash; Opbasm 1.3 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/project.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/tty/tty-player.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Opbasm 1.3 documentation" href="../index.html" />
+    <link rel="next" title="PicoBlaze assembly tutorial" href="tutorial.html" />
+    <link rel="prev" title="Opbasm PicoBlaze macro library reference" href="library.html" />
+
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/0.7.5/webcomponents-lite.min.js"></script>
+<script src="_static/tty/term.min.js"></script>
+<script src="_static/tty/tty-player.min.js"></script>
+
+<style>
+	.terminal-cursor {
+		color: #000;
+		background: green;
+	}
+	.terminal, .title {
+		font-size:x-small;
+	}
+</style>
+
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="picoblaze-assembly-language-reference">
+<h1>PicoBlaze assembly language reference<a class="headerlink" href="#picoblaze-assembly-language-reference" title="Permalink to this headline">¶</a></h1>
+<p>This is an overview of the assembly language used for the PicoBlaze-6 and PicoBlaze-3 microcontrollers.</p>
+<div class="section" id="instructions">
+<h2>Instructions<a class="headerlink" href="#instructions" title="Permalink to this headline">¶</a></h2>
+<p>The following instruction mnemonics are used in the PicoBlaze processors:</p>
+<p class="rubric">PicoBlaze-3 and PicoBlaze-6</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="20%" />
+<col width="20%" />
+<col width="20%" />
+<col width="20%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#add">add</a></td>
+<td><a class="reference internal" href="#addcy">addcy</a></td>
+<td><a class="reference internal" href="#and">and</a></td>
+<td><a class="reference internal" href="#call">call</a></td>
+<td><a class="reference internal" href="#compare">compare</a></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#disable">disable</a></td>
+<td><a class="reference internal" href="#enable">enable</a></td>
+<td><a class="reference internal" href="#fetch">fetch</a></td>
+<td><a class="reference internal" href="#input">input</a></td>
+<td><a class="reference internal" href="#jump">jump</a></td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#load">load</a></td>
+<td><a class="reference internal" href="#or">or</a></td>
+<td><a class="reference internal" href="#output">output</a></td>
+<td><a class="reference internal" href="#return">return</a></td>
+<td><a class="reference internal" href="#returni">returni</a></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#rl">rl</a></td>
+<td><a class="reference internal" href="#rr">rr</a></td>
+<td><a class="reference internal" href="#sl0">sl0</a></td>
+<td><a class="reference internal" href="#sl1">sl1</a></td>
+<td><a class="reference internal" href="#sla">sla</a></td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#slx">slx</a></td>
+<td><a class="reference internal" href="#sr0">sr0</a></td>
+<td><a class="reference internal" href="#sr1">sr1</a></td>
+<td><a class="reference internal" href="#sra">sra</a></td>
+<td><a class="reference internal" href="#srx">srx</a></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#store">store</a></td>
+<td><a class="reference internal" href="#sub">sub</a></td>
+<td><a class="reference internal" href="#subcy">subcy</a></td>
+<td><a class="reference internal" href="#test">test</a></td>
+<td><a class="reference internal" href="#xor">xor</a></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric" id="inst-pb6">PicoBlaze-6 only</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="20%" />
+<col width="19%" />
+<col width="19%" />
+<col width="24%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#id1">call&#64;</a></td>
+<td><a class="reference internal" href="#comparecy">comparecy</a></td>
+<td><a class="reference internal" href="#hwbuild">hwbuild</a></td>
+<td><a class="reference internal" href="#id2">jump&#64;</a></td>
+<td><a class="reference internal" href="#load-return">load&amp;return</a></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#outputk">outputk</a></td>
+<td><a class="reference internal" href="#regbank">regbank</a></td>
+<td><a class="reference internal" href="#star">star</a></td>
+<td><a class="reference internal" href="#testcy">testcy</a></td>
+<td>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Common directives</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="19%" />
+<col width="19%" />
+<col width="19%" />
+<col width="19%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#address">address</a></td>
+<td><a class="reference internal" href="#constant">constant</a></td>
+<td><a class="reference internal" href="#namereg">namereg</a></td>
+<td><a class="reference internal" href="#include">include</a></td>
+<td><a class="reference internal" href="#inst">inst</a></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#default-jump">default_jump</a></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">PicoBlaze-6 directives</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="48%" />
+<col width="52%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#string">string</a></td>
+<td><a class="reference internal" href="#table">table</a></td>
+</tr>
+</tbody>
+</table>
+<p>The assembler is case insensitive for commands. Uppercase or mixed case mnemonics can also be used. Labels and renamed registers are case sensitive.</p>
+</div>
+<div class="section" id="instruction-formats">
+<h2>Instruction formats<a class="headerlink" href="#instruction-formats" title="Permalink to this headline">¶</a></h2>
+<p>PicoBlaze assembly follows the usual convention of having a single instruction or directive per line.
+An optional label creates a named reference that can be referred to by other instructions. An optional single line comment can appear at the end prefixed by a &#8221;;&#8221; character.</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>Basic syntax</dt>
+<dd><img class="first last" src="../_images/statement.svg" /></dd>
+</dl>
+</div></blockquote>
+<p>Blank lines are ignored. Labels and comments can be used without an instruction.</p>
+<p>Instructions generally use the following formats with a few minor exceptions:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>Register</dt>
+<dd><img class="first last" src="../_images/register.svg" /></dd>
+<dt>Immediate</dt>
+<dd><img class="first last" src="../_images/immediate.svg" /></dd>
+<dt>Indirect scratchpad / I/O port</dt>
+<dd><img class="first last" src="../_images/indirect_sp.svg" /></dd>
+<dt>Indirect jump / call</dt>
+<dd><img class="first last" src="../_images/indirect_jump.svg" /></dd>
+<dt>Conditional</dt>
+<dd><img class="first last" src="../_images/conditional.svg" /></dd>
+<dt>Outputk</dt>
+<dd><img class="first last" src="../_images/outputk.svg" /></dd>
+</dl>
+</div></blockquote>
+<p>The fields have the following meanings:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="18%" />
+<col width="82%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">&lt;flag</span> <span class="pre">state&gt;</span></tt></td>
+<td>One of the condition codes for zero and carry (Z, NZ, C, or NC)</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">&lt;instruction&gt;</span></tt></td>
+<td>Instruction mnemonic or directive</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">&lt;register&gt;</span></tt></td>
+<td>One of the 16 currently active registers (s0-sF)</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">&lt;literal&gt;</span></tt></td>
+<td>Constant literal (hex [nn], decimal [nnn&#8217;d], binary [nnnnnnnn&#8217;b], or char [&#8220;c&#8221;])</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="literal-syntax">
+<h2>Literal syntax<a class="headerlink" href="#literal-syntax" title="Permalink to this headline">¶</a></h2>
+<p>The language supports a number of different formats for representing literal values. These are constant numeric and character values that are used as operands to many instructions.</p>
+<blockquote>
+<div><p>Hexadecimal</p>
+<blockquote>
+<div>A hex byte is the default format for literal numbers. It is represented by two hex digits with no additional
+syntactic marker. The <a class="reference internal" href="#inst-address"><em>address</em></a> directive takes a special 12-bit hex literal as an address.</div></blockquote>
+<p>Decimal</p>
+<blockquote>
+<div>Decimal byte values are written in the form <tt class="docutils literal"><span class="pre">nnn'd</span></tt>.</div></blockquote>
+<p>Binary</p>
+<blockquote>
+<div>Binary byte values are written in the form <tt class="docutils literal"><span class="pre">nnnnnnnn'b</span></tt>.</div></blockquote>
+<p>Characters</p>
+<blockquote>
+<div>Printable ASCII character literals are written in the form <tt class="docutils literal"><span class="pre">&quot;c&quot;</span></tt>.</div></blockquote>
+</div></blockquote>
+</div>
+<div class="section" id="address-spaces">
+<h2>Address spaces<a class="headerlink" href="#address-spaces" title="Permalink to this headline">¶</a></h2>
+<p>The PicoBlaze has a simple architecture that operates on information stored in the following address spaces:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>Registers</dt>
+<dd>A set of 16 8-bit registers. They default to the registers named s0-sF but can be renamed with the <a class="reference internal" href="#inst-namereg"><em>namereg</em></a> directive.
+The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the <a class="reference internal" href="#inst-regbank"><em>regbank</em></a> instruction.</dd>
+<dt>Instruction memory</dt>
+<dd>Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6. This memory is implemented outside the Picoblaze core component and attached to the instruction memory port. Because the Picoblaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.</dd>
+<dt>Scratchpad memory</dt>
+<dd>A small pool of RAM used as a local memory. This is 64 bytes on the PicoBlaze-3 and
+configurable for 64, 128, or 256 bytes on PicoBlaze-6. This memory is accessed with the <a class="reference internal" href="#fetch">fetch</a> and <a class="reference internal" href="#store">store</a> instructions.</dd>
+<dt>I/O ports</dt>
+<dd>A set of 256 input and 256 output ports are used to interact with external hardware. This memory is
+accessed with the <a class="reference internal" href="#input">input</a> and <a class="reference internal" href="#output">output</a> instructions. Additional logic must be provided to decode these ports.</dd>
+<dt>Outputk ports</dt>
+<dd>The PicoBlaze-6 has a special set of 16 output ports intended for directly driving constant values with minimal overhead.
+This is accessed with the <a class="reference internal" href="#outputk">outputk</a> instruction.</dd>
+<dt>Call stack</dt>
+<dd>A hardware call stack is maintained to track return addresses. You can have a call depth of up to 31 functions on PicoBlaze-3 and 30 functions on PicoBlaze-6.</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="flags">
+<h2>Flags<a class="headerlink" href="#flags" title="Permalink to this headline">¶</a></h2>
+<p>The PicoBlaze processor has two internal status flags that represent metadata from ALU operations. They are used to evaluate the result of an operation and execute conditional code. These are the the zero &#8220;Z&#8221; flag and the carry &#8220;C&#8221; flag.</p>
+<p>The Z flag is set when the result of an operation is zero and cleared otherwise. The C flag is set when an arithmetic carry or borrow (for subtration) is generated. As a special case the C flag is set by the <a class="reference internal" href="#inst-test"><em>test</em></a> and <a class="reference internal" href="#inst-testcy"><em>testcy</em></a> instructions to reflect the odd parity of their result. The <a class="reference internal" href="#inst-hwbuild"><em>hwbuild</em></a> instruction always sets the C flag unconditionally.</p>
+<p>The most common application of the flags is to execute conditional code after a <a class="reference internal" href="#inst-compare"><em>compare</em></a> instruction. The table shown for <tt class="docutils literal"><span class="pre">compare</span></tt> indicates how to interpret the flags for various Boolean comparison operations. Not all comparisons are possible with a single instruction because PicoBlaze can only test one flag at a time.</p>
+</div>
+<div class="section" id="initialization">
+<h2>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="interrupts">
+<h2>Interrupts<a class="headerlink" href="#interrupts" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="directives">
+<h2>Directives<a class="headerlink" href="#directives" title="Permalink to this headline">¶</a></h2>
+<p>The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are used instead to alter the behavior of the assembler.</p>
+<div class="section" id="address">
+<span id="inst-address"></span><h3>address<a class="headerlink" href="#address" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">address</span></tt> directive is used to change the address where the next instruction will be assembled to.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="39%" />
+<col width="18%" />
+<col width="43%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">address</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>address 3FF</td>
+<td>The instruction offset is moved to 0x3FF</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">address</span> <span class="pre">&lt;label&gt;</span></tt></td>
+<td>address MyISR</td>
+<td>The instruction offset is addr. of MyISR</td>
+</tr>
+</tbody>
+</table>
+<p>This is useful for placing code at the interrupt vector location or implementing complex memory layouts such as bank switched pages. The second veriant with a label as ab operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a <a class="reference internal" href="#jump">jump</a> for the entry point.</p>
+</div>
+<div class="section" id="constant">
+<span id="inst-constant"></span><h3>constant<a class="headerlink" href="#constant" title="Permalink to this headline">¶</a></h3>
+<p>Define a named constant. The name cannot be any 1-3 character string that is a valid hex number. Constants can be used in place of any literal operand.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="37%" />
+<col width="24%" />
+<col width="40%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">constant</span> <span class="pre">&lt;name&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>constant foo, 5A</td>
+<td>The name &#8220;foo&#8221; is substituted with 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(decimal literals)</em></td>
+<td>constant bar, 20&#8217;d</td>
+<td>bar is 0x14</td>
+</tr>
+<tr class="row-even"><td><em>(binary literals)</em></td>
+<td>constant baz, 01000010&#8217;b</td>
+<td>baz is 0x42</td>
+</tr>
+<tr class="row-odd"><td><em>(char literals)</em></td>
+<td>constant bat, &#8220;0&#8221;</td>
+<td>bat is 0x30</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="default-jump">
+<span id="inst-default-jump"></span><h3>default_jump<a class="headerlink" href="#default-jump" title="Permalink to this headline">¶</a></h3>
+<p>By default, unused memory is filled with zeros. On PB3 this equates to &#8220;LOAD s0, 00&#8221;. On PB6 it is &#8220;LOAD s0, s0&#8221; (a NOP). This can be problematic in high reliability code that needs to recover from accidentally falling into these unused areas of memory. To protect against this the <tt class="docutils literal"><span class="pre">default_jump</span></tt> directive lets you fill unused memory with a jump to a specified label or address.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="37%" />
+<col width="24%" />
+<col width="40%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">default_jump</span> <span class="pre">&lt;label&gt;</span></tt></td>
+<td>default_jump handle_err</td>
+<td>Unused memory is filled with JUMP
+instructions to handle_err</td>
+</tr>
+<tr class="row-odd"><td><em>(address target)</em></td>
+<td>default_jump 001</td>
+<td>Fill with JUMP to address 0x001</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="include">
+<span id="inst-include"></span><h3>include<a class="headerlink" href="#include" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">include</span></tt> directive lets you incorporate the contents of other source files into your final program. It inserts the contents of the specified file at the location of the directive.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="37%" />
+<col width="24%" />
+<col width="40%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">include</span> <span class="pre">&quot;&lt;file&gt;&quot;</span></tt></td>
+<td>include &#8220;lib.psm&#8221;</td>
+<td>The contents of lib.psm are added to the
+program</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="inst">
+<span id="inst-inst"></span><h3>inst<a class="headerlink" href="#inst" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">inst</span></tt> directive is used to manually construct an instruction from its hex encoding. This is primarily of value for encoding non-instruction data into the instruction memory. Note that the instruction size is 18-bits so the fifth nibble of the hex value is truncated down to 2-bits.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="37%" />
+<col width="24%" />
+<col width="40%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">inst</span> <span class="pre">&lt;hex</span> <span class="pre">literal&gt;</span></tt></td>
+<td>inst 3AABB</td>
+<td>Place 0x3AABB at the current point in
+memory</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="namereg">
+<span id="inst-namereg"></span><h3>namereg<a class="headerlink" href="#namereg" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">namereg</span></tt> directive lets you rename a register mnemonic. This allows you to create more descriptive register names rather the default s0-sF. Once namereg has been applied the affected register can only be referenced by its new name. Another call to <tt class="docutils literal"><span class="pre">namereg</span></tt> is needed to change its name again. The new name is case sensitive unlike the default where both &#8220;sn&#8221; &#8220;Sn&#8221; are accepted.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="37%" />
+<col width="24%" />
+<col width="40%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">namereg</span> <span class="pre">&lt;cur.</span> <span class="pre">name&gt;,</span> <span class="pre">&lt;new</span> <span class="pre">name&gt;</span></tt></td>
+<td>namereg sF, TEMP</td>
+<td>rename sF to &#8220;TEMP&#8221;</td>
+</tr>
+</tbody>
+</table>
+<p>As an alternative, the m4 macro processor used with Opbasm has a <a class="reference internal" href="m4.html#m4-define"><em>define()</em></a> macro that can be used to create alternate register names without replacing the original.</p>
+</div>
+<div class="section" id="string">
+<span id="inst-string"></span><h3>string<a class="headerlink" href="#string" title="Permalink to this headline">¶</a></h3>
+<p>Available on PicoBlaze-6 only. This directive creates a text string. It must be used in conjunction with the <a class="reference internal" href="#load-return">load&amp;return</a> or <a class="reference internal" href="#outputk">outputk</a> instructions. When a string name is an argument to these instructions they are expanded into multiple instructions with each character as their literal operand.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="35%" />
+<col width="27%" />
+<col width="38%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">string</span> <span class="pre">&lt;name&gt;$,</span> <span class="pre">&quot;&lt;string</span> <span class="pre">text&gt;&quot;</span></tt></td>
+<td>string hello$, &#8220;Hello world&#8221;</td>
+<td>Create string named hello$</td>
+</tr>
+</tbody>
+</table>
+<p>The Opbasm macro package has <a class="reference internal" href="m4.html#portable-string-and-table-operations"><em>additional methods</em></a> for generating strings that are portable across PB3 and PB6.</p>
+</div>
+<div class="section" id="table">
+<span id="inst-table"></span><h3>table<a class="headerlink" href="#table" title="Permalink to this headline">¶</a></h3>
+<p>Available on PicoBlaze-6 only. This directive creates a data array. It must be used in conjunction with the <a class="reference internal" href="#load-return">load&amp;return</a> or <a class="reference internal" href="#outputk">outputk</a> instructions. When a table name is an argument to these instructions they are expanded into multiple instructions with each byte as their literal operand.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="36%" />
+<col width="34%" />
+<col width="30%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">table</span> <span class="pre">&lt;name&gt;#,</span> <span class="pre">[&lt;hex</span> <span class="pre">values&gt;]</span></tt></td>
+<td>table hex#, [01, 02, AA]</td>
+<td>Table named hex#</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">table</span> <span class="pre">&lt;name&gt;#,</span> <span class="pre">[&lt;decimal</span> <span class="pre">values&gt;]'d</span></tt></td>
+<td>table dec#, [50, 100, 200]&#8217;d</td>
+<td>Table named dec#</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">table</span> <span class="pre">&lt;name&gt;#,</span> <span class="pre">[&lt;bin</span> <span class="pre">values&gt;]'b</span></tt></td>
+<td>table bin#, [11110000, 00100110]&#8217;b</td>
+<td>Table named bin#</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="register-assignment-instructions">
+<h2>Register assignment instructions<a class="headerlink" href="#register-assignment-instructions" title="Permalink to this headline">¶</a></h2>
+<p>PicoBlaze has a minimal set of instructions for moving data into and between registers.</p>
+<div class="section" id="load">
+<span id="inst-load"></span><h3>load<a class="headerlink" href="#load" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">load</span></tt> instruction copies the value of its second argument into the register of the first argument.
+This is the only way to directly set a register to an arbitrary constant value.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="40%" />
+<col width="24%" />
+<col width="36%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">load</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>load s0, 5A</td>
+<td>s0 ⇐ 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(loading other literal formats)</em></td>
+<td>load s0, 42&#8217;d</td>
+<td>s0 ⇐ 42 (decimal)</td>
+</tr>
+<tr class="row-even"><td><em>(loading address fragments)</em></td>
+<td>load sA, label&#8217;lower</td>
+<td>sA ⇐ low byte of &#8220;label&#8221; address</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">load</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>load s0, s2</td>
+<td>s0 ⇐ s2</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="star">
+<span id="inst-star"></span><h3>star<a class="headerlink" href="#star" title="Permalink to this headline">¶</a></h3>
+<p>The <tt class="docutils literal"><span class="pre">star</span></tt> instruction is specific to the PicoBlaze-6. It is used to transfer register values between
+register banks A and B. When executed, a register in the active bank is copied into a register in the inactive bank.
+There is no way to transfer in the other direction without switching banks using <a class="reference internal" href="#regbank">regbank</a>.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="40%" />
+<col width="18%" />
+<col width="41%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">star</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>star s0, s3</td>
+<td>(inactive bank) s0 ⇐ (active bank) s3</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last"><tt class="docutils literal"><span class="pre">star</span></tt> has special behavior for its first operand. Because the <a class="reference internal" href="#namereg">namereg</a> directive can obscure the actual register locations, you can <em>only</em> use the default register names s0-sF for the first operand. This is the only case where the <tt class="docutils literal"><span class="pre">namereg</span></tt> directive is ignored. The second register operand follows the usual register naming behavior.</p>
+</div>
+</div>
+</div>
+<div class="section" id="alu-instructions">
+<h2>ALU instructions<a class="headerlink" href="#alu-instructions" title="Permalink to this headline">¶</a></h2>
+<p>The following set of instructions perform arithmetic and logical operations on registers.</p>
+<div class="section" id="add">
+<span id="inst-add"></span><h3>add<a class="headerlink" href="#add" title="Permalink to this headline">¶</a></h3>
+<p>Add two 8-bit values.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="43%" />
+<col width="22%" />
+<col width="34%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">add</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>add s0, 5A</td>
+<td>s0 ⇐ s0 + 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(adding other literal formats)</em></td>
+<td>add s0, &#8220;0&#8221;</td>
+<td>s0 ⇐ s0 + 0x30</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">add</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>add s0, s2</td>
+<td>s0 ⇐ s0 + s2</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is set if an overflow occurs. i.e. the arithmetic result is greater than 255. The Z flag is set when
+the result is zero.</p>
+</div>
+<div class="section" id="addcy">
+<span id="inst-addcy"></span><h3>addcy<a class="headerlink" href="#addcy" title="Permalink to this headline">¶</a></h3>
+<p>Add two 8-bit values and the carry flag. This is used to extend addition to support values larger than 8-bits.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="42%" />
+<col width="22%" />
+<col width="36%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">addcy</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>addcy s0, 5A</td>
+<td>s0 ⇐ s0 + 0x5A + C</td>
+</tr>
+<tr class="row-odd"><td><em>(adding other literal formats)</em></td>
+<td>addcy s0, 42&#8217;d</td>
+<td>s0 ⇐ s0 + 42 (decimal) + C</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">addcy</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>addcy s0, s2</td>
+<td>s0 ⇐ s0 + s2 + C</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is set if an overflow occurs. i.e. the arithmetic result is greater than 255. On PicoBlaze-6 The Z flag is set when
+the result is zero and the previous Z flag was set. On PicoBlaze-3 the Z flag disregards the previous state of Z.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">add</span>   <span class="n">s0</span><span class="p">,</span> <span class="mh">01</span>
+<span class="k">addcy</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">00</span>  <span class="c">; Add carry bit from s0 into s1</span>
+
+<span class="k">jump</span>  <span class="n">Z</span><span class="p">,</span> <span class="n">foo</span>  <span class="c">; PB6: Jump when s1,s0 == 0x0000;  PB3: Jump when s1 == 0x00</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="sub">
+<span id="inst-sub"></span><h3>sub<a class="headerlink" href="#sub" title="Permalink to this headline">¶</a></h3>
+<p>Subtract two 8-bit values.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="22%" />
+<col width="37%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sub</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>sub s0, 5A</td>
+<td>s0 ⇐ s0 - 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(subtracting other literal formats)</em></td>
+<td>sub s0, &#8220;0&#8221;</td>
+<td>s0 ⇐ s0 - 0x30</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sub</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>sub s0, s2</td>
+<td>s0 ⇐ s0 - s2</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is set if an underflow occurs. i.e. the arithmetic result is less than 0. The Z flag is set when
+the result is zero.</p>
+</div>
+<div class="section" id="subcy">
+<span id="inst-subcy"></span><h3>subcy<a class="headerlink" href="#subcy" title="Permalink to this headline">¶</a></h3>
+<p>Subtract two 8-bit values and the carry flag. This is used to extend subtraction to support values larger than 8-bits.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="42%" />
+<col width="22%" />
+<col width="36%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">subcy</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>subcy s0, 5A</td>
+<td>s0 ⇐ s0 - 0x5A - C</td>
+</tr>
+<tr class="row-odd"><td><em>(subtracting other literal formats)</em></td>
+<td>subcy s0, 42&#8217;d</td>
+<td>s0 ⇐ s0 - 42 (decimal) - C</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">subcy</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>subcy s0, s2</td>
+<td>s0 ⇐ s0 - s2 - C</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is set if an underflow occurs. i.e. the arithmetic result is less than 0. On PicoBlaze-6 the Z flag is set when
+the result is zero and the previous Z flag was set. On PicoBlaze-3 the Z flag disregards the previous state of Z.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">sub</span>   <span class="n">s0</span><span class="p">,</span> <span class="mh">01</span>
+<span class="k">subcy</span> <span class="n">s1</span><span class="p">,</span> <span class="mh">00</span>  <span class="c">; Subtract with borrow from s0</span>
+
+<span class="k">jump</span>  <span class="n">Z</span><span class="p">,</span> <span class="n">foo</span>  <span class="c">; PB6: Jump when s1,s0 == 0x0000;  PB3: Jump when s1 == 0x00</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="and">
+<span id="inst-and"></span><h3>and<a class="headerlink" href="#and" title="Permalink to this headline">¶</a></h3>
+<p>Perform the logical bitwise AND of two 8-bit values.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">and</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>and s0, 5A</td>
+<td>s0 ⇐ s0 and 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(anding other literal formats)</em></td>
+<td>and s0, 1011000&#8217;b</td>
+<td>s0 ⇐ s0 and 0xB0</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">and</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>and s0, s2</td>
+<td>s0 ⇐ s0 and s2</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is always cleared. The Z flag is set when the result is zero.</p>
+</div>
+<div class="section" id="or">
+<span id="inst-or"></span><h3>or<a class="headerlink" href="#or" title="Permalink to this headline">¶</a></h3>
+<p>Perform the logical bitwise OR of two 8-bit values.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="22%" />
+<col width="37%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">or</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>or s0, 5A</td>
+<td>s0 ⇐ s0 or 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(oring other literal formats)</em></td>
+<td>or s0, 1011000&#8217;b</td>
+<td>s0 ⇐ s0 or 0xB0</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">or</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>or s0, s2</td>
+<td>s0 ⇐ s0 or s2</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is always cleared. The Z flag is set when the result is zero.</p>
+</div>
+<div class="section" id="xor">
+<span id="inst-xor"></span><h3>xor<a class="headerlink" href="#xor" title="Permalink to this headline">¶</a></h3>
+<p>Perform the logical bitwise XOR of two 8-bit values.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">xor</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>xor s0, 5A</td>
+<td>s0 ⇐ s0 xor 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(xoring other literal formats)</em></td>
+<td>xor s0, 1011000&#8217;b</td>
+<td>s0 ⇐ s0 xor 0xB0</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">xor</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>xor s0, s2</td>
+<td>s0 ⇐ s0 xor s2</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is always cleared. The Z flag is set when the result is zero.</p>
+</div>
+</div>
+<div class="section" id="comparson-instructions">
+<h2>Comparson instructions<a class="headerlink" href="#comparson-instructions" title="Permalink to this headline">¶</a></h2>
+<p>The comparison instructions are used to compare values without modifying registers. They are only used to set and clear flags that will be inspected by subsequent instructions.</p>
+<div class="section" id="compare">
+<span id="inst-compare"></span><h3>compare<a class="headerlink" href="#compare" title="Permalink to this headline">¶</a></h3>
+<p>Compare two 8-bit values. This is the same as subtraction without modifying the first operand.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="34%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">compare</span> <span class="pre">&lt;register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>compare s0, 5A</td>
+<td>temp ⇐ s0 - 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(comparing other literal formats)</em></td>
+<td>compare s0, &#8220;0&#8221;</td>
+<td>temp ⇐ s0 - 0x30</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">compare</span> <span class="pre">&lt;register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>compare s0, s2</td>
+<td>temp ⇐ s0 - s2</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is set if an underflow occurs. i.e. the arithmetic result is less than 0. The Z flag is set when
+the result is zero.</p>
+<p>The flags can be interpreted as follows:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="9%" />
+<col width="9%" />
+<col width="82%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Z</th>
+<th class="head">C</th>
+<th class="head">Meaning</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>1</td>
+<td>-</td>
+<td>= operands are equal</td>
+</tr>
+<tr class="row-odd"><td>0</td>
+<td>-</td>
+<td>≠ operands are not equal</td>
+</tr>
+<tr class="row-even"><td>0</td>
+<td>0</td>
+<td>&gt; first is greater than second</td>
+</tr>
+<tr class="row-odd"><td>-</td>
+<td>0</td>
+<td>≥ first is greater or equal to second</td>
+</tr>
+<tr class="row-even"><td>-</td>
+<td>1</td>
+<td>&lt; first is less than second</td>
+</tr>
+<tr class="row-odd"><td>1</td>
+<td>1</td>
+<td>≤ first is less or equal to second</td>
+</tr>
+</tbody>
+</table>
+<p>Note that you cannot determine &gt; &#8220;greater than&#8221; or ≤ &#8220;less than or equal&#8221; without inspecting both flags. It is best to structure your code to avoid these comparisons. If both operands are registers you can always swap them and use the complementary comparison operator. If the second operand is a literal you can implement &#8220;&gt;&#8221; or &#8220;≤&#8221; by incrementing the literal and using &#8220;≥&#8221; or &#8220;&lt;&#8221; instead. This will fail, however, when the literal is 0xFF. For this case you have to rearrange your logic to avoid these comparisons.</p>
+<blockquote>
+<div><div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; Loop from 0 to 0xFE with &lt; operation</span>
+        <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
+<span class="nl">loop_a:</span> <span class="ge">&lt;do something&gt;</span>
+        <span class="k">add</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">01</span>       <span class="c">; Increment counter</span>
+        <span class="k">compare</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">FF</span>
+        <span class="k">jump</span> <span class="mh">C</span><span class="p">,</span> <span class="n">loop_a</span>   <span class="c">; jump if s0 &lt; 0xFF</span>
+
+<span class="c">; Loop from 0 to 0xFF with simulated ≤ operation</span>
+        <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
+<span class="nl">loop_b:</span> <span class="ge">&lt;do something&gt;</span>
+        <span class="k">add</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">01</span>       <span class="c">; Increment counter</span>
+        <span class="k">compare</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
+        <span class="k">jump</span> <span class="n">NZ</span><span class="p">,</span> <span class="n">loop_b</span>  <span class="c">; Jump if s0 ≠ 0x00 (Same as s0 ≤ 0xFF)</span>
+
+<span class="c">; Alternatively, since overflow from 0xFF to 0x00 sets the C flag</span>
+<span class="c">; you can skip the compare instruction:</span>
+
+<span class="c">; Loop from 0 to 0xFF with simulated ≤ operation</span>
+        <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
+<span class="nl">loop_c:</span> <span class="ge">&lt;do something&gt;</span>
+        <span class="k">add</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">01</span>       <span class="c">; Increment counter</span>
+        <span class="k">jump</span> <span class="n">NC</span><span class="p">,</span> <span class="n">loop_c</span>  <span class="c">; Jump if s0 didn&#39;t overflow (Same as s0 ≤ 0xFF)</span>
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="comparecy">
+<span id="inst-comparecy"></span><h3>comparecy<a class="headerlink" href="#comparecy" title="Permalink to this headline">¶</a></h3>
+<p>Compare two 8-bit values with carry. Available on PicoBlaze-6 only. This is the same as subtraction with carry without modifying the first operand. It extends comparison to support values larger than 8-bits.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="34%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">comparecy</span> <span class="pre">&lt;register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>comparecy s0, 5A</td>
+<td>temp ⇐ s0 - 0x5A - C</td>
+</tr>
+<tr class="row-odd"><td><em>(comparing other literal formats)</em></td>
+<td>comparecy s0, 12&#8217;d</td>
+<td>temp ⇐ s0 - 12 (decimal) - C</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">comparecy</span> <span class="pre">&lt;register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>comparecy s0, s2</td>
+<td>temp ⇐ s0 - s2 - C</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is set if an underflow occurs. i.e. the arithmetic result is less than 0. The Z flag is set when
+the result is zero and the previous Z flag was set.</p>
+</div>
+<div class="section" id="test">
+<span id="inst-test"></span><h3>test<a class="headerlink" href="#test" title="Permalink to this headline">¶</a></h3>
+<p>Perform the logical bitwise AND of two 8-bit values without modifying the first operand.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">test</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>test s0, 5A</td>
+<td>temp ⇐ s0 and 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(other literal formats)</em></td>
+<td>test s0, 1011000&#8217;b</td>
+<td>temp ⇐ s0 and 0xB0</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">test</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>test s0, s2</td>
+<td>temp ⇐ s0 and s2</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is set to the odd parity of the bits in the result (set for an odd number of &#8216;1&#8217; bits). The Z flag is set when the result is zero.</p>
+<p>This instruction is primarily used to test if certain bits in a register are set by non-destructively ANDing it with a constant mask.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">constant</span> <span class="n">my_mask</span><span class="p">,</span> <span class="mh">02</span>
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">23</span>
+<span class="k">test</span> <span class="n">s0</span><span class="p">,</span> <span class="n">my_mask</span>
+<span class="k">jump</span> <span class="n">NZ</span><span class="p">,</span> <span class="n">bit_1_is_set</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="testcy">
+<span id="inst-testcy"></span><h3>testcy<a class="headerlink" href="#testcy" title="Permalink to this headline">¶</a></h3>
+<p>Perform the logical bitwise AND of two 8-bit values without modifying the first operand. Available on PicoBlaze-6 only. This extends the <a class="reference internal" href="#test">test</a> instruction by combining the previous Z and C flag values into the result.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="42%" />
+<col width="24%" />
+<col width="34%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">testcy</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>testcy s0, 5A</td>
+<td>temp ⇐ s0 and 0x5A</td>
+</tr>
+<tr class="row-odd"><td><em>(other literal formats)</em></td>
+<td>testcy s0, 1011000&#8217;b</td>
+<td>temp ⇐ s0 and 0xB0</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">testcy</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>testcy s0, s2</td>
+<td>temp ⇐ s0 and s2</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is set to the odd parity of the bits in the result and the previous C flag (set for an odd number of &#8216;1&#8217; bits). The Z flag is set when the result is zero and the previous Z flag was set.</p>
+</div>
+</div>
+<div class="section" id="shift-rotate-instructions">
+<h2>Shift/rotate instructions<a class="headerlink" href="#shift-rotate-instructions" title="Permalink to this headline">¶</a></h2>
+<p>Owing to space constraints, the PicoBlaze does not have a barrel shifter. This means that shifts and rotations can only be performed one bit at a time. Multiple shifts and rotates must be performed with repeated instructions. The Opbasm m4 package <a class="reference internal" href="m4.html#shift-and-rotate-by-multiple-bits"><em>has macros</em></a> to do this for you.</p>
+<div class="section" id="rl">
+<span id="inst-rl"></span><h3>rl<a class="headerlink" href="#rl" title="Permalink to this headline">¶</a></h3>
+<p>Rotate left 1-bit.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">rl</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>rl s0</td>
+<td>s0 ⇐ s0[6:0] &amp; s0[7]</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old MSB from the register. The Z flag is set if the result is zero.</p>
+</div>
+<div class="section" id="rr">
+<span id="inst-rr"></span><h3>rr<a class="headerlink" href="#rr" title="Permalink to this headline">¶</a></h3>
+<p>Rotate right 1-bit.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">rr</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>rr s0</td>
+<td>s0 ⇐ s0[0] &amp; s0[7:1]</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old LSB from the register. The Z flag is set if the result is zero.</p>
+</div>
+<div class="section" id="sl0">
+<span id="inst-sl0"></span><h3>sl0<a class="headerlink" href="#sl0" title="Permalink to this headline">¶</a></h3>
+<p>Shift left 1-bit inserting &#8216;0&#8217;.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sl0</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>sl0 s0</td>
+<td>s0 ⇐ s0[6:0] &amp; &#8216;0&#8217;</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old MSB from the register. The Z flag is set if the result is zero.</p>
+</div>
+<div class="section" id="sl1">
+<span id="inst-sl1"></span><h3>sl1<a class="headerlink" href="#sl1" title="Permalink to this headline">¶</a></h3>
+<p>Shift left 1-bit inserting &#8216;1&#8217;.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sl1</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>sl1 s0</td>
+<td>s0 ⇐ s0[6:0] &amp; &#8216;1&#8217;</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old MSB from the register. The Z flag is always cleared.</p>
+</div>
+<div class="section" id="sla">
+<span id="inst-sla"></span><h3>sla<a class="headerlink" href="#sla" title="Permalink to this headline">¶</a></h3>
+<p>Shift left 1-bit, inserting previous C flag. This is used to extend shifts over multiple bytes.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sla</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>sla s0</td>
+<td>s0 ⇐ s0[6:0] &amp; C</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old MSB from the register. The Z flag is set if the result is zero.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">sl0</span> <span class="n">s0</span> <span class="c">; MSB -&gt; C</span>
+<span class="k">sla</span> <span class="n">s1</span> <span class="c">; Shift former MSB from s0 into LSB of s1</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="slx">
+<span id="inst-slx"></span><h3>slx<a class="headerlink" href="#slx" title="Permalink to this headline">¶</a></h3>
+<p>Shift arithmetic left 1-bit. This performs &#8220;sign-extension&#8221; of the LSB.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">slx</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>slx s0</td>
+<td>s0 ⇐ s0[6:0] &amp; s0[0]</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old MSB from the register. The Z flag is set if the result is zero.</p>
+</div>
+<div class="section" id="sr0">
+<span id="inst-sr0"></span><h3>sr0<a class="headerlink" href="#sr0" title="Permalink to this headline">¶</a></h3>
+<p>Shift right 1-bit inserting &#8216;0&#8217;.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sr0</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>sr0 s0</td>
+<td>s0 ⇐ &#8216;0&#8217; &amp; s0[7:1]</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old LSB from the register. The Z flag is set if the result is zero.</p>
+</div>
+<div class="section" id="sr1">
+<span id="inst-sr1"></span><h3>sr1<a class="headerlink" href="#sr1" title="Permalink to this headline">¶</a></h3>
+<p>Shift right 1-bit inserting &#8216;1&#8217;.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sr1</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>sr1 s0</td>
+<td>s0 ⇐ &#8216;1&#8217; &amp; s0[7:1]</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old LSB from the register. The Z flag is set if the result is zero.</p>
+</div>
+<div class="section" id="sra">
+<span id="inst-sra"></span><h3>sra<a class="headerlink" href="#sra" title="Permalink to this headline">¶</a></h3>
+<p>Shift right 1-bit, inserting previous C flag. This is used to extend shifts over multiple bytes.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">sra</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>sra s0</td>
+<td>s0 ⇐ C &amp; s0[7:1]</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old LSB from the register. The Z flag is set if the result is zero.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">sr0</span> <span class="n">s1</span> <span class="c">; LSB -&gt; C</span>
+<span class="k">sra</span> <span class="n">s0</span> <span class="c">; Shift former LSB from s1 into MSB of s0</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="srx">
+<span id="inst-srx"></span><h3>srx<a class="headerlink" href="#srx" title="Permalink to this headline">¶</a></h3>
+<p>Shift arithmetic right 1-bit. This performs sign-extension of the MSB.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="24%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">srx</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>srx s0</td>
+<td>s0 ⇐ s0[7] &amp; s0[7:1]</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag gets the old LSB from the register. The Z flag is set if the result is zero.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">F0</span> <span class="c">; -16</span>
+<span class="k">sra</span>  <span class="n">s0</span>     <span class="c">; s0 == 0xF8  == -8</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="branching-instructions">
+<h2>Branching instructions<a class="headerlink" href="#branching-instructions" title="Permalink to this headline">¶</a></h2>
+<p>The following instructions are used to change the flow of execution.</p>
+<div class="section" id="call">
+<span id="inst-call"></span><h3>call<a class="headerlink" href="#call" title="Permalink to this headline">¶</a></h3>
+<p>Execute a subroutine.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="36%" />
+<col width="21%" />
+<col width="43%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">call</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>call my_label</td>
+<td>PC is saved and jump to my_label address</td>
+</tr>
+<tr class="row-odd"><td><em>(hardcoded address)</em></td>
+<td>call 12A</td>
+<td>PC is saved and jump to address 0x12A</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">call</span> <span class="pre">&lt;flag</span> <span class="pre">code&gt;,</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>call Z, my_label</td>
+<td>Conditional call to my_label if Z flag is set</td>
+</tr>
+</tbody>
+</table>
+<p>This is similar to <a class="reference internal" href="#jump">jump</a> but the program counter (PC) is saved on the hardware stack. This allows execution to resume at the next instruction when the subroutine completes with a <a class="reference internal" href="#return">return</a> instruction.</p>
+<p>The address of the subroutine is typically provided through a label but a hardcoded 12-bit address can also be used. A conditional call can be implemented by using one of the flag codes (Z, NZ, C, NC) as the first operand. The conditional call is only made if the flag matches the state in the instruction. Otherwise execution continues with the next instruction.</p>
+</div>
+<div class="section" id="inst-call-at">
+<span id="id1"></span><h3>call&#64;<a class="headerlink" href="#inst-call-at" title="Permalink to this headline">¶</a></h3>
+<p>Execute a subroutine at a variable address. The target address is determined at runtime. Available on PicoBlaze-6 only.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="39%" />
+<col width="20%" />
+<col width="41%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">call&#64;</span> <span class="pre">(&lt;high</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;low</span> <span class="pre">register&gt;)</span></tt></td>
+<td>call&#64; (s0, s1)</td>
+<td>PC is saved and jump to address in s0, s1</td>
+</tr>
+</tbody>
+</table>
+<p>This is a variation of an unconditional <a class="reference internal" href="#call">call</a> that takes the address from a pair of registers. This is used to compute the target dynamically. Addresses are typically generated by initializing with the <tt class="docutils literal"><span class="pre">'upper</span></tt> and <tt class="docutils literal"><span class="pre">'lower</span></tt> modifiers on a label and then adding an offset:</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_func:</span>
+  <span class="ge">&lt;Special subroutine with multiple entry points&gt;</span>
+  <span class="k">return</span>
+
+<span class="k">load</span>  <span class="n">s0</span><span class="p">,</span> <span class="n">my_func</span><span class="o">&#39;upper</span> <span class="c">; Load upper nibble</span>
+<span class="k">load</span>  <span class="n">s1</span><span class="p">,</span> <span class="n">my_func</span><span class="o">&#39;lower</span> <span class="c">; Load lower byte</span>
+<span class="k">add</span>   <span class="n">s1</span><span class="p">,</span> <span class="n">sA</span>            <span class="c">; Add offset</span>
+<span class="k">addcy</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
+<span class="k">call@</span> <span class="p">(</span><span class="n">s0</span><span class="p">,</span> <span class="n">s1</span><span class="p">)</span>          <span class="c">; Branch into my_func offset by sA number of instruction words</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="jump">
+<span id="inst-jump"></span><h3>jump<a class="headerlink" href="#jump" title="Permalink to this headline">¶</a></h3>
+<p>Jump to an address.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="36%" />
+<col width="21%" />
+<col width="43%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">jump</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>jump my_label</td>
+<td>Jump to my_label address</td>
+</tr>
+<tr class="row-odd"><td><em>(hardcoded address)</em></td>
+<td>jump 12A</td>
+<td>Jump to address 0x12A</td>
+</tr>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">jump</span> <span class="pre">&lt;flag</span> <span class="pre">code&gt;,</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>jump Z, my_label</td>
+<td>Conditional jump to my_label if Z flag is set</td>
+</tr>
+</tbody>
+</table>
+<p>The target address is typically provided through a label but a hardcoded address can also be used. A conditional jump can be implemented by using one of the flag codes (Z, NZ, C, NC) as the first operand. The conditional jump is only made if the flag matches the state in the instruction. Otherwise execution continues with the next instruction.</p>
+</div>
+<div class="section" id="inst-jump-at">
+<span id="id2"></span><h3>jump&#64;<a class="headerlink" href="#inst-jump-at" title="Permalink to this headline">¶</a></h3>
+<p>Jump to a variable address. The target address is determined at runtime. Available on PicoBlaze-6 only.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="39%" />
+<col width="20%" />
+<col width="41%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">jump&#64;</span> <span class="pre">(&lt;high</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;low</span> <span class="pre">register&gt;)</span></tt></td>
+<td>jump&#64; (s0, s1)</td>
+<td>Jjump to address in s0, s1</td>
+</tr>
+</tbody>
+</table>
+<p>This is a variation of an unconditional <a class="reference internal" href="#jump">jump</a> that takes the address from a pair of registers. This is used to compute the target dynamically. Addresses are typically generated by initializing with the <tt class="docutils literal"><span class="pre">'upper</span></tt> and <tt class="docutils literal"><span class="pre">'lower</span></tt> modifiers on a label and then adding an offset.</p>
+</div>
+<div class="section" id="return">
+<span id="inst-return"></span><h3>return<a class="headerlink" href="#return" title="Permalink to this headline">¶</a></h3>
+<p>Return from a subroutine.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="33%" />
+<col width="20%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">return</span></tt></td>
+<td>return</td>
+<td>Resume execution following the last call instruction.</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">return</span> <span class="pre">&lt;flag</span> <span class="pre">code&gt;</span></tt></td>
+<td>return NZ</td>
+<td>Return if the Z flag is clear</td>
+</tr>
+</tbody>
+</table>
+<p>A conditional return can be implemented by using one of the flag codes (Z, NZ, C, NC) as the first operand. The conditional return is only made if the flag matches the state in the instruction. Otherwise execution continues with the next instruction.</p>
+</div>
+<div class="section" id="returni">
+<span id="inst-returni"></span><h3>returni<a class="headerlink" href="#returni" title="Permalink to this headline">¶</a></h3>
+<p>Return from an interrupt handler.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="33%" />
+<col width="20%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">returni</span> <span class="pre">&lt;enable|disable&gt;</span></tt></td>
+<td>returni enable</td>
+<td>Resume normal execution with interrupts enabled.</td>
+</tr>
+</tbody>
+</table>
+<p>This performs an unconditional return from an interrupt handler. Interrupts are enabled or disabled based upon the required argument.</p>
+</div>
+</div>
+<div class="section" id="memory-access-instructions">
+<h2>Memory access instructions<a class="headerlink" href="#memory-access-instructions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="fetch">
+<span id="inst-fetch"></span><h3>fetch<a class="headerlink" href="#fetch" title="Permalink to this headline">¶</a></h3>
+<p>Fetch a byte from scratchpad RAM into a register.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="43%" />
+<col width="23%" />
+<col width="34%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">fetch</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>fetch s0, 01</td>
+<td>s0 ⇐ scratchpad[01]</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">fetch</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">(&lt;register&gt;)</span></tt></td>
+<td>fetch s0, (sA)</td>
+<td>s0 ⇐ scratchpad[sA]</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="store">
+<span id="inst-store"></span><h3>store<a class="headerlink" href="#store" title="Permalink to this headline">¶</a></h3>
+<p>Store a byte from a register into scratchpad RAM.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="43%" />
+<col width="23%" />
+<col width="34%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">store</span> <span class="pre">&lt;source</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>store s0, 01</td>
+<td>scratchpad[01] ⇐ s0</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">store</span> <span class="pre">&lt;source</span> <span class="pre">register&gt;,</span> <span class="pre">(&lt;register&gt;)</span></tt></td>
+<td>store s0, (sA)</td>
+<td>scratchpad[sA] ⇐ s0</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="input">
+<span id="inst-input"></span><h3>input<a class="headerlink" href="#input" title="Permalink to this headline">¶</a></h3>
+<p>Read a byte from an input port into a register.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="43%" />
+<col width="24%" />
+<col width="33%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">input</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>input s0, 01</td>
+<td>s0 ⇐ in_port[01]</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">input</span> <span class="pre">&lt;dest.</span> <span class="pre">register&gt;,</span> <span class="pre">(&lt;register&gt;)</span></tt></td>
+<td>input s0, (sA)</td>
+<td>s0 ⇐ in_port[sA]</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="output">
+<span id="inst-output"></span><h3>output<a class="headerlink" href="#output" title="Permalink to this headline">¶</a></h3>
+<p>Write a byte from a register to an output port.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="45%" />
+<col width="23%" />
+<col width="32%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">output</span> <span class="pre">&lt;source</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>output s0, 01</td>
+<td>out_port[01] ⇐ s0</td>
+</tr>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">output</span> <span class="pre">&lt;source</span> <span class="pre">register&gt;,</span> <span class="pre">(&lt;register&gt;)</span></tt></td>
+<td>output s0, (sA)</td>
+<td>out_port[sA] ⇐ s0</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="outputk">
+<span id="inst-outputk"></span><h3>outputk<a class="headerlink" href="#outputk" title="Permalink to this headline">¶</a></h3>
+<p>Write to a constant optimized output port. Available on PicoBlaze-6 only.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="44%" />
+<col width="25%" />
+<col width="31%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">outputk</span> <span class="pre">&lt;literal&gt;,</span> <span class="pre">&lt;address&gt;</span></tt></td>
+<td>outputk 5A, B</td>
+<td>out_port[B] ⇐ 0x5A</td>
+</tr>
+</tbody>
+</table>
+<p>This writes a constant value to the dedicated outputk ports. This avoids the <a class="reference internal" href="#load">load</a>, <a class="reference internal" href="#output">output</a> instruction pair required to write a constant to a normal output port. Useful if you want to write static data as fast as possible. There are only 16 outputk ports 0-F.</p>
+<p>When the literal is a string or table name this instruction is expanded into multiple copies for each character or byte.</p>
+</div>
+</div>
+<div class="section" id="miscellaneous-instructions">
+<h2>Miscellaneous instructions<a class="headerlink" href="#miscellaneous-instructions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="disable">
+<span id="inst-disable"></span><h3>disable<a class="headerlink" href="#disable" title="Permalink to this headline">¶</a></h3>
+<p>Disable interrupts.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="33%" />
+<col width="20%" />
+<col width="46%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">disable</span> <span class="pre">interrupt</span></tt></td>
+<td>disable interrupt</td>
+<td>Interrupts are no longer handled.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="enable">
+<span id="inst-enable"></span><h3>enable<a class="headerlink" href="#enable" title="Permalink to this headline">¶</a></h3>
+<p>Enable interrupts.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="33%" />
+<col width="20%" />
+<col width="46%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">enable</span> <span class="pre">interrupt</span></tt></td>
+<td>enable interrupt</td>
+<td>Interrupts are handled.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="hwbuild">
+<span id="inst-hwbuild"></span><h3>hwbuild<a class="headerlink" href="#hwbuild" title="Permalink to this headline">¶</a></h3>
+<p>Generate the hardware build version number. Available on PicoBlaze-6 only.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="33%" />
+<col width="20%" />
+<col width="46%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">hwbuild</span> <span class="pre">&lt;register&gt;</span></tt></td>
+<td>hwbuild s0</td>
+<td>s0 ⇐ hardware build number</td>
+</tr>
+</tbody>
+</table>
+<p>The C flag is always set to &#8216;1&#8217;. The Z flag is set when the result is zero. This is the only instruction that can set C by itself.</p>
+<p>The build number is specified in the KCPSM6 &#8220;hwbuild&#8221; generic when it is instantiated.</p>
+</div>
+<div class="section" id="load-return">
+<span id="inst-load-return"></span><h3>load&amp;return<a class="headerlink" href="#load-return" title="Permalink to this headline">¶</a></h3>
+<p>Load a register and return. Available on PicoBlaze-6 only.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="34%" />
+<col width="20%" />
+<col width="46%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">load&amp;return</span> <span class="pre">&lt;register&gt;,</span> <span class="pre">&lt;literal&gt;</span></tt></td>
+<td>load&amp;return s0, &#8220;A&#8221;</td>
+<td>s0 ⇐ &#8220;A&#8221; and return to caller.</td>
+</tr>
+</tbody>
+</table>
+<p>This is used to do a constant load and return in a single instruction. It is primarily used to load tables of data and strings stored in program memory accessed with a <a class="reference internal" href="#id1">call&#64;</a> instruction.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">message:</span>
+  <span class="k">load&amp;return</span> <span class="n">s0</span><span class="p">,</span> <span class="sc">&quot;H&quot;</span>
+  <span class="k">load&amp;return</span> <span class="n">s0</span><span class="p">,</span> <span class="sc">&quot;e&quot;</span>
+  <span class="k">load&amp;return</span> <span class="n">s0</span><span class="p">,</span> <span class="sc">&quot;l&quot;</span>
+  <span class="k">load&amp;return</span> <span class="n">s0</span><span class="p">,</span> <span class="sc">&quot;l&quot;</span>
+  <span class="k">load&amp;return</span> <span class="n">s0</span><span class="p">,</span> <span class="sc">&quot;o&quot;</span>
+  <span class="k">load&amp;return</span> <span class="n">s0</span><span class="p">,</span> <span class="n">NUL</span>
+
+  ...
+
+  <span class="k">load</span> <span class="n">sA</span><span class="p">,</span> <span class="n">message</span><span class="o">&#39;upper</span>
+  <span class="k">load</span> <span class="n">sB</span><span class="p">,</span> <span class="n">message</span><span class="o">&#39;lower</span>
+<span class="nl">loop:</span>
+  <span class="k">call@</span> <span class="p">(</span><span class="n">sA</span><span class="p">,</span> <span class="n">sB</span><span class="p">)</span> <span class="c">; Load s0 with next byte</span>
+  <span class="k">compare</span> <span class="n">s0</span><span class="p">,</span> <span class="n">NUL</span>
+  <span class="k">jump</span> <span class="n">Z</span><span class="p">,</span> <span class="n">done</span>
+  <span class="ge">&lt;Do something with s0&gt;</span>
+  <span class="k">add</span>   <span class="n">sB</span><span class="p">,</span> <span class="mh">01</span>
+  <span class="k">addcy</span> <span class="n">sA</span><span class="p">,</span> <span class="mh">00</span>
+  <span class="k">jump</span> <span class="n">loop</span>
+<span class="nl">done:</span>
+</pre></div>
+</div>
+<p>You ordinarily wouldn&#8217;t implement tables by manually writing each <tt class="docutils literal"><span class="pre">load&amp;return</span></tt> instruction. The assembler has built in support for generating sequences of <tt class="docutils literal"><span class="pre">load&amp;return</span></tt> instructions when the literal operand is the name of a defined string or table.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">table</span> <span class="n">my_data#</span><span class="p">,</span> <span class="m">[1,2,3,8,100,200]&#39;d</span>
+
+<span class="nl">my_table:</span>
+  <span class="k">load&amp;return</span> <span class="n">s0</span><span class="p">,</span> <span class="n">my_data#</span> <span class="c">; Expands into 6 load&amp;return instructions</span>
+
+<span class="k">string</span> <span class="n">my_string$</span><span class="p">,</span> &quot;Hello world&quot;
+
+<span class="nl">message:</span>
+  <span class="k">load&amp;return</span> <span class="n">s0</span><span class="p">,</span> <span class="n">my_string$</span> <span class="c">; Expands into 11 load&amp;return instructions</span>
+
+...
+<span class="ge">&lt;call@ code to access my_table and message&gt;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="regbank">
+<span id="inst-regbank"></span><h3>regbank<a class="headerlink" href="#regbank" title="Permalink to this headline">¶</a></h3>
+<p>Switch between register banks. Available on PicoBlaze-6 only.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="34%" />
+<col width="20%" />
+<col width="46%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Format</th>
+<th class="head">Example</th>
+<th class="head">Result</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">regbank</span> <span class="pre">&lt;A|B&gt;</span></tt></td>
+<td>regbank B</td>
+<td>Switch to second bank of registers</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="missing-instructions">
+<h2>Missing instructions<a class="headerlink" href="#missing-instructions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="nop">
+<h3>nop<a class="headerlink" href="#nop" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="not">
+<h3>not<a class="headerlink" href="#not" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="negate">
+<h3>negate<a class="headerlink" href="#negate" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/opbasm_logo.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">Opbasm</a></h1>
+
+
+
+<p class="blurb">Advanced PicoBlaze Assembler</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=kevinpt&repo=opbasm&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="library.html" title="previous chapter">Opbasm PicoBlaze macro library reference</a></li>
+      <li>Next: <a href="tutorial.html" title="next chapter">PicoBlaze assembly tutorial</a></li>
+  </ul></li>
+</ul>
+</div>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">PicoBlaze assembly language reference</a><ul>
+<li><a class="reference internal" href="#instructions">Instructions</a></li>
+<li><a class="reference internal" href="#instruction-formats">Instruction formats</a></li>
+<li><a class="reference internal" href="#literal-syntax">Literal syntax</a></li>
+<li><a class="reference internal" href="#address-spaces">Address spaces</a></li>
+<li><a class="reference internal" href="#flags">Flags</a></li>
+<li><a class="reference internal" href="#initialization">Initialization</a></li>
+<li><a class="reference internal" href="#interrupts">Interrupts</a></li>
+<li><a class="reference internal" href="#directives">Directives</a><ul>
+<li><a class="reference internal" href="#address">address</a></li>
+<li><a class="reference internal" href="#constant">constant</a></li>
+<li><a class="reference internal" href="#default-jump">default_jump</a></li>
+<li><a class="reference internal" href="#include">include</a></li>
+<li><a class="reference internal" href="#inst">inst</a></li>
+<li><a class="reference internal" href="#namereg">namereg</a></li>
+<li><a class="reference internal" href="#string">string</a></li>
+<li><a class="reference internal" href="#table">table</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#register-assignment-instructions">Register assignment instructions</a><ul>
+<li><a class="reference internal" href="#load">load</a></li>
+<li><a class="reference internal" href="#star">star</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#alu-instructions">ALU instructions</a><ul>
+<li><a class="reference internal" href="#add">add</a></li>
+<li><a class="reference internal" href="#addcy">addcy</a></li>
+<li><a class="reference internal" href="#sub">sub</a></li>
+<li><a class="reference internal" href="#subcy">subcy</a></li>
+<li><a class="reference internal" href="#and">and</a></li>
+<li><a class="reference internal" href="#or">or</a></li>
+<li><a class="reference internal" href="#xor">xor</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#comparson-instructions">Comparson instructions</a><ul>
+<li><a class="reference internal" href="#compare">compare</a></li>
+<li><a class="reference internal" href="#comparecy">comparecy</a></li>
+<li><a class="reference internal" href="#test">test</a></li>
+<li><a class="reference internal" href="#testcy">testcy</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#shift-rotate-instructions">Shift/rotate instructions</a><ul>
+<li><a class="reference internal" href="#rl">rl</a></li>
+<li><a class="reference internal" href="#rr">rr</a></li>
+<li><a class="reference internal" href="#sl0">sl0</a></li>
+<li><a class="reference internal" href="#sl1">sl1</a></li>
+<li><a class="reference internal" href="#sla">sla</a></li>
+<li><a class="reference internal" href="#slx">slx</a></li>
+<li><a class="reference internal" href="#sr0">sr0</a></li>
+<li><a class="reference internal" href="#sr1">sr1</a></li>
+<li><a class="reference internal" href="#sra">sra</a></li>
+<li><a class="reference internal" href="#srx">srx</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#branching-instructions">Branching instructions</a><ul>
+<li><a class="reference internal" href="#call">call</a></li>
+<li><a class="reference internal" href="#inst-call-at">call&#64;</a></li>
+<li><a class="reference internal" href="#jump">jump</a></li>
+<li><a class="reference internal" href="#inst-jump-at">jump&#64;</a></li>
+<li><a class="reference internal" href="#return">return</a></li>
+<li><a class="reference internal" href="#returni">returni</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#memory-access-instructions">Memory access instructions</a><ul>
+<li><a class="reference internal" href="#fetch">fetch</a></li>
+<li><a class="reference internal" href="#store">store</a></li>
+<li><a class="reference internal" href="#input">input</a></li>
+<li><a class="reference internal" href="#output">output</a></li>
+<li><a class="reference internal" href="#outputk">outputk</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#miscellaneous-instructions">Miscellaneous instructions</a><ul>
+<li><a class="reference internal" href="#disable">disable</a></li>
+<li><a class="reference internal" href="#enable">enable</a></li>
+<li><a class="reference internal" href="#hwbuild">hwbuild</a></li>
+<li><a class="reference internal" href="#load-return">load&amp;return</a></li>
+<li><a class="reference internal" href="#regbank">regbank</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#missing-instructions">Missing instructions</a><ul>
+<li><a class="reference internal" href="#nop">nop</a></li>
+<li><a class="reference internal" href="#not">not</a></li>
+<li><a class="reference internal" href="#negate">negate</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3>Other projects</h3>
+
+<div id="proj_list">
+<p>
+
+<a href="http://kevinpt.github.io/ripyl/">Ripyl</a><br>
+<a href="http://code.google.com/p/vertcl">Vertcl</a><br>
+<a href="http://code.google.com/p/vhdl-extras">Vhdl-extras</a><br>
+<a href="http://kevinpt.github.io/lecroy-colorizer/">Lecroy-colorizer</a>
+</p>
+</div>
+
+<script>
+$(function() { // Retrieve list of repositories from Github and dynamically insert them into sidebar
+
+if(!window.sessionStorage || !JSON) { return; } // Punt on crusty browsers (looking at you IE10)
+
+function JSONP( url, callback ) {
+	var id = ( 'jsonp' + Math.random() * new Date() ).replace('.', '');
+	var script = document.createElement('script');
+	script.src = url.replace( 'callback=?', 'callback=' + id );
+	document.body.appendChild( script );
+	window[ id ] = function( data ) {
+		if (callback) {
+			callback( data );
+		}
+	};
+}
+
+// Build dictionary indexing lower cased project names with their preferred format
+var knownProjects = ["VHDL-extras", "Ripyl", "VerTcl", "LeCroy-colorizer", "Opbasm"];
+var projectDict = {};
+$.each(knownProjects, function(index, v) {
+  projectDict[v.toLowerCase()] = v;
+});
+
+function insert_projects(projects) {
+    var links = [];
+    var cur_proj = "Opbasm".toLowerCase();
+    
+    $.each(projects, function(key, value) {
+      if(key != cur_proj) {
+        var title;
+        if(key in projectDict) {
+          title = projectDict[key];
+        } else { // Capitalize first char
+          title = key.replace(/^./, function(match) {return match.toUpperCase()});
+        }
+        links.push("<a href='"+ value +"'>" + title + "</a>");
+      }
+    });
+    
+    $("#proj_list").html("<p>"+ links.join("<br>") +"</p>");
+}
+
+var now = new Date().getTime();
+if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) { // Use cached values (5 min. expiry)
+  insert_projects(JSON.parse(sessionStorage.KTprojects));
+} else { // Retrieve current projects
+  JSONP("https://api.github.com/users/kevinpt/repos?type=owner&callback=?", function(response) {
+    var projects = {};
+    $.each(response.data, function(index, value) {
+      if(!value.fork)
+        projects[value.name] = value.homepage;
+    });
+    
+    insert_projects(projects);
+    
+    // Store data in session cache
+    sessionStorage.KTprojects = JSON.stringify(projects);
+    var now = new Date().getTime();
+    sessionStorage.KTcacheTime = now;
+  });  
+}
+
+});
+</script>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, Kevin Thibedeau.
+      
+      |
+      <a href="../_sources/rst/language.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

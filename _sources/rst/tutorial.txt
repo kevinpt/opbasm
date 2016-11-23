@@ -1,0 +1,121 @@
+===========================
+PicoBlaze assembly tutorial
+===========================
+
+
+If you've never written assembly code before it may be confusing where to start. The following tutorial will provide guidance on how to develop a PicoBlaze program with explanations of how to implement the most common idioms.
+
+A typical PicoBlaze assembly program will follow a pattern like that shown below. You should follow this general plan when starting out with PicoBlaze programming.
+
+.. code-block:: picoblaze
+
+  ;==============================
+  ;== Preamble
+
+  <Directives to set up constants, rename registers, and include other files>
+  <Initialization code executed once at startup>
+  
+  ; Skip over subroutines so they don't execute at startup.
+  ; They can also be placed after the main program but this
+  ; style is necessary when using some of the Opbasm macros.
+  jump main
+  
+  ;==============================
+  ;== Subroutines
+  
+  my_function:
+    <Function body>
+    return
+    
+  my_other_function:
+    <Function body>
+    return
+  
+  ; Interrupt handler (optional)
+  my_ISR:
+    <Save registers in scratchpad RAM or switch register banks>
+    <ISR body>
+    <Restore registers or switch register banks back>
+    returni enable ; Restore interrupts after returning
+  
+  ;=============================
+  ;== Main application code
+  main:
+    ...
+    ; Prepare arguments passed through registers
+    load s1, 42'd
+    load s2, "0"
+    call my_function
+    ; Handle possible return value in a register or placed in scratchpad RAM
+    ...
+    ; There is no OS to return to so the main program typically loops over itself
+    jump main
+
+  ;=============================
+  ;== Special code
+  
+  ; Guard to avoid falling into the ISR code.
+  ; You could also try to recover or restart.
+  default_jump fatal_error
+  fatal_error: jump fatal_error
+  
+  ; Jump into the ISR from the default interrupt vector
+  ; at the end of 1K address space.
+  address 3FF
+  jump my_ISR
+
+
+Program storage
+---------------
+
+The PicoBlaze is a Harvard architecture machine with an instruction memory separate from data storage and the I/O address space. Your program is typically stored in a Xilinx Block RAM (BRAM) that has predefined initial values to make it act like a ROM. The PicoBlaze has no built in mechanisms to write to this memory but it is possible to do so with additional logic for more advanced applications. It is also possible to store non-instruction data in the in left over free space of a Block RAM which can be accessed through a second address port connected to the PicoBlaze I/O.
+
+Each instruction is a fixed 18-bit word that naturally fills a BRAM utilizing all of its extra parity bits. The PicoBlaze-3 supports up to 1k instruction words and the PB6 can use up to 4k. It is possible to put smaller programs into the other type of memory available on Xilinx parts, distributed RAM, which is synthesized from the programmable logic LUTs configured for a special SRAM mode. Another option is to use the dual-ported capability to split a BRAM between two PicoBlaze devices.
+
+The assembler converts your program into a list of instruction words that are used to initialize a BRAM. This becomes part of your FPGA project in one of two ways. The traditional way is to use an HDL template file that instantiates the proper BRAM for your device. The template BRAM has the the program words filled in to create a synthesizable ROM that is instantiated in your FPGA project. The alternative is to the Opbasm :ref:`synthesizable ROM template <generic_rom>` which currently only works with the Xilinx ISE toolset and not Vivado.
+
+Assigning variables
+-------------------
+
+The most fundamental action you can take in a program is to assign a value to a storage location. PB3 and PB3 have two areas for storing data internally: registers, and scratchpad memory. There are 16 8-bit registers which are all fully general purpose. PB6 has a second bank of 16 registers that can be exchanged with the first set for special purposes. The scratchpad is a 64 byte RAM on PB3 expandable to 128 or 256 bytes on PB6.
+
+Values that need to be accessed frequently will typically be kept in a register. Values that need to be saved for long periods of time may be better kept in scratchpad to avoid monopolizing registers. All PicoBlaze instructions can work directly with registers but scratchpad memory is only accessible through two dedicated access instructions :ref:`inst-fetch` and :ref:`inst-store`. Data stored in scratchpad takes more time to process and consumes more program memory as a result.
+
+The most basic instruction for assigning a value to a register is :ref:`inst-load`. It takes a destination register as the first argument
+
+Register allocation
+~~~~~~~~~~~~~~~~~~~
+
+Unlike compiled programming languages, it is left up to you to determine how registers are used in your program. It is useful to come up with a regular scheme for using the registers for specific purposes to reduce confusion and improve maintainability. It becomes difficult to manage registers if you randomly assign them in various parts of your program.
+
+There are five common classes of data that registers can be used for:
+
+  1. Arguments to subroutines
+  2. Return values from subroutines
+  3. Local variables (preserved on a stack)
+  4. Temporary values (never preserved)
+  5. Special purpose values (globals)
+
+The PicoBlaze assembly syntax includes a :ref:`inst-namereg` directive that can be used to rename a register. This can give more meaningful names to commonly used registers. It is also useful to protect reserved registers from being accidentally overwritten by other code. 
+
+Control structures
+------------------
+
+If-then-else
+~~~~~~~~~~~~
+
+Loops
+~~~~~
+
+Subroutines
+-----------
+
+Accessing memory
+----------------
+
+External I/O
+------------
+
+External events
+---------------
+

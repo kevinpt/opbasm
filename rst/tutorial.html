@@ -1,0 +1,325 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>PicoBlaze assembly tutorial &mdash; Opbasm 1.3 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/project.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/tty/tty-player.min.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '1.3',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="top" title="Opbasm 1.3 documentation" href="../index.html" />
+    <link rel="prev" title="PicoBlaze assembly language reference" href="language.html" />
+
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/0.7.5/webcomponents-lite.min.js"></script>
+<script src="_static/tty/term.min.js"></script>
+<script src="_static/tty/tty-player.min.js"></script>
+
+<style>
+	.terminal-cursor {
+		color: #000;
+		background: green;
+	}
+	.terminal, .title {
+		font-size:x-small;
+	}
+</style>
+
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="picoblaze-assembly-tutorial">
+<h1>PicoBlaze assembly tutorial<a class="headerlink" href="#picoblaze-assembly-tutorial" title="Permalink to this headline">¶</a></h1>
+<p>If you&#8217;ve never written assembly code before it may be confusing where to start. The following tutorial will provide guidance on how to develop a PicoBlaze program with explanations of how to implement the most common idioms.</p>
+<p>A typical PicoBlaze assembly program will follow a pattern like that shown below. You should follow this general plan when starting out with PicoBlaze programming.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;==============================</span>
+<span class="c">;== Preamble</span>
+
+<span class="ge">&lt;Directives to set up constants, rename registers, and include other files&gt;</span>
+<span class="ge">&lt;Initialization code executed once at startup&gt;</span>
+
+<span class="c">; Skip over subroutines so they don&#39;t execute at startup.</span>
+<span class="c">; They can also be placed after the main program but this</span>
+<span class="c">; style is necessary when using some of the Opbasm macros.</span>
+<span class="k">jump</span> <span class="n">main</span>
+
+<span class="c">;==============================</span>
+<span class="c">;== Subroutines</span>
+
+<span class="nl">my_function:</span>
+  <span class="ge">&lt;Function body&gt;</span>
+  <span class="k">return</span>
+
+<span class="nl">my_other_function:</span>
+  <span class="ge">&lt;Function body&gt;</span>
+  <span class="k">return</span>
+
+<span class="c">; Interrupt handler (optional)</span>
+<span class="nl">my_ISR:</span>
+  <span class="ge">&lt;Save registers in scratchpad RAM or switch register banks&gt;</span>
+  <span class="ge">&lt;ISR body&gt;</span>
+  <span class="ge">&lt;Restore registers or switch register banks back&gt;</span>
+  <span class="k">returni</span> <span class="n">enable</span> <span class="c">; Restore interrupts after returning</span>
+
+<span class="c">;=============================</span>
+<span class="c">;== Main application code</span>
+<span class="nl">main:</span>
+  ...
+  <span class="c">; Prepare arguments passed through registers</span>
+  <span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="m">42&#39;d</span>
+  <span class="k">load</span> <span class="n">s2</span><span class="p">,</span> <span class="sc">&quot;0&quot;</span>
+  <span class="k">call</span> <span class="n">my_function</span>
+  <span class="c">; Handle possible return value in a register or placed in scratchpad RAM</span>
+  ...
+  <span class="c">; There is no OS to return to so the main program typically loops over itself</span>
+  <span class="k">jump</span> <span class="n">main</span>
+
+<span class="c">;=============================</span>
+<span class="c">;== Special code</span>
+
+<span class="c">; Guard to avoid falling into the ISR code.</span>
+<span class="c">; You could also try to recover or restart.</span>
+<span class="k">default_jump</span> <span class="n">fatal_error</span>
+<span class="nl">fatal_error:</span> <span class="k">jump</span> <span class="n">fatal_error</span>
+
+<span class="c">; Jump into the ISR from the default interrupt vector</span>
+<span class="c">; at the end of 1K address space.</span>
+<span class="k">address</span> <span class="mh">3FF</span>
+<span class="k">jump</span> <span class="n">my_ISR</span>
+</pre></div>
+</div>
+<div class="section" id="program-storage">
+<h2>Program storage<a class="headerlink" href="#program-storage" title="Permalink to this headline">¶</a></h2>
+<p>The PicoBlaze is a Harvard architecture machine with an instruction memory separate from data storage and the I/O address space. Your program is typically stored in a Xilinx Block RAM (BRAM) that has predefined initial values to make it act like a ROM. The PicoBlaze has no built in mechanisms to write to this memory but it is possible to do so with additional logic for more advanced applications. It is also possible to store non-instruction data in the in left over free space of a Block RAM which can be accessed through a second address port connected to the PicoBlaze I/O.</p>
+<p>Each instruction is a fixed 18-bit word that naturally fills a BRAM utilizing all of its extra parity bits. The PicoBlaze-3 supports up to 1k instruction words and the PB6 can use up to 4k. It is possible to put smaller programs into the other type of memory available on Xilinx parts, distributed RAM, which is synthesized from the programmable logic LUTs configured for a special SRAM mode. Another option is to use the dual-ported capability to split a BRAM between two PicoBlaze devices.</p>
+<p>The assembler converts your program into a list of instruction words that are used to initialize a BRAM. This becomes part of your FPGA project in one of two ways. The traditional way is to use an HDL template file that instantiates the proper BRAM for your device. The template BRAM has the the program words filled in to create a synthesizable ROM that is instantiated in your FPGA project. The alternative is to the Opbasm <a class="reference internal" href="../index.html#generic-rom"><em>synthesizable ROM template</em></a> which currently only works with the Xilinx ISE toolset and not Vivado.</p>
+</div>
+<div class="section" id="assigning-variables">
+<h2>Assigning variables<a class="headerlink" href="#assigning-variables" title="Permalink to this headline">¶</a></h2>
+<p>The most fundamental action you can take in a program is to assign a value to a storage location. PB3 and PB3 have two areas for storing data internally: registers, and scratchpad memory. There are 16 8-bit registers which are all fully general purpose. PB6 has a second bank of 16 registers that can be exchanged with the first set for special purposes. The scratchpad is a 64 byte RAM on PB3 expandable to 128 or 256 bytes on PB6.</p>
+<p>Values that need to be accessed frequently will typically be kept in a register. Values that need to be saved for long periods of time may be better kept in scratchpad to avoid monopolizing registers. All PicoBlaze instructions can work directly with registers but scratchpad memory is only accessible through two dedicated access instructions <a class="reference internal" href="language.html#inst-fetch"><em>fetch</em></a> and <a class="reference internal" href="language.html#inst-store"><em>store</em></a>. Data stored in scratchpad takes more time to process and consumes more program memory as a result.</p>
+<p>The most basic instruction for assigning a value to a register is <a class="reference internal" href="language.html#inst-load"><em>load</em></a>. It takes a destination register as the first argument</p>
+<div class="section" id="register-allocation">
+<h3>Register allocation<a class="headerlink" href="#register-allocation" title="Permalink to this headline">¶</a></h3>
+<p>Unlike compiled programming languages, it is left up to you to determine how registers are used in your program. It is useful to come up with a regular scheme for using the registers for specific purposes to reduce confusion and improve maintainability. It becomes difficult to manage registers if you randomly assign them in various parts of your program.</p>
+<p>There are five common classes of data that registers can be used for:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>Arguments to subroutines</li>
+<li>Return values from subroutines</li>
+<li>Local variables (preserved on a stack)</li>
+<li>Temporary values (never preserved)</li>
+<li>Special purpose values (globals)</li>
+</ol>
+</div></blockquote>
+<p>The PicoBlaze assembly syntax includes a <a class="reference internal" href="language.html#inst-namereg"><em>namereg</em></a> directive that can be used to rename a register. This can give more meaningful names to commonly used registers. It is also useful to protect reserved registers from being accidentally overwritten by other code.</p>
+</div>
+</div>
+<div class="section" id="control-structures">
+<h2>Control structures<a class="headerlink" href="#control-structures" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="if-then-else">
+<h3>If-then-else<a class="headerlink" href="#if-then-else" title="Permalink to this headline">¶</a></h3>
+</div>
+<div class="section" id="loops">
+<h3>Loops<a class="headerlink" href="#loops" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="subroutines">
+<h2>Subroutines<a class="headerlink" href="#subroutines" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="accessing-memory">
+<h2>Accessing memory<a class="headerlink" href="#accessing-memory" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="external-i-o">
+<h2>External I/O<a class="headerlink" href="#external-i-o" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="external-events">
+<h2>External events<a class="headerlink" href="#external-events" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../index.html">
+              <img class="logo" src="../_static/opbasm_logo.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="../index.html">Opbasm</a></h1>
+
+
+
+<p class="blurb">Advanced PicoBlaze Assembler</p>
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=kevinpt&repo=opbasm&type=watch&count=true&size=large"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="language.html" title="previous chapter">PicoBlaze assembly language reference</a></li>
+  </ul></li>
+</ul>
+</div>
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">PicoBlaze assembly tutorial</a><ul>
+<li><a class="reference internal" href="#program-storage">Program storage</a></li>
+<li><a class="reference internal" href="#assigning-variables">Assigning variables</a><ul>
+<li><a class="reference internal" href="#register-allocation">Register allocation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#control-structures">Control structures</a><ul>
+<li><a class="reference internal" href="#if-then-else">If-then-else</a></li>
+<li><a class="reference internal" href="#loops">Loops</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#subroutines">Subroutines</a></li>
+<li><a class="reference internal" href="#accessing-memory">Accessing memory</a></li>
+<li><a class="reference internal" href="#external-i-o">External I/O</a></li>
+<li><a class="reference internal" href="#external-events">External events</a></li>
+</ul>
+</li>
+</ul>
+<h3>Other projects</h3>
+
+<div id="proj_list">
+<p>
+
+<a href="http://kevinpt.github.io/ripyl/">Ripyl</a><br>
+<a href="http://code.google.com/p/vertcl">Vertcl</a><br>
+<a href="http://code.google.com/p/vhdl-extras">Vhdl-extras</a><br>
+<a href="http://kevinpt.github.io/lecroy-colorizer/">Lecroy-colorizer</a>
+</p>
+</div>
+
+<script>
+$(function() { // Retrieve list of repositories from Github and dynamically insert them into sidebar
+
+if(!window.sessionStorage || !JSON) { return; } // Punt on crusty browsers (looking at you IE10)
+
+function JSONP( url, callback ) {
+	var id = ( 'jsonp' + Math.random() * new Date() ).replace('.', '');
+	var script = document.createElement('script');
+	script.src = url.replace( 'callback=?', 'callback=' + id );
+	document.body.appendChild( script );
+	window[ id ] = function( data ) {
+		if (callback) {
+			callback( data );
+		}
+	};
+}
+
+// Build dictionary indexing lower cased project names with their preferred format
+var knownProjects = ["VHDL-extras", "Ripyl", "VerTcl", "LeCroy-colorizer", "Opbasm"];
+var projectDict = {};
+$.each(knownProjects, function(index, v) {
+  projectDict[v.toLowerCase()] = v;
+});
+
+function insert_projects(projects) {
+    var links = [];
+    var cur_proj = "Opbasm".toLowerCase();
+    
+    $.each(projects, function(key, value) {
+      if(key != cur_proj) {
+        var title;
+        if(key in projectDict) {
+          title = projectDict[key];
+        } else { // Capitalize first char
+          title = key.replace(/^./, function(match) {return match.toUpperCase()});
+        }
+        links.push("<a href='"+ value +"'>" + title + "</a>");
+      }
+    });
+    
+    $("#proj_list").html("<p>"+ links.join("<br>") +"</p>");
+}
+
+var now = new Date().getTime();
+if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) { // Use cached values (5 min. expiry)
+  insert_projects(JSON.parse(sessionStorage.KTprojects));
+} else { // Retrieve current projects
+  JSONP("https://api.github.com/users/kevinpt/repos?type=owner&callback=?", function(response) {
+    var projects = {};
+    $.each(response.data, function(index, value) {
+      if(!value.fork)
+        projects[value.name] = value.homepage;
+    });
+    
+    insert_projects(projects);
+    
+    // Store data in session cache
+    sessionStorage.KTprojects = JSON.stringify(projects);
+    var now = new Date().getTime();
+    sessionStorage.KTcacheTime = now;
+  });  
+}
+
+});
+</script>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, Kevin Thibedeau.
+      
+      |
+      <a href="../_sources/rst/tutorial.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
