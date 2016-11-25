@@ -3,7 +3,7 @@ PicoBlaze assembly tutorial
 ===========================
 
 
-If you've never written assembly code before it may be confusing where to start. The following tutorial will provide guidance on how to develop a PicoBlaze program with explanations of how to implement the most common idioms.
+If you've never written assembly code before it may be confusing to determine where to start. The following tutorial will provide guidance on how to develop a PicoBlaze program with explanations of ways to implement the most common idioms. If you aren't familiar with the PicoBlaze architecture you should review the official Xilinx documentation or browse through the :doc:`architecture and language reference <language>` to learn the basics of what facilities the PicoBlaze has and what syntax is like.
 
 A typical PicoBlaze assembly program will follow a pattern like that shown below. You should follow this general plan when starting out with PicoBlaze programming.
 
@@ -35,7 +35,7 @@ A typical PicoBlaze assembly program will follow a pattern like that shown below
   my_ISR:
     <Save registers in scratchpad RAM or switch register banks>
     <ISR body>
-    <Restore registers or switch register banks back>
+    <Restore registers>
     returni enable ; Restore interrupts after returning
   
   ;=============================
@@ -55,9 +55,10 @@ A typical PicoBlaze assembly program will follow a pattern like that shown below
   ;== Special code
   
   ; Guard to avoid falling into the ISR code.
+  ; All unused memory jumps into this loop.
   ; You could also try to recover or restart.
   default_jump fatal_error
-  fatal_error: jump fatal_error
+  fatal_error: jump fatal_error  ; Infinite loop
   
   ; Jump into the ISR from the default interrupt vector
   ; at the end of 1K address space.
@@ -70,18 +71,39 @@ Program storage
 
 The PicoBlaze is a Harvard architecture machine with an instruction memory separate from data storage and the I/O address space. Your program is typically stored in a Xilinx Block RAM (BRAM) that has predefined initial values to make it act like a ROM. The PicoBlaze has no built in mechanisms to write to this memory but it is possible to do so with additional logic for more advanced applications. It is also possible to store non-instruction data in the in left over free space of a Block RAM which can be accessed through a second address port connected to the PicoBlaze I/O.
 
-Each instruction is a fixed 18-bit word that naturally fills a BRAM utilizing all of its extra parity bits. The PicoBlaze-3 supports up to 1k instruction words and the PB6 can use up to 4k. It is possible to put smaller programs into the other type of memory available on Xilinx parts, distributed RAM, which is synthesized from the programmable logic LUTs configured for a special SRAM mode. Another option is to use the dual-ported capability to split a BRAM between two PicoBlaze devices.
+Each instruction is a fixed 18-bit word that naturally fills a Xilinx BRAM utilizing all of its extra parity bits. The PicoBlaze-3 supports up to 1k instruction words and the PB6 can use up to 4k. It is possible to put smaller programs into the other type of memory available on Xilinx parts, distributed RAM, which is synthesized from the programmable logic LUTs configured for a special SRAM mode. Another option is to use the dual-ported capability to split a BRAM between two PicoBlaze devices.
 
-The assembler converts your program into a list of instruction words that are used to initialize a BRAM. This becomes part of your FPGA project in one of two ways. The traditional way is to use an HDL template file that instantiates the proper BRAM for your device. The template BRAM has the the program words filled in to create a synthesizable ROM that is instantiated in your FPGA project. The alternative is to the Opbasm :ref:`synthesizable ROM template <generic_rom>` which currently only works with the Xilinx ISE toolset and not Vivado.
+The assembler converts your program into a list of instruction words that are used to initialize a BRAM. This becomes part of your FPGA project in one of two ways. The traditional way is to use an HDL template file that instantiates the proper BRAM for your device. The template BRAM has the the program words filled in to create a synthesizable ROM that is instantiated in your FPGA project. The alternative is to the Opbasm :ref:`synthesizable ROM template <generic_rom>` which currently only works with the Xilinx ISE toolset and not Vivado. Either way, the synthesizer will translate the template into a memory with initial instruction values assigned on power up so that it behaves as a ROM.
 
 Assigning variables
 -------------------
 
-The most fundamental action you can take in a program is to assign a value to a storage location. PB3 and PB3 have two areas for storing data internally: registers, and scratchpad memory. There are 16 8-bit registers which are all fully general purpose. PB6 has a second bank of 16 registers that can be exchanged with the first set for special purposes. The scratchpad is a 64 byte RAM on PB3 expandable to 128 or 256 bytes on PB6.
+The most fundamental action you can take in a program is to assign a value to a storage location. PB3 and PB6 have two areas for storing data internally: registers, and scratchpad memory. There are 16 8-bit registers which are all fully general purpose. PB6 has a second bank of 16 registers that can be exchanged with the first set for special purposes. The scratchpad is a 64 byte RAM on PB3 expandable to 128 or 256 bytes on PB6.
 
-Values that need to be accessed frequently will typically be kept in a register. Values that need to be saved for long periods of time may be better kept in scratchpad to avoid monopolizing registers. All PicoBlaze instructions can work directly with registers but scratchpad memory is only accessible through two dedicated access instructions :ref:`inst-fetch` and :ref:`inst-store`. Data stored in scratchpad takes more time to process and consumes more program memory as a result.
+Values that need to be accessed frequently will typically be kept in a register. Values that need to be saved for long periods of time may be better kept in scratchpad to avoid monopolizing registers. All PicoBlaze instructions can work directly with registers but scratchpad memory is only accessible through two dedicated access instructions :ref:`inst-fetch` and :ref:`inst-store`. Data stored in scratchpad takes more code to process and consumes more time and program memory as a result.
 
-The most basic instruction for assigning a value to a register is :ref:`inst-load`. It takes a destination register as the first argument
+The most basic instruction for assigning a value to a register is :ref:`inst-load`. It takes a destination register as the first argument and either another register or a constant literal as the second.
+
+.. code-block:: picoblaze
+
+  load s0, 5A  ; Load s0 with 0x5A (90 decimal)
+  load s1, s0  ; Load s1 with value of s0
+
+Using ``fetch`` and ``store`` we can save variables in scratchpad:
+
+.. code-block:: picoblaze
+
+  constant M_COUNTER, 0F  ; Scratchpad address 0x0F used for our variable
+  load s0, 00             ; Initialize counter to 0
+  store s0, M_COUNTER     ; Save initial value
+  
+  ; Increment variable in scratchpad
+  fetch s4, M_COUNTER
+  add s4, 01
+  store s4, M_COUNTER
+  ; Scratchpad[15] is now 1
+  
+Using a constant for scratchpad variable addresses makes it easy to modify their location in the future. You should avoid hardcoding numeric addresses directly into ``fetch`` and ``store`` instructions.
 
 Register allocation
 ~~~~~~~~~~~~~~~~~~~
@@ -96,19 +118,298 @@ There are five common classes of data that registers can be used for:
   4. Temporary values (never preserved)
   5. Special purpose values (globals)
 
-The PicoBlaze assembly syntax includes a :ref:`inst-namereg` directive that can be used to rename a register. This can give more meaningful names to commonly used registers. It is also useful to protect reserved registers from being accidentally overwritten by other code. 
+By default all registers are general purpose and can be used interchangeably. The PicoBlaze assembly syntax includes a :ref:`inst-namereg` directive that can rename a register. This can give more meaningful names to commonly used registers. It is also useful to protect registers reserved for a special purpose from being accidentally overwritten by other code.
+
+One possible register usage convention:
+
+======== ======= =========================
+Register Renamed Purpose
+======== ======= =========================
+s0               Subroutine return value
+s1               Argument 1
+s2               Argument 2
+s3               Argument 3
+s4               Argument 4
+s5               Local 1
+s6               Local 2
+s7               Local 3
+s8               Local 4
+s9               Local 5
+sA               Local 6
+sB               *unallocated*
+sC               *unallocated*
+sD               *unallocated*
+sE       TEMPREG Temporary value
+sF       SP      Stack pointer (see below)
+======== ======= =========================
 
 Control structures
 ------------------
 
+If you are used to programming in high level languages the biggest change when using assembly is that there are no built in control structures. You have to implement them all yourself implicitly in assembly code. This can create some tedium in writing assembly and can make it hard to follow along when reading code. The Opbasm macro package has a system to let you write :ref:`control structures in a high-level style syntax <c-style-if-then>`. However, it is still useful to know the basics of how this is done as explained in the following.
+
 If-then-else
 ~~~~~~~~~~~~
+
+An if-then-else statement consists of a three parts. An expression to evaluate, a block of code to execute when the expression is true and an optional block for a false expression. A basic if-then-else is of the following form:
+
+.. code-block:: c
+
+  if(RX_DATA == 42) {
+    TX_DATA = 'E';
+  } else {
+    TX_DATA = 'N';
+  }
+
+In PicoBlaze assembly the expression is evaluated with instructions that will set or clear the C and Z flags. Subsequent conditional :ref:`inst-jump` and :ref:`inst-call` instructions will examine these flags to determine what to execute next. This allows us to follow the different execution paths of the if-then-else construct.
+
+The main instruction for evaluating expressions is :ref:`inst-compare`. It subtracts its second argument from the first and changes the C and Z flags based on the result. Note that it only changes the flags. The subtraction result is thrown away and does not affect the registers. 
+
+After a ``compare`` instruction the flags can be interpreted as follows:
+
+==== ==== =====================================
+Z    C    Meaning
+==== ==== =====================================
+1    \-   = operands are equal
+0    \-   ≠ operands are not equal
+0    0    > first is greater than second
+\-   0    ≥ first is greater or equal to second
+\-   1    < first is less than second
+1    1    ≤ first is less or equal to second
+==== ==== =====================================
+
+This gives us enough tools to replicate the pseudocode above:
+
+.. code-block:: picoblaze
+
+         input   s5, RX_DATA  ; Load a local register to work with
+         compare s5, 42'd     ; Subtract 42 from s5 and update C and Z flags
+         jump    Z, equal     ; If s5 == 42 the Z flag is set
+  ; Not equal (false block)
+         load   TEMPREG, "N"
+         jump   end_if
+  equal: ; (true block)
+         load   TEMPREG, "E"
+  end_if:
+         output TEMPREG, TX_DATA
+
+Here the ``jump Z, equal`` instruction branches to the "equal" label when the Z flag is set. Otherwise the next instruction is executed.
+
+When you have no else condition, the true block can be placed immediately after the expression evaluation code:
+
+.. code-block:: picoblaze
+
+  ; if(RX_DATA < 42) {
+  ;   TX_DATA = 'L';
+  ; }
+
+         input   s5, RX_DATA
+         compare s5, 42'd      ; Subtract 42 from s5 and update C and Z flags
+         jump    NC, gte       ; If s5 < 42 the C flag is set. It is clear when s5 ≥ 42
+  ; Less than (true block)
+         load   TEMPREG, "L"
+         output TEMPREG, TX_DATA
+  gte: ; (false)
+
+In this case we want to branch past the true block when the expression is false so we use "NC" instead of "C" to check for ``RX_DATA < 42``.
+
+It isn't always necessary to use the ``compare`` instruction to evaluate an expression. If an instruction you already need to use changes the flags in a useful way then you can check them directly without a ``compare``.
+
+Consider you are incementing a register and want to detect when it overflows past 0xFF. In this case the result is zero so you could compare for equality with 0x00 but the :ref:`inst-add` instruction also sets the C flag on overflow so you could also just branch directly after the increment.
+
+.. code-block:: picoblaze
+
+  add     s5, 01       ; Increment
+  compare s5, 00       ; Test for overflow
+  jump    Z, overflow  ; Branch with s5 == 0x00
+  
+  ; Same without compare
+  add     s5, 01       ; Increment
+  jump    C, overflow  ; Branch when add overflowed
+
+Recognizing these opportunities to reduce the number of instructions used is important for fitting complex programs into the limited space available for PicoBlaze program storage.
 
 Loops
 ~~~~~
 
+The other major control structures are loops used to repetitively execute blocks of code. The most fundamental of these are the while loop and do-while loop which only differ in when the loop expression is evaluated: either before or after the block.
+
+.. code-block:: c
+
+  while(count < 20) {
+    value = value + 4;
+    count = count + 1;
+  }
+  
+  do {
+    value = value + 4;
+    count = count + 1;
+  } while(count < 20)
+
+We can implement these in PicoBlaze assembly as follows:
+
+.. code-block:: picoblaze
+
+  fetch   s5, VALUE       ; Get value from scratchpad RAM
+  load    s6, 00          ; Initialize count
+
+  while_loop:
+    compare s6, 20'd
+    jump    NC, while_end ; End loop when s6 ≥ 20
+    add     s5, 04
+    add     s6, 01
+    jump    while_loop
+  while_end:
+
+
+  fetch   s5, VALUE       ; Get value from scratchpad RAM
+  load    s6, 00          ; Initialize count
+
+  do_while_loop:
+    add     s5, 04
+    add     s6, 01
+    compare s6, 20'd
+    jump    C, do_while_loop ; Continue loop when s6 < 20
+
+Note that the do-while loop requires one less instruction and is the more efficient form if you can arrange your program to work with that variant.
+
 Subroutines
 -----------
+
+It is useful to have reusable code that can be executed from different locations in a program. This is done by creating a subroutine. These begin with a label like those used for :ref:`inst-jump` targets. The :ref:`inst-call` instruction will branch to the the label just like ``jump`` but it also saves the next address on to the hardware call stack. When the subroutine is finished the :ref:`inst-return` instruction pops the most recent address from the stack and resumes execution after the ``call`` instruction.
+
+.. code-block:: picoblaze
+
+  compute_something:
+    <common code>
+    return               ; Resume execution after call
+    
+  ...
+  
+  ; Main program
+  call compute_something ; Branch to subroutine
+  load s0, 01            ; Execution resumes here
+  ...
+  call compute_something ; Call it again
+
+Nothing truly isolates subroutines from executing as normal code other than convention. You must make certain that the processor can't accidentally begin executing a subroutine outside of the ``call``/``return`` mechanism. If you ``jump`` into a subroutine and then execute ``return`` you will pop the wrong address from the call stack and have a malfunction. Likewise, you must not allow the processor to enter into a subroutine by normal sequential execution without a ``call`` to prepare the hardware stack.
+
+.. code-block:: picoblaze
+
+  ; Protect processor from executing subroutines
+  ; as normal code.
+  jump main
+  
+  ;======= SUBROUTINES FOLLOW =======
+
+  compute_something:
+    <common code>
+    return
+
+  ;======= MAIN PROGRAM =======
+  main:
+    ...
+    call compute_something
+
+Subroutines can call other subroutines up to the limit of the hardware stack which is 31 levels on PB3 and 30 levels on PB6.
+
+The ``call`` instruction has a conditional form that works the same as a conditional ``jump``. This allows you to use a subroutine as the body of a control structure.
+
+.. code-block:: picoblaze
+
+  subroutine:
+    ...
+    return
+    
+    
+    compare s5, 10
+    call    Z, subroutine  ; Execute subroutine if s5 == 0x10
+    
+
+    ; Less efficient using jump:
+    compare s5, 10
+    jump    NZ, end_if     ; Skip subroutine if s5 != 0x10
+    call    subroutine
+  end_if:
+
+stack variables
+~~~~~~~~~~~~~~~
+
+Inevitably you will end up in a situation where you don't have any free registers left to do your next task. Higher level languages employ a calling convention where they save registers not deemed as temporaries onto a stack at the beginning of a subroutine and restore these saved values before returning. This allows you to reuse the same register for different purposes in your program. The stack is a region of memory that expands as more data is pushed onto it and shrinks as data is popped off. Most processors have special instructions to assist in managing such a stack in RAM but not the PicoBlaze. The hardware call stack is dedicated to storing only return addresses and is unavailable for general purpose use. It is possible, however, to create a stack in the scratchpad memory and emulate the behavior of push and pop operations.
+
+We reserve a register to function as a stack pointer. It will hold an index into scratchpad memory that always points to the next free location on the stack. Pushes and pops will manipulate this pointer and move data to and from the scratchpad memory.
+
+.. code-block:: picoblaze
+
+  namereg sF, SP    ; Reserve sF as the stack pointer
+  load  SP, 3F      ; Start stack at address 0x3F
+  
+  ; Push s5 register
+  store s5, (SP)    ; Save to next location in stack
+  sub   SP, 01      ; Move SP to next free location
+
+  ; Push s6 register
+  store s6, (SP)    ; Save to next location in stack
+  sub   SP, 01      ; Move SP to next free location
+  
+  ; At this point SP points to address 0x3D
+  ; s5 is saved at address 0x3F and s6 is at 0x3E
+  
+  ...
+  load  s5, 42      ; Work with s5, altering its value
+  add   s6, s5
+  ...
+
+  ; Pop s6 register
+  add   SP, 01      ; Move SP back to last saved value
+  fetch s6, (SP)    ; Restore saved value of s6
+  
+  ; Pop s5 register
+  add   SP, 01      ; Move SP back to next saved value
+  fetch s5, (SP)    ; Restore saved value of s5
+  
+  ; s5 and s6 are restored to their original values
+  ; SP points at address 0x3F again, ready for new data
+
+Each push operation is implemented as a pair of ``store`` and ``sub`` instructions and each pop is an ``add`` ``fetch``. You must pop registers in the reverse of the order they were pushed to restore them to their original state.
+
+In most cases the stack is designed to grow down from higher addresses to lower addresses. This lets you place the stack at the upper end of the scratchpad and use the lower end for other purposes. You don't have to follow this convention and can have a stack grow from low to high if you wish. It is important that the stack never grows large enough to overwrite other data stored in scratchpad. 
+
+The Opbasm macro library has :pb:macro:`push` and :pb:macro:`pop` macros as well as :ref:`other stack handling macros <stack-operations>` to simplify stack management when writing your programs.
+
+With a stack in place you can use it to enforce a calling convention for your subroutines. Within a subroutine all modified registers must be saved to the stack before modification unless they are designated as temporaries that are never saved or a return value. When this convention is followed a subroutine caller never sees registers change before and after a :ref:`inst-call` except the return value register.
+
+.. code-block:: picoblaze
+
+  rotate:
+    ; Push s5
+    store   s5, (SP)
+    sub     SP, 01
+    
+    load    TEMPREG, s1  ; Move argument into temporary we can modify
+    load    s5, 01       ; s5 is available for use
+
+    loop:
+      compare TEMPREG, 00
+      jump    Z, end_loop
+      rl      s5
+      sub     TEMPREG, 01
+      jump    loop
+    end_loop:
+
+    ; Return result in s0
+    load    s0, s5
+    
+    ; Pop s5
+    add     SP, 01
+    fetch   s5, (SP)
+    return
+  ...
+    
+  ; Set subroutine arguments 
+  load    s1, 02
+  call    rotate
+  ; s5 is unchanged, s0 has result, TEMPREG is altered
 
 Accessing memory
 ----------------

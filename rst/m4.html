@@ -67,7 +67,7 @@
 </colgroup>
 <tbody valign="top">
 <tr class="row-odd"><td><ul class="first last simple">
-<li><a class="reference internal" href="#stack-operations">Stack operations</a></li>
+<li><a class="reference internal" href="#id1">Stack operations</a></li>
 <li><a class="reference internal" href="#bitfield-manipulations">Bitfield manipulations</a></li>
 <li><a class="reference internal" href="#shift-and-rotate-by-multiple-bits">Shift and rotate by multiple bits</a></li>
 <li><a class="reference internal" href="#conditional-jump-call-and-return">Conditional jump, call, and return</a></li>
@@ -266,7 +266,7 @@
 </div>
 </div>
 <div class="section" id="conditional-code">
-<h2>Conditional code<a class="headerlink" href="#conditional-code" title="Permalink to this headline">¶</a></h2>
+<span id="m4-conditional-code"></span><h2>Conditional code<a class="headerlink" href="#conditional-code" title="Permalink to this headline">¶</a></h2>
 <p>You may want to conditionally generate portions of a program or pass build time parameters to macros for different results. This can be accomplished with the m4 <tt class="docutils literal"><span class="pre">ifdef()</span></tt> macro.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">ifdef(</span><span class="s">`VARNAME`</span><span class="p">,</span> <span class="s">`</span>
   <span class="o">&lt;</span><span class="s">Defined</span> <span class="s">conditional</span> <span class="s">code</span> <span class="s">here</span><span class="o">&gt;</span>
@@ -358,7 +358,7 @@
 <p>Symbols &#8220;count&#8221; and &#8220;sum&#8221; can now be used in place of s0 and s1. You should quote each variable declaration to avoid macro expansion errors when redefining an existing variable. Use the <a class="reference internal" href="library.html#pb.popvars" title="popvars"><tt class="xref pb pb-macro docutils literal"><span class="pre">popvars</span></tt></a> macro to remove all variables defined in the previous call to <a class="reference internal" href="library.html#pb.vars" title="vars"><tt class="xref pb pb-macro docutils literal"><span class="pre">vars()</span></tt></a>.</p>
 </div>
 <div class="section" id="stack-operations">
-<h2>Stack operations<a class="headerlink" href="#stack-operations" title="Permalink to this headline">¶</a></h2>
+<span id="id1"></span><h2>Stack operations<a class="headerlink" href="#stack-operations" title="Permalink to this headline">¶</a></h2>
 <p>A set of macros are available to simulate a stack using the scratchpad RAM. You initialize the stack and establish the stack pointer register with a call to <a class="reference internal" href="library.html#pb.use_stack" title="use_stack"><tt class="xref pb pb-macro docutils literal"><span class="pre">use_stack()</span></tt></a>. After that you can call <a class="reference internal" href="library.html#pb.push" title="push"><tt class="xref pb pb-macro docutils literal"><span class="pre">push()</span></tt></a> and <a class="reference internal" href="library.html#pb.pop" title="pop"><tt class="xref pb pb-macro docutils literal"><span class="pre">pop()</span></tt></a> to manage registers on the stack. You can push and pop any number of registers at once. Pops happen in reverse order to preserve register values when passed the same list as <a class="reference internal" href="library.html#pb.push" title="push"><tt class="xref pb pb-macro docutils literal"><span class="pre">push()</span></tt></a>. The stack grows down so the initial address should be the highest the stack will occupy.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">namereg</span> <span class="n">sF</span><span class="p">,</span> <span class="n">SP</span>      <span class="c">; Protect sF for use as the stack pointer</span>
 <span class="nb">use_stack(</span><span class="s">SP</span><span class="p">,</span> <span class="mh">0x3F</span><span class="nb">)</span> <span class="c">; Start stack at end of 64-byte scratchpad</span>
@@ -457,7 +457,7 @@
 </table>
 </div>
 <div class="section" id="conditional-jump-call-and-return">
-<span id="id1"></span><h2>Conditional jump call and return<a class="headerlink" href="#conditional-jump-call-and-return" title="Permalink to this headline">¶</a></h2>
+<span id="id2"></span><h2>Conditional jump call and return<a class="headerlink" href="#conditional-jump-call-and-return" title="Permalink to this headline">¶</a></h2>
 <p>PicoBlaze assembly depends on using the carry and zero flags directly to handle conditional <a class="reference internal" href="language.html#inst-jump"><em>jump</em></a> and <a class="reference internal" href="language.html#inst-call"><em>call</em></a> instructions. It can be difficult to remember how the carry flag is interpreted so a set of macros are provided to perform more natural conditional instructions.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">compare</span> <span class="n">s0</span><span class="p">,</span> <span class="n">s1</span>
 <span class="nb">jne(</span><span class="s">not_equal</span><span class="nb">)</span>           <span class="c">; Jump if s0 != s1</span>
@@ -518,7 +518,7 @@
 <p class="last">This can lead to problems when doing comparisons with 0xFF because the 0x100 can&#8217;t be used as an immediate instruction value. You may have to find alternate ways to express comparison logic when dealing with the 0xFF and 0x00 boundary values. Consider a loop counter that you want to terminate after passing 0xFF. Instead of testing for &#8220;sN &gt; 0xFF&#8221; you should test for &#8220;sN != 0&#8221; and ensure that this won&#8217;t cause early termination at the start of the loop.</p>
 </div>
 <div class="section" id="c-style-syntax">
-<h3>C-style syntax<a class="headerlink" href="#c-style-syntax" title="Permalink to this headline">¶</a></h3>
+<span id="c-style-if-then"></span><h3>C-style syntax<a class="headerlink" href="#c-style-syntax" title="Permalink to this headline">¶</a></h3>
 <p>The m4 syntax for the <a class="reference internal" href="library.html#pb.if" title="if"><tt class="xref pb pb-macro docutils literal"><span class="pre">if()</span></tt></a> macro is a little untidy but an alternate C-style syntax can be used. It is implemented using an initial preprocessing step where pattern matching converts C-style control flow statements into m4 syntax. Instead of m4 quotes, code blocks are surrounded by mandatory curly braces. Unlike m4 macros, whitespace is permitted between the <tt class="docutils literal"><span class="pre">if</span></tt> keyword and its comparison expression.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">if (</span><span class="s">s0</span> <span class="o">&lt;</span> <span class="s">s1</span><span class="nb">)</span> <span class="p">{</span>
   <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="sc">&quot;T&quot;</span>
@@ -570,8 +570,8 @@
 <span class="nb">)</span>
 </pre></div>
 </div>
-<div class="section" id="id2">
-<h3>C-style syntax<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="c-style-looping">
+<span id="id3"></span><h3>C-style syntax<a class="headerlink" href="#c-style-looping" title="Permalink to this headline">¶</a></h3>
 <p>An alternate C-style syntax is also available for <a class="reference internal" href="library.html#pb.for" title="for"><tt class="xref pb pb-macro docutils literal"><span class="pre">for()</span></tt></a>, <a class="reference internal" href="library.html#pb.while" title="while"><tt class="xref pb pb-macro docutils literal"><span class="pre">while()</span></tt></a>, and <a class="reference internal" href="library.html#pb.dowhile" title="dowhile"><tt class="xref pb pb-macro docutils literal"><span class="pre">dowhile()</span></tt></a>. Note that the <a class="reference internal" href="library.html#pb.for" title="for"><tt class="xref pb pb-macro docutils literal"><span class="pre">for()</span></tt></a> macro continues to use commas to separate the sections.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; For loops</span>
 <span class="nb">for (</span><span class="s">s0</span> <span class="o">:=</span> <span class="m">0</span><span class="p">,</span> <span class="s">s0</span> <span class="o">&lt;</span> <span class="s">s1</span><span class="p">,</span> <span class="s">s0</span> <span class="o">:=</span> <span class="s">s0</span> <span class="o">+</span> <span class="m">1</span><span class="nb">)</span> <span class="p">{</span>
@@ -802,7 +802,7 @@
 </div>
 </div>
 <div class="section" id="string-and-table-operations">
-<span id="string-and-table-ops"></span><span id="id3"></span><h2>String and table operations<a class="headerlink" href="#string-and-table-operations" title="Permalink to this headline">¶</a></h2>
+<span id="string-and-table-ops"></span><span id="id4"></span><h2>String and table operations<a class="headerlink" href="#string-and-table-operations" title="Permalink to this headline">¶</a></h2>
 <p>PicoBlaze-3 doesn&#8217;t have the ability to handle strings as efficiently as PB6 but it is still necessary to work with them at times. Suppose that you have a subroutine &#8220;write_char&#8221; that writes characters in s0 out to a peripheral. You can write entire strings with the following:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">callstring(</span><span class="s">write_char</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="s">`My</span> <span class="s">string&#39;</span><span class="nb">)</span> <span class="c">; Note use of m4 quotes `&#39; to enclose the string</span>
 </pre></div>
@@ -1132,7 +1132,7 @@
 </div>
 </div>
 <div class="section" id="scratchpad-memory-operations">
-<span id="id5"></span><h2>Scratchpad memory operations<a class="headerlink" href="#scratchpad-memory-operations" title="Permalink to this headline">¶</a></h2>
+<span id="id6"></span><h2>Scratchpad memory operations<a class="headerlink" href="#scratchpad-memory-operations" title="Permalink to this headline">¶</a></h2>
 <p>A set of routines are available for manipulating arrays in scratchpad memory. They are accessed by invoking a <tt class="docutils literal"><span class="pre">use_XXX()</span></tt> generator macro to create the functions with register allocations of your choice. All of these macros take an initial argument that is the name of the generated function. They all preserve their input and temporary registers on the stack unless reused for a return value.</p>
 <div class="section" id="memset">
 <h3>memset<a class="headerlink" href="#memset" title="Permalink to this headline">¶</a></h3>
@@ -1218,7 +1218,7 @@ are skipped. Invalid BCD digits are not detected.</p>
 </div>
 </div>
 <div class="section" id="bcd-conversion">
-<span id="id6"></span><h2>BCD conversion<a class="headerlink" href="#bcd-conversion" title="Permalink to this headline">¶</a></h2>
+<span id="id7"></span><h2>BCD conversion<a class="headerlink" href="#bcd-conversion" title="Permalink to this headline">¶</a></h2>
 <p>A pair of generator macros create functions for converting between unsigned integers and unpacked BCD. They are designed to work with arbitrary sized integers consisting of one or more bytes. The <a class="reference internal" href="library.html#pb.use_int2bcd" title="use_int2bcd"><tt class="xref pb pb-macro docutils literal"><span class="pre">use_int2bcd()</span></tt></a> macro takes a list of integer bytes on the stack and writes the BCD representation into a fixed size buffer.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;             &lt;fixed array len&gt; &lt;dest&gt; &lt;integer bytes&gt; &lt;temp regs&gt;</span>
 <span class="nb">use_int2bcd(</span><span class="s">int2bcd</span><span class="p">,</span> <span class="m">5</span><span class="p">,</span>           <span class="s">s0</span><span class="p">,</span>       <span class="s">s1</span><span class="p">,</span>        <span class="s">s2</span><span class="p">,</span><span class="s">s3</span><span class="p">,</span><span class="s">s4</span><span class="p">,</span><span class="s">s5</span><span class="nb">)</span>
@@ -1272,7 +1272,7 @@ are skipped. Invalid BCD digits are not detected.</p>
 <p>If you need to convert an 8-bit signed value to 16-bit, use the <a class="reference internal" href="library.html#pb.signex" title="signex"><tt class="xref pb pb-macro docutils literal"><span class="pre">signex(MSB,</span> <span class="pre">LSB)</span></tt></a> macro to extend the sign bit onto the upper register. The 8-bit register to be extended is passed in as the LSB argument.</p>
 </div>
 <div class="section" id="bit-arithmetic-logical-and-shift-operators">
-<span id="id7"></span><h2>16-bit arithmetic<a class="headerlink" href="#bit-arithmetic-logical-and-shift-operators" title="Permalink to this headline">¶</a></h2>
+<span id="id8"></span><h2>16-bit arithmetic<a class="headerlink" href="#bit-arithmetic-logical-and-shift-operators" title="Permalink to this headline">¶</a></h2>
 <p>The need will frequently arise to handle values larger than the capacity of an 8-bit register. The following macros provide quick access to 16-bit operations.</p>
 <p>You can define aliases for pairs of 8-bit registers with <a class="reference internal" href="library.html#pb.reg16" title="reg16"><tt class="xref pb pb-macro docutils literal"><span class="pre">reg16()</span></tt></a> and then pass them into the 16-bit arithmetic macros:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">reg16(</span><span class="s">rx</span><span class="p">,</span> <span class="s">s4</span><span class="p">,</span> <span class="s">s3</span><span class="nb">)</span>      <span class="c">; Virtual 16-bit register rx is composed of (s4, s3)</span>
@@ -1803,7 +1803,7 @@ are skipped. Invalid BCD digits are not detected.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#looping">Looping</a><ul>
-<li><a class="reference internal" href="#id2">C-style syntax</a></li>
+<li><a class="reference internal" href="#c-style-looping">C-style syntax</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#procedures-and-functions">Procedures and Functions</a><ul>

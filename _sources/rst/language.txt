@@ -1,9 +1,9 @@
-=====================================
-PicoBlaze assembly language reference
-=====================================
+================================
+PicoBlaze architecture reference
+================================
 
 
-This is an overview of the assembly language used for the PicoBlaze-6 and PicoBlaze-3 microcontrollers.
+This is an overview of the architecture and assembly language used for the PicoBlaze-6 and PicoBlaze-3 microcontrollers.
 
 
 
@@ -110,6 +110,59 @@ The language supports a number of different formats for representing literal val
   
     Printable ASCII character literals are written in the form ``"c"``.
     
+You can invert the value of a literal by prefixing it with "~".
+
+  .. code-block:: picoblaze
+  
+    load s0,  50
+    load s1, ~50  ; Same as 0xAF
+    
+    ; This is useful for inverting mask constants:
+    constant BIT_FIELD_MASK, 31
+    or  s0,  BIT_FIELD_MASK     ; Set bits in the mask
+    and s0, ~BIT_FIELD_MASK     ; Clear bits in the mask
+
+There are predefined character constants for the following ASCII control characters:
+
+==== ==== ==== ====
+NUL  BEL  BS   HT
+LF   VT   CR   ESC
+DEL  DCS  ST
+==== ==== ==== ====
+
+.. code-block:: picoblaze
+
+  load s0, CR
+  output s0, COM_PORT
+  load s0, LF
+  output s0, COM_PORT
+
+There are additional special constants containing the date and time the code was assembled:
+
+* timestamp_hours
+* timestamp_minutes
+* timestamp_seconds
+
+* datestamp_year (two digit year from 00 - 99)
+* datestamp_month
+* datestamp_day
+
+You can access environment variables by prefixing their name with "%". They must evaluate to a valid PicoBlaze literal.
+
+.. code-block:: picoblaze
+
+  ; You could have a build script generating different images
+  ; for multiple PicoBlaze instances. Their behavior could
+  ; be controlled by an environment variable "PROC_NUM".
+
+  load s0, %PROC_NUM
+  compare s0, 00
+  jump    Z,  proc_0   ; Branch to special code for processor 0
+  ; Remaining processors here
+
+.. note::
+
+  The Opbasm command line option ``--define=NAME[=VALUE]`` can be used in conjunction with the m4 preprocesor as another way to :ref:`alter code generation at build time <m4-conditional-code>`.
 
 Address spaces
 --------------
@@ -118,17 +171,20 @@ The PicoBlaze has a simple architecture that operates on information stored in t
 
   Registers
     A set of 16 8-bit registers. They default to the registers named s0-sF but can be renamed with the :ref:`inst-namereg` directive.
-    The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the :ref:`inst-regbank` instruction.
+
+    The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the :ref:`inst-regbank` instruction. The default register names are case-insensitive so "SA", "sa", "Sa", and "sA" are all valid.
+    
+    All register values, flags, and the call stack are initialized to 0 on initial FPGA power up but the registers retain thier values on subsequent resets. Your code should not assume registers are cleared after a reset.
 
   Instruction memory
-    Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6. This memory is implemented outside the Picoblaze core component and attached to the instruction memory port. Because the Picoblaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.
+    Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6. This memory is implemented outside the PicoBlaze core component and attached to the instruction memory port. Because the PicoBlaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.
     
   Scratchpad memory
     A small pool of RAM used as a local memory. This is 64 bytes on the PicoBlaze-3 and
     configurable for 64, 128, or 256 bytes on PicoBlaze-6. This memory is accessed with the `fetch`_ and `store`_ instructions.
     
   I/O ports
-    A set of 256 input and 256 output ports are used to interact with external hardware. This memory is
+    A set of 256 input and 256 output ports are used to interact with external hardware. These ports are
     accessed with the `input`_ and `output`_ instructions. Additional logic must be provided to decode these ports.
     
   Outputk ports
@@ -136,29 +192,36 @@ The PicoBlaze has a simple architecture that operates on information stored in t
     This is accessed with the `outputk`_ instruction.
     
   Call stack
-    A hardware call stack is maintained to track return addresses. You can have a call depth of up to 31 functions on PicoBlaze-3 and 30 functions on PicoBlaze-6.
+    A hardware call stack is maintained to track return addresses for subroutines and the interrupt handler. You can have a call depth of up to 31 subroutines on PicoBlaze-3 and 30 subroutines on PicoBlaze-6. On PB3 the stack will silently roll over if you exceed the limit. On PB6 it will detect the overflow and generate an internal reset, restarting the program from address 0x000.
 
 Flags
 -----
 
 The PicoBlaze processor has two internal status flags that represent metadata from ALU operations. They are used to evaluate the result of an operation and execute conditional code. These are the the zero "Z" flag and the carry "C" flag.
 
-The Z flag is set when the result of an operation is zero and cleared otherwise. The C flag is set when an arithmetic carry or borrow (for subtration) is generated. As a special case the C flag is set by the :ref:`inst-test` and :ref:`inst-testcy` instructions to reflect the odd parity of their result. The :ref:`inst-hwbuild` instruction always sets the C flag unconditionally.
+The Z flag is set when the result of an operation is zero and cleared otherwise. The C flag is set when an arithmetic carry or borrow (for subtraction) is generated. As a special case, the C flag is set by the :ref:`inst-test` and :ref:`inst-testcy` instructions to reflect the odd parity of their result. The :ref:`inst-hwbuild` instruction always sets the C flag unconditionally.
 
 The most common application of the flags is to execute conditional code after a :ref:`inst-compare` instruction. The table shown for ``compare`` indicates how to interpret the flags for various Boolean comparison operations. Not all comparisons are possible with a single instruction because PicoBlaze can only test one flag at a time.
 
+The `return`_ and `jump`_ have a conditional form where the first operand is a flag value of C, NC, Z, or NZ. When it is C or Z whese instructions conditionally return or jump when the respective flag is set. for NC and NZ, the branch is taken when the flag is clear.
 
-Initialization
---------------
 
 Interrupts
 ----------
+
+The PicoBlaze has a single ``interrupt`` input. When interrupts are enabled and this pin transitions high, the normal execution is suspended and the processor jumps to a special interrupt handler routine. This behavior lets your code respond to external events in the FPGA fabric without having to explicitly poll for changes in state.
+
+The PB3 has a fixed interrupt vector address of 0x3FF which is the last instruction in the 1K instruction memory space. You must insert a `jump`_ instruction here that branches to your ISR code. The PB6 defaults to 0x3FF but you can change the default vector address with the ``interrupt_vector`` generic on the ``KCPSM6`` component. This gives you the option to place the vector at the start of your ISR without the nedd for an extra ``jump``.
+
+The ``interrupt`` signal should stay high for at least two clock cycles to guarantee it is seen by the processor. An optional ``interrupt_ack`` output signal is provided to interface with external interrupt generating logic. It notifies you when the processor has started processing the interrupt, at which point it is safe to release the ``interrupt`` input signal.
+
+Interrupts are contolled with the `enable`_ and `disable`_ instructions. they take a special dummy operand of "interrupt". A special `returni`_ instruction is used to exit from the ISR and resume normal execution. It takes an operand of "enable" or"disable" to set the new state of the interrupt flag after the return. You cannot use the normal `return`_ instruction to accomplish this since the original interrupt saved the flag and register bank state which would not be restored with normal ``return``.
   
 
 Directives
 ----------
 
-The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are used instead to alter the behavior of the assembler.
+The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are used, instead, to alter the behavior of the assembler.
 
 .. _inst-address:
 
@@ -849,7 +912,7 @@ Jump to a variable address. The target address is determined at runtime. Availab
 =========================================== ====================== =============================================
 Format                                      Example                Result
 =========================================== ====================== =============================================
-``jump@ (<high register>, <low register>)`` jump@ (s0, s1)         Jjump to address in s0, s1
+``jump@ (<high register>, <low register>)`` jump@ (s0, s1)         Jump to address in s0, s1
 =========================================== ====================== =============================================
 
 This is a variation of an unconditional `jump`_ that takes the address from a pair of registers. This is used to compute the target dynamically. Addresses are typically generated by initializing with the ``'upper`` and ``'lower`` modifiers on a label and then adding an offset.
@@ -883,7 +946,7 @@ Format                                Example                Result
 ``returni <enable|disable>``          returni enable         Resume normal execution with interrupts enabled.
 ===================================== ====================== =====================================================
 
-This performs an unconditional return from an interrupt handler. Interrupts are enabled or disabled based upon the required argument.
+This performs an unconditional return from an interrupt handler. Interrupts are enabled or disabled based upon the required argument. The saved flags and register bank (PB6) are restored.
 
 
 Memory access instructions
@@ -1082,11 +1145,39 @@ Format                                Example                Result
 Missing instructions
 --------------------
 
+The PicoBlaze processors have a minimal instruction set owing to their compact implementation. Some notable instructions commonly seen in other processor architectures are missing. It is possible, however, to replicate their behavior with alternate instructions.
+
 nop
 ~~~
 
+The NOP instruction represents a no-operation that has no effect on the processor state and only adds a processing delay to following code. To get the effect of a NOP you can use the following:
+
+ .. code-block:: picoblaze
+ 
+   load s0, s0 ; No change to registers or flags == NOP
+   
+The m4 macro package includes a :pb:macro:`nop` macro.
+   
 not
 ~~~
 
+There is no bitwise negation instruction in PicoBlaze. Instead you can use the XOR operator's behavior as a controlled inverter to get the same result: 
+
+ .. code-block:: picoblaze
+ 
+   xor s0, FF ; XOR with all 1's flips the bits as with NOT
+
+The m4 macro package includes a :pb:macro:`not` macro.
+
 negate
 ~~~~~~
+
+When working with signed values it is useful to negate them. In 2's complement form, negation is the same as inversion and add 1 so we combine the NOT operation with an increment to create a numeric negate:
+
+ .. code-block:: picoblaze
+ 
+   xor s0, FF
+   add s0, 01 ; s0 = -s0
+
+The m4 macro package includes a :pb:macro:`negate` macro.
+

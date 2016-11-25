@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>PicoBlaze assembly language reference &mdash; Opbasm 1.3 documentation</title>
+    <title>PicoBlaze architecture reference &mdash; Opbasm 1.3 documentation</title>
     
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -56,9 +56,9 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="picoblaze-assembly-language-reference">
-<h1>PicoBlaze assembly language reference<a class="headerlink" href="#picoblaze-assembly-language-reference" title="Permalink to this headline">¶</a></h1>
-<p>This is an overview of the assembly language used for the PicoBlaze-6 and PicoBlaze-3 microcontrollers.</p>
+  <div class="section" id="picoblaze-architecture-reference">
+<h1>PicoBlaze architecture reference<a class="headerlink" href="#picoblaze-architecture-reference" title="Permalink to this headline">¶</a></h1>
+<p>This is an overview of the architecture and assembly language used for the PicoBlaze-6 and PicoBlaze-3 microcontrollers.</p>
 <div class="section" id="instructions">
 <h2>Instructions<a class="headerlink" href="#instructions" title="Permalink to this headline">¶</a></h2>
 <p>The following instruction mnemonics are used in the PicoBlaze processors:</p>
@@ -240,6 +240,74 @@ syntactic marker. The <a class="reference internal" href="#inst-address"><em>add
 <blockquote>
 <div>Printable ASCII character literals are written in the form <tt class="docutils literal"><span class="pre">&quot;c&quot;</span></tt>.</div></blockquote>
 </div></blockquote>
+<p>You can invert the value of a literal by prefixing it with &#8220;~&#8221;.</p>
+<blockquote>
+<div><div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span>  <span class="mh">50</span>
+<span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="o">~</span><span class="mh">50</span>  <span class="c">; Same as 0xAF</span>
+
+<span class="c">; This is useful for inverting mask constants:</span>
+<span class="k">constant</span> <span class="n">BIT_FIELD_MASK</span><span class="p">,</span> <span class="mh">31</span>
+<span class="k">or</span>  <span class="n">s0</span><span class="p">,</span>  <span class="n">BIT_FIELD_MASK</span>     <span class="c">; Set bits in the mask</span>
+<span class="k">and</span> <span class="n">s0</span><span class="p">,</span> <span class="o">~</span><span class="n">BIT_FIELD_MASK</span>     <span class="c">; Clear bits in the mask</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>There are predefined character constants for the following ASCII control characters:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+<col width="25%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>NUL</td>
+<td>BEL</td>
+<td>BS</td>
+<td>HT</td>
+</tr>
+<tr class="row-even"><td>LF</td>
+<td>VT</td>
+<td>CR</td>
+<td>ESC</td>
+</tr>
+<tr class="row-odd"><td>DEL</td>
+<td>DCS</td>
+<td>ST</td>
+<td>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="n">CR</span>
+<span class="k">output</span> <span class="n">s0</span><span class="p">,</span> <span class="n">COM_PORT</span>
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="n">LF</span>
+<span class="k">output</span> <span class="n">s0</span><span class="p">,</span> <span class="n">COM_PORT</span>
+</pre></div>
+</div>
+<p>There are additional special constants containing the date and time the code was assembled:</p>
+<ul class="simple">
+<li>timestamp_hours</li>
+<li>timestamp_minutes</li>
+<li>timestamp_seconds</li>
+<li>datestamp_year (two digit year from 00 - 99)</li>
+<li>datestamp_month</li>
+<li>datestamp_day</li>
+</ul>
+<p>You can access environment variables by prefixing their name with &#8220;%&#8221;. They must evaluate to a valid PicoBlaze literal.</p>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; You could have a build script generating different images</span>
+<span class="c">; for multiple PicoBlaze instances. Their behavior could</span>
+<span class="c">; be controlled by an environment variable &quot;PROC_NUM&quot;.</span>
+
+<span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="o">%</span><span class="n">PROC_NUM</span>
+<span class="k">compare</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
+<span class="k">jump</span>    <span class="n">Z</span><span class="p">,</span>  <span class="n">proc_0</span>   <span class="c">; Branch to special code for processor 0</span>
+<span class="c">; Remaining processors here</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The Opbasm command line option <tt class="docutils literal"><span class="pre">--define=NAME[=VALUE]</span></tt> can be used in conjunction with the m4 preprocesor as another way to <a class="reference internal" href="m4.html#m4-conditional-code"><em>alter code generation at build time</em></a>.</p>
+</div>
 </div>
 <div class="section" id="address-spaces">
 <h2>Address spaces<a class="headerlink" href="#address-spaces" title="Permalink to this headline">¶</a></h2>
@@ -247,39 +315,43 @@ syntactic marker. The <a class="reference internal" href="#inst-address"><em>add
 <blockquote>
 <div><dl class="docutils">
 <dt>Registers</dt>
-<dd>A set of 16 8-bit registers. They default to the registers named s0-sF but can be renamed with the <a class="reference internal" href="#inst-namereg"><em>namereg</em></a> directive.
-The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the <a class="reference internal" href="#inst-regbank"><em>regbank</em></a> instruction.</dd>
+<dd><p class="first">A set of 16 8-bit registers. They default to the registers named s0-sF but can be renamed with the <a class="reference internal" href="#inst-namereg"><em>namereg</em></a> directive.</p>
+<p>The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the <a class="reference internal" href="#inst-regbank"><em>regbank</em></a> instruction. The default register names are case-insensitive so &#8220;SA&#8221;, &#8220;sa&#8221;, &#8220;Sa&#8221;, and &#8220;sA&#8221; are all valid.</p>
+<p class="last">All register values, flags, and the call stack are initialized to 0 on initial FPGA power up but the registers retain thier values on subsequent resets. Your code should not assume registers are cleared after a reset.</p>
+</dd>
 <dt>Instruction memory</dt>
-<dd>Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6. This memory is implemented outside the Picoblaze core component and attached to the instruction memory port. Because the Picoblaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.</dd>
+<dd>Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6. This memory is implemented outside the PicoBlaze core component and attached to the instruction memory port. Because the PicoBlaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.</dd>
 <dt>Scratchpad memory</dt>
 <dd>A small pool of RAM used as a local memory. This is 64 bytes on the PicoBlaze-3 and
 configurable for 64, 128, or 256 bytes on PicoBlaze-6. This memory is accessed with the <a class="reference internal" href="#fetch">fetch</a> and <a class="reference internal" href="#store">store</a> instructions.</dd>
 <dt>I/O ports</dt>
-<dd>A set of 256 input and 256 output ports are used to interact with external hardware. This memory is
+<dd>A set of 256 input and 256 output ports are used to interact with external hardware. These ports are
 accessed with the <a class="reference internal" href="#input">input</a> and <a class="reference internal" href="#output">output</a> instructions. Additional logic must be provided to decode these ports.</dd>
 <dt>Outputk ports</dt>
 <dd>The PicoBlaze-6 has a special set of 16 output ports intended for directly driving constant values with minimal overhead.
 This is accessed with the <a class="reference internal" href="#outputk">outputk</a> instruction.</dd>
 <dt>Call stack</dt>
-<dd>A hardware call stack is maintained to track return addresses. You can have a call depth of up to 31 functions on PicoBlaze-3 and 30 functions on PicoBlaze-6.</dd>
+<dd>A hardware call stack is maintained to track return addresses for subroutines and the interrupt handler. You can have a call depth of up to 31 subroutines on PicoBlaze-3 and 30 subroutines on PicoBlaze-6. On PB3 the stack will silently roll over if you exceed the limit. On PB6 it will detect the overflow and generate an internal reset, restarting the program from address 0x000.</dd>
 </dl>
 </div></blockquote>
 </div>
 <div class="section" id="flags">
 <h2>Flags<a class="headerlink" href="#flags" title="Permalink to this headline">¶</a></h2>
 <p>The PicoBlaze processor has two internal status flags that represent metadata from ALU operations. They are used to evaluate the result of an operation and execute conditional code. These are the the zero &#8220;Z&#8221; flag and the carry &#8220;C&#8221; flag.</p>
-<p>The Z flag is set when the result of an operation is zero and cleared otherwise. The C flag is set when an arithmetic carry or borrow (for subtration) is generated. As a special case the C flag is set by the <a class="reference internal" href="#inst-test"><em>test</em></a> and <a class="reference internal" href="#inst-testcy"><em>testcy</em></a> instructions to reflect the odd parity of their result. The <a class="reference internal" href="#inst-hwbuild"><em>hwbuild</em></a> instruction always sets the C flag unconditionally.</p>
+<p>The Z flag is set when the result of an operation is zero and cleared otherwise. The C flag is set when an arithmetic carry or borrow (for subtraction) is generated. As a special case, the C flag is set by the <a class="reference internal" href="#inst-test"><em>test</em></a> and <a class="reference internal" href="#inst-testcy"><em>testcy</em></a> instructions to reflect the odd parity of their result. The <a class="reference internal" href="#inst-hwbuild"><em>hwbuild</em></a> instruction always sets the C flag unconditionally.</p>
 <p>The most common application of the flags is to execute conditional code after a <a class="reference internal" href="#inst-compare"><em>compare</em></a> instruction. The table shown for <tt class="docutils literal"><span class="pre">compare</span></tt> indicates how to interpret the flags for various Boolean comparison operations. Not all comparisons are possible with a single instruction because PicoBlaze can only test one flag at a time.</p>
-</div>
-<div class="section" id="initialization">
-<h2>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h2>
+<p>The <a class="reference internal" href="#return">return</a> and <a class="reference internal" href="#jump">jump</a> have a conditional form where the first operand is a flag value of C, NC, Z, or NZ. When it is C or Z whese instructions conditionally return or jump when the respective flag is set. for NC and NZ, the branch is taken when the flag is clear.</p>
 </div>
 <div class="section" id="interrupts">
 <h2>Interrupts<a class="headerlink" href="#interrupts" title="Permalink to this headline">¶</a></h2>
+<p>The PicoBlaze has a single <tt class="docutils literal"><span class="pre">interrupt</span></tt> input. When interrupts are enabled and this pin transitions high, the normal execution is suspended and the processor jumps to a special interrupt handler routine. This behavior lets your code respond to external events in the FPGA fabric without having to explicitly poll for changes in state.</p>
+<p>The PB3 has a fixed interrupt vector address of 0x3FF which is the last instruction in the 1K instruction memory space. You must insert a <a class="reference internal" href="#jump">jump</a> instruction here that branches to your ISR code. The PB6 defaults to 0x3FF but you can change the default vector address with the <tt class="docutils literal"><span class="pre">interrupt_vector</span></tt> generic on the <tt class="docutils literal"><span class="pre">KCPSM6</span></tt> component. This gives you the option to place the vector at the start of your ISR without the nedd for an extra <tt class="docutils literal"><span class="pre">jump</span></tt>.</p>
+<p>The <tt class="docutils literal"><span class="pre">interrupt</span></tt> signal should stay high for at least two clock cycles to guarantee it is seen by the processor. An optional <tt class="docutils literal"><span class="pre">interrupt_ack</span></tt> output signal is provided to interface with external interrupt generating logic. It notifies you when the processor has started processing the interrupt, at which point it is safe to release the <tt class="docutils literal"><span class="pre">interrupt</span></tt> input signal.</p>
+<p>Interrupts are contolled with the <a class="reference internal" href="#enable">enable</a> and <a class="reference internal" href="#disable">disable</a> instructions. they take a special dummy operand of &#8220;interrupt&#8221;. A special <a class="reference internal" href="#returni">returni</a> instruction is used to exit from the ISR and resume normal execution. It takes an operand of &#8220;enable&#8221; or&#8221;disable&#8221; to set the new state of the interrupt flag after the return. You cannot use the normal <a class="reference internal" href="#return">return</a> instruction to accomplish this since the original interrupt saved the flag and register bank state which would not be restored with normal <tt class="docutils literal"><span class="pre">return</span></tt>.</p>
 </div>
 <div class="section" id="directives">
 <h2>Directives<a class="headerlink" href="#directives" title="Permalink to this headline">¶</a></h2>
-<p>The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are used instead to alter the behavior of the assembler.</p>
+<p>The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are used, instead, to alter the behavior of the assembler.</p>
 <div class="section" id="address">
 <span id="inst-address"></span><h3>address<a class="headerlink" href="#address" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">address</span></tt> directive is used to change the address where the next instruction will be assembled to.</p>
@@ -1397,7 +1469,7 @@ the result is zero and the previous Z flag was set.</p>
 <tbody valign="top">
 <tr class="row-even"><td><tt class="docutils literal"><span class="pre">jump&#64;</span> <span class="pre">(&lt;high</span> <span class="pre">register&gt;,</span> <span class="pre">&lt;low</span> <span class="pre">register&gt;)</span></tt></td>
 <td>jump&#64; (s0, s1)</td>
-<td>Jjump to address in s0, s1</td>
+<td>Jump to address in s0, s1</td>
 </tr>
 </tbody>
 </table>
@@ -1453,7 +1525,7 @@ the result is zero and the previous Z flag was set.</p>
 </tr>
 </tbody>
 </table>
-<p>This performs an unconditional return from an interrupt handler. Interrupts are enabled or disabled based upon the required argument.</p>
+<p>This performs an unconditional return from an interrupt handler. Interrupts are enabled or disabled based upon the required argument. The saved flags and register bank (PB6) are restored.</p>
 </div>
 </div>
 <div class="section" id="memory-access-instructions">
@@ -1753,14 +1825,37 @@ the result is zero and the previous Z flag was set.</p>
 </div>
 <div class="section" id="missing-instructions">
 <h2>Missing instructions<a class="headerlink" href="#missing-instructions" title="Permalink to this headline">¶</a></h2>
+<p>The PicoBlaze processors have a minimal instruction set owing to their compact implementation. Some notable instructions commonly seen in other processor architectures are missing. It is possible, however, to replicate their behavior with alternate instructions.</p>
 <div class="section" id="nop">
 <h3>nop<a class="headerlink" href="#nop" title="Permalink to this headline">¶</a></h3>
+<p>The NOP instruction represents a no-operation that has no effect on the processor state and only adds a processing delay to following code. To get the effect of a NOP you can use the following:</p>
+<blockquote>
+<div><div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="n">s0</span> <span class="c">; No change to registers or flags == NOP</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>The m4 macro package includes a <a class="reference internal" href="library.html#pb.nop" title="nop"><tt class="xref pb pb-macro docutils literal"><span class="pre">nop()</span></tt></a> macro.</p>
 </div>
 <div class="section" id="not">
 <h3>not<a class="headerlink" href="#not" title="Permalink to this headline">¶</a></h3>
+<p>There is no bitwise negation instruction in PicoBlaze. Instead you can use the XOR operator&#8217;s behavior as a controlled inverter to get the same result:</p>
+<blockquote>
+<div><div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">xor</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">FF</span> <span class="c">; XOR with all 1&#39;s flips the bits as with NOT</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>The m4 macro package includes a <a class="reference internal" href="library.html#pb.not" title="not"><tt class="xref pb pb-macro docutils literal"><span class="pre">not()</span></tt></a> macro.</p>
 </div>
 <div class="section" id="negate">
 <h3>negate<a class="headerlink" href="#negate" title="Permalink to this headline">¶</a></h3>
+<p>When working with signed values it is useful to negate them. In 2&#8217;s complement form, negation is the same as inversion and add 1 so we combine the NOT operation with an increment to create a numeric negate:</p>
+<blockquote>
+<div><div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">xor</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">FF</span>
+<span class="k">add</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">01</span> <span class="c">; s0 = -s0</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>The m4 macro package includes a <a class="reference internal" href="library.html#pb.negate" title="negate"><tt class="xref pb pb-macro docutils literal"><span class="pre">negate()</span></tt></a> macro.</p>
 </div>
 </div>
 </div>
@@ -1799,13 +1894,12 @@ the result is zero and the previous Z flag was set.</p>
 </div>
   <h3><a href="../index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">PicoBlaze assembly language reference</a><ul>
+<li><a class="reference internal" href="#">PicoBlaze architecture reference</a><ul>
 <li><a class="reference internal" href="#instructions">Instructions</a></li>
 <li><a class="reference internal" href="#instruction-formats">Instruction formats</a></li>
 <li><a class="reference internal" href="#literal-syntax">Literal syntax</a></li>
 <li><a class="reference internal" href="#address-spaces">Address spaces</a></li>
 <li><a class="reference internal" href="#flags">Flags</a></li>
-<li><a class="reference internal" href="#initialization">Initialization</a></li>
 <li><a class="reference internal" href="#interrupts">Interrupts</a></li>
 <li><a class="reference internal" href="#directives">Directives</a><ul>
 <li><a class="reference internal" href="#address">address</a></li>
