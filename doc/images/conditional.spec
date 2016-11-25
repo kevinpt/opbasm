@@ -1,1 +1,1 @@
-line('/instruction', choice('C', 'NC', 'Z', 'NZ'), opt(',', '/label'))
+line('/instruction', choice('C', 'NC', 'Z', 'NZ'), optx(',', '/label'))

@@ -316,7 +316,7 @@ As an alternative to the templating system, a generic, synthesizable VHDL ROM is
 
  XST doesn't infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The "``ROM_form_S6_4K_<date>.vhd``" template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.
 
-A dual-ported ``picoblaze_dp_rom`` component is also included in this package. It provides a second read/write port that can be connected to internal logic to facilitate use of packed ROM data stored with ``INST`` directives or to use a portion of the BRAM as general purpose RAM. The :ref:`insttable m4 macros <string and table ops>` are included to simplify the creation of ``INST`` directives containing packed byte data.
+A dual-ported ``picoblaze_dp_rom`` component is also included in this package. It provides a second read/write port that can be connected to internal logic to facilitate use of packed ROM data stored with :ref:`inst-inst` directives or to use a portion of the BRAM as general purpose RAM. The :ref:`insttable m4 macros <string and table ops>` are included to simplify the creation of ``inst`` directives containing packed byte data.
 
 It is not necessary to have an HDL template file present if you are using the generic ROM.
 

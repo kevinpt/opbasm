@@ -29,6 +29,7 @@ class PicoBlazeLexer(RegexLexer):
             (r'[\t ]+', Text),
             (r'\w+\(', Name.Builtin, 'macro'),
             (r'[,()]', Punctuation),
+            (r'[%~]', Operator),
             (r"\[.*\]'d", Number),
             (r"\[.*\]'b", Number.Bin),
             (r"\[.*\]", Number.Hex),
