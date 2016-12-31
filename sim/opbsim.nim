@@ -47,7 +47,7 @@ proc readMemFile(fname: string): ref seq[int32] =
   ## Read the contents of a MEM file into a seq
   var r = new seq[int32]
   try:
-    r[] = toSeq(fname.lines).filterIt(not it.startsWith("@")).mapIt(it.parseHexInt.int32)
+    r[] = sequtils.toSeq(lines(fname)).filterIt(not it.startsWith("@")).mapIt(it.parseHexInt.int32)
   except IOError:
     r[] = @[]
 
@@ -305,21 +305,21 @@ method portWrite(periph: CounterPeriph, port: uint8, state: ref ProcState, quiet
 #### Instruction templates ####
 ###############################
 
-template reportInst(i:expr): expr =
+template reportInst(i:untyped): untyped =
   if show_trace:
     echo toHex(state.pc, 3), " ", toHex(w, 5), ' '.repeat(len(state.callStack)*2 + 1), i
 
-template do_badOp(): expr =
+template do_badOp(): untyped =
   reportInst("ERROR: Invalid opcode")
   state.termination = termInvalidOpcode
   break
   
-template do_unsupportedOp(): expr =
+template do_unsupportedOp(): untyped =
   reportInst("ERROR: Unsupported opcode")
   state.termination = termUnsupportedOpcode
   break
 
-template do_terminate(): expr =
+template do_terminate(): untyped =
   echo "Terminate at address: ", toHex(state.pc, 4)
   break
 
@@ -327,18 +327,18 @@ template do_terminate(): expr =
 
 # PicoBlaze instructions
 # ======================
-template do_load(n:expr): expr =
+template do_load(n:untyped): untyped =
   reportInst("Load  s" & toHex(x,1) & " = 0x" & toHex(n.int,2))
   state.regs[state.curFlags.activeBank][x] = n
 
 
-template do_and(n:expr): expr =
+template do_and(n:untyped): untyped =
   reportInst("And  s" & toHex(x,1) & " & 0x" & toHex(n.int,2))
   state.regs[state.curFlags.activeBank][x] = state.regs[state.curFlags.activeBank][x] and n
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   state.curFlags.c = false
 
-template do_test(n:expr): expr =
+template do_test(n:untyped): untyped =
   reportInst("Test  s" & toHex(x,1) & " & 0x" & toHex(n.int,2))
   let r: uint8 = state.regs[state.curFlags.activeBank][x] and n
   state.curFlags.z = r == 0
@@ -349,7 +349,7 @@ template do_test(n:expr): expr =
   state.curFlags.c = (p and 1) != 0
 
   
-template do_testcy(n:expr): expr =
+template do_testcy(n:untyped): untyped =
   reportInst("Testcy  s" & toHex(x,1) & " & 0x" & toHex(n.int,2))
   let r: uint8 = state.regs[state.curFlags.activeBank][x] and n
   state.curFlags.z = state.curFlags.z and (r == 0)
@@ -360,55 +360,55 @@ template do_testcy(n:expr): expr =
   p = p xor (if state.curFlags.c: 1 else: 0)
   state.curFlags.c = (p and 1) != 0
   
-template do_or(n:expr): expr =
+template do_or(n:untyped): untyped =
   reportInst("Or  s" & toHex(x,1) & " | 0x" & toHex(n.int,2))
   state.regs[state.curFlags.activeBank][x] = state.regs[state.curFlags.activeBank][x] or n
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   state.curFlags.c = false
 
-template do_xor(n:expr): expr =
+template do_xor(n:untyped): untyped =
   reportInst("Xor  s" & toHex(x,1) & " ^ 0x" & toHex(n.int,2))
   state.regs[state.curFlags.activeBank][x] = state.regs[state.curFlags.activeBank][x] xor n
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   state.curFlags.c = false
 
 
-template do_add(n:expr): expr =
+template do_add(n:untyped): untyped =
   reportInst("Add  s" & toHex(x,1) & " + 0x" & toHex(n.int,2))
   let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 + n.uint16
   state.regs[state.curFlags.activeBank][x] = r.uint8
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   state.curFlags.c = (r and 0x100'u16) != 0'u16
 
-template do_addcy(n:expr): expr =
+template do_addcy(n:untyped): untyped =
   reportInst("Addcy  s" & toHex(x,1) & " + 0x" & toHex(n.int,2))
   let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 + n.uint16 + (if state.curFlags.c: 1 else: 0)
   state.regs[state.curFlags.activeBank][x] = r.uint8
   state.curFlags.z = state.curFlags.z and (state.regs[state.curFlags.activeBank][x] == 0)
   state.curFlags.c = (r and 0x100'u16) != 0'u16
 
-template do_sub(n:expr): expr =
+template do_sub(n:untyped): untyped =
   reportInst("Sub  s" & toHex(x,1) & " - 0x" & toHex(n.int,2))
   let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 - n.uint16
   state.regs[state.curFlags.activeBank][x] = r.uint8
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   state.curFlags.c = (r and 0x100'u16) != 0'u16
 
-template do_subcy(n:expr): expr =
+template do_subcy(n:untyped): untyped =
   reportInst("Subcy  s" & toHex(x,1) & " - 0x" & toHex(n.int,2))
   let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 - n.uint16 - (if state.curFlags.c: 1 else: 0)
   state.regs[state.curFlags.activeBank][x] = r.uint8
   state.curFlags.z = state.curFlags.z and (state.regs[state.curFlags.activeBank][x] == 0)
   state.curFlags.c = (r and 0x100'u16) != 0'u16
 
-template do_compare(n:expr): expr =
+template do_compare(n:untyped): untyped =
   reportInst("Compare  s" & toHex(x,1) & "(0x" & toHex(state.regs[state.curFlags.activeBank][x].int,2) & ") - 0x" & toHex(n.int,2))
   let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 - n.uint16
   #echo "@@@ Compare: ", state.regs[state.curFlags.activeBank][x].uint16, " ", n.uint16, " -> ", r
   state.curFlags.z = (r and 0xFF) == 0
   state.curFlags.c = (r and 0x100'u16) != 0'u16
 
-template do_comparecy(n:expr): expr =
+template do_comparecy(n:untyped): untyped =
   reportInst("Comparecy  s" & toHex(x,1) & " - 0x" & toHex(n.int,2))
   let r: uint16 = state.regs[state.curFlags.activeBank][x].uint16 - n.uint16 - (if state.curFlags.c: 1 else: 0)
   state.curFlags.z = state.curFlags.z and ((r and 0xFF) == 0)
@@ -416,7 +416,7 @@ template do_comparecy(n:expr): expr =
 
   
   
-template do_sl0(): expr =
+template do_sl0(): untyped =
   reportInst("Sl0  << s" & toHex(x,1) & " & '0'")
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   r = r shl 1
@@ -424,7 +424,7 @@ template do_sl0(): expr =
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   state.curFlags.c = (r and 0x100'u16) != 0'u16
 
-template do_sl1(): expr =
+template do_sl1(): untyped =
   reportInst("Sl1  << s" & toHex(x,1) & " & '1'")
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   r = (r shl 1) or 0x01
@@ -432,7 +432,7 @@ template do_sl1(): expr =
   state.curFlags.z = false
   state.curFlags.c = (r and 0x100'u16) != 0'u16  
 
-template do_slx(): expr =
+template do_slx(): untyped =
   reportInst("Slx  << s" & toHex(x,1) & " & s" & toHex(x,1) & "[0]")
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   r = (r shl 1) or (r and 0x01)
@@ -440,7 +440,7 @@ template do_slx(): expr =
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   state.curFlags.c = (r and 0x100'u16) != 0'u16
 
-template do_sla(): expr =
+template do_sla(): untyped =
   reportInst("Sla  << s" & toHex(x,1) & " & C")
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   r = (r shl 1) or (if state.curFlags.c: 1 else: 0)
@@ -449,7 +449,7 @@ template do_sla(): expr =
   state.curFlags.c = (r and 0x100'u16) != 0'u16
 
 
-template do_sr0(): expr =
+template do_sr0(): untyped =
   reportInst("Sr0  >> '0' & s" & toHex(x,1))
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   state.curFlags.c = (r and 0x01) != 0'u16
@@ -457,7 +457,7 @@ template do_sr0(): expr =
   state.regs[state.curFlags.activeBank][x] = r.uint8
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
 
-template do_sr1(): expr =
+template do_sr1(): untyped =
   reportInst("Sr1  >> '1' & s" & toHex(x,1))
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   state.curFlags.c = (r and 0x01) != 0'u16
@@ -465,7 +465,7 @@ template do_sr1(): expr =
   state.regs[state.curFlags.activeBank][x] = r.uint8
   state.curFlags.z = false
 
-template do_srx(): expr =
+template do_srx(): untyped =
   reportInst("Srx  >> s" & toHex(x,1) & "[0] & s" & toHex(x,1))
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   state.curFlags.c = (r and 0x01) != 0'u16
@@ -473,7 +473,7 @@ template do_srx(): expr =
   state.regs[state.curFlags.activeBank][x] = r.uint8
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
 
-template do_sra(): expr =
+template do_sra(): untyped =
   reportInst("Sra  >> C & s" & toHex(x,1))
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   let new_c = (r and 0x01) != 0'u16
@@ -483,7 +483,7 @@ template do_sra(): expr =
   state.curFlags.c = new_c
 
   
-template do_rl(): expr =
+template do_rl(): untyped =
   reportInst("Rl  s" & toHex(x,1))
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   r = (r shl 1) or (r shr 7)
@@ -491,7 +491,7 @@ template do_rl(): expr =
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   state.curFlags.c = (r and 0x100'u16) != 0'u16
 
-template do_rr(): expr =
+template do_rr(): untyped =
   reportInst("Rr  s" & toHex(x,1))
   var r: uint16 = state.regs[state.curFlags.activeBank][x]
   state.curFlags.c = (r and 0x01) != 0'u16
@@ -499,12 +499,12 @@ template do_rr(): expr =
   state.regs[state.curFlags.activeBank][x] = r.uint8
   state.curFlags.z = state.regs[state.curFlags.activeBank][x] == 0
   
-template do_regbank(): expr =
+template do_regbank(): untyped =
   state.curFlags.activeBank = (w and 0x01)
   reportInst("Regbank  " & (if state.curFlags.activeBank == 0: "A" else: "B"))
 
 
-template do_input(n:expr): expr =
+template do_input(n:untyped): untyped =
   reportInst("Input  s" & toHex(x,1) & " = port[" & toHex(n.int,2) & "]")
 
   var success = true
@@ -518,7 +518,7 @@ template do_input(n:expr): expr =
 
   state.regs[state.curFlags.activeBank][x] = state.portsIn[n]
 
-template do_output(n:expr): expr =
+template do_output(n:untyped): untyped =
   reportInst("Output  port[" & toHex(n.int,2) & "] = s" & toHex(x,1))
   state.portsOut[n] = state.regs[state.curFlags.activeBank][x]
   
@@ -532,118 +532,118 @@ template do_output(n:expr): expr =
     break
   
 
-template do_outputk(): expr =
+template do_outputk(): untyped =
   reportInst("Outputk  kport[" & toHex(w and 0x0F,1) & "] = " & toHex((w shr 4) and 0xFF, 2))
   state.kports[w and 0x0F] = ((w shr 4) and 0xFF).uint8
 
 
 
-template do_store(n:expr): expr =
+template do_store(n:untyped): untyped =
   reportInst("Store  sp[" & toHex(n.int,2) & "] = s" & toHex(x,1))
   state.scratchpad[(n and state.scratchMask).uint8] = state.regs[state.curFlags.activeBank][x]
 
-template do_fetch(n:expr): expr =
+template do_fetch(n:untyped): untyped =
   reportInst("Fetch  s" & toHex(x,1) & " = sp[" & toHex(n.int,2) & "]  (" & toHex(state.scratchpad[(n and state.scratchMask).uint8].int,2) & ")")
   state.regs[state.curFlags.activeBank][x] = state.scratchpad[(n and state.scratchMask).uint8]
 
 
-template do_jump(): expr =
+template do_jump(): untyped =
   reportInst("Jump  " & state.getSymbol(address))
   next_pc = address
 
-template do_jump_z(): expr =
+template do_jump_z(): untyped =
   reportInst("Jump Z  " & $state.curFlags.z & "  " & state.getSymbol(address))
   if state.curFlags.z: next_pc = address
 
-template do_jump_nz(): expr =
+template do_jump_nz(): untyped =
   reportInst("Jump NZ  " & $(not state.curFlags.z) & "  " & state.getSymbol(address))
   if not state.curFlags.z: next_pc = address
 
-template do_jump_c(): expr =
+template do_jump_c(): untyped =
   reportInst("Jump C  " & $state.curFlags.c & "  " & state.getSymbol(address))
   if state.curFlags.c: next_pc = address
 
-template do_jump_nc(): expr =
+template do_jump_nc(): untyped =
   reportInst("Jump NC  " & $(not state.curFlags.c) & "  " & state.getSymbol(address))
   if not state.curFlags.c: next_pc = address
 
-template do_jump_at(): expr =
+template do_jump_at(): untyped =
   reportInst("Jump@")
   next_pc = ((state.regs[state.curFlags.activeBank][x].int32 shl 8) or state.regs[state.curFlags.activeBank][y].int32) and 0xFFF
 
 
-template do_call_push(n: expr): expr =
+template do_call_push(n: untyped): untyped =
   if len(state.callStack) < 30: # Max levels on KCPSM6
     state.callStack.add(n)
   else:
     state.termination = termStackOverflow
     do_terminate()
   
-template do_call(): expr =
+template do_call(): untyped =
   reportInst("Call  " & state.getSymbol(address))
   next_pc = address
   do_call_push(state.pc+1)
 
-template do_call_z(): expr =
+template do_call_z(): untyped =
   reportInst("Call Z  " & $state.curFlags.z & "  " & state.getSymbol(address))
   if state.curFlags.z:
     next_pc = address
     do_call_push(state.pc+1)
 
-template do_call_nz(): expr =
+template do_call_nz(): untyped =
   reportInst("Call NZ  " & $(not state.curFlags.z) & "  " & state.getSymbol(address))
   if not state.curFlags.z:
     next_pc = address
     do_call_push(state.pc+1)
 
-template do_call_c(): expr =
+template do_call_c(): untyped =
   reportInst("Call C  " & $state.curFlags.c & "  " & state.getSymbol(address))
   if state.curFlags.c:
     next_pc = address
     do_call_push(state.pc+1)
 
-template do_call_nc(): expr =
+template do_call_nc(): untyped =
   reportInst("Call NC  " & $(not state.curFlags.c) & "  " & state.getSymbol(address))
   if not state.curFlags.c:
     next_pc = address
     do_call_push(state.pc+1)
 
-template do_call_at(): expr =
+template do_call_at(): untyped =
   reportInst("Call@")
   next_pc = ((state.regs[state.curFlags.activeBank][x].int32 shl 8) or state.regs[state.curFlags.activeBank][y].int32) and 0xFFF
   do_call_push(state.pc+1)
 
 
 
-template do_popCall(): expr =
+template do_popCall(): untyped =
   if len(state.callStack) > 0:
     next_pc = state.callStack.pop()
   else:
     state.termination = termStackUnderflow
     do_terminate()
 
-template do_return(): expr =
+template do_return(): untyped =
   reportInst("Return")
   do_popCall()
   
-template do_return_z(): expr =
+template do_return_z(): untyped =
   reportInst("Return Z  " & $state.curFlags.z)
   if state.curFlags.z: do_popCall()
 
-template do_return_nz(): expr =
+template do_return_nz(): untyped =
   reportInst("Return NZ  " & $(not state.curFlags.z))
   if not state.curFlags.z: do_popCall()
 
-template do_return_c(): expr =
+template do_return_c(): untyped =
   reportInst("Return C  " & $state.curFlags.c)
   if state.curFlags.c: do_popCall()
 
-template do_return_nc(): expr =
+template do_return_nc(): untyped =
   reportInst("Return NC  " & $(not state.curFlags.c))
   if not state.curFlags.c: do_popCall()
 
 
-template do_returni(): expr =
+template do_returni(): untyped =
   reportInst("ReturnI")
   
   # Restore processor flags from before the interrupt
@@ -651,7 +651,7 @@ template do_returni(): expr =
   state.intActive = (if imm == 1: true else: false)
   do_popCall()
 
-template do_enable_disable(): expr =
+template do_enable_disable(): untyped =
   if imm == 1:
     reportInst("Enable")
     state.intActive = true
@@ -660,17 +660,17 @@ template do_enable_disable(): expr =
     state.intActive = false
 
   
-template do_load_and_return(): expr =
+template do_load_and_return(): untyped =
   reportInst("Load&return  s" & toHex(x, 1) & " = " & toHex(imm.int, 2))
   state.regs[state.curFlags.activeBank][x] = imm
   do_popCall()
 
-template do_star(): expr =
+template do_star(): untyped =
   reportInst("Star s$# ($#) = s$# ($#)" % [toHex(x,1), (if state.curFlags.activeBank == 0: "B" else: "A"),
                                           toHex(y,1), (if state.curFlags.activeBank == 0: "A" else: "B")])
   state.regs[1 - state.curFlags.activeBank][x] = state.regs[state.curFlags.activeBank][y]
 
-template do_hwbuild(): expr =
+template do_hwbuild(): untyped =
   reportInst("Hwbuild s$# = $#" % [toHex(x,1), toHex(state.hwbuild.int32,2)])
   state.regs[state.curFlags.activeBank][x] = state.hwbuild
   state.curFlags.c = true
@@ -726,7 +726,7 @@ proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8
   result = state
 
 
-template simulateLoop(): expr =
+template simulateLoop(): untyped =
   ## Main simulation loop.
   ## Terminates normally when an OUTPUT instruction targeting quitPort executes.
     
