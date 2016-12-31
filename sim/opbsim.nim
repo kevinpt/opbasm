@@ -31,16 +31,13 @@
 import strutils, sequtils, tables, times, parseopt2, json, sets, math, nre, os, options
 import engineering
 
+proc getVersion(fname: string): string {.compileTime.} =
+  for ln in staticRead(fname).splitLines:
+    if ln.startsWith("__version__"):
+      return ln.split('=')[1].strip().strip(chars={'\''})
+  return "??"
 
-# FIXME: At some point Nim will be able to do file IO at compile time 
-#proc getVersion(fname: string): string {.compileTime.} =
-#  for ln in fname.lines:
-#    if ln.startsWith("__version__"):
-#      return ln.split('=')[1].strip().strip(chars={'\''})
-#  return "??"
-#
-#const buildVersion = getVersion("../opbasm.py")
-const buildVersion = "1.3.1"
+const buildVersion = getVersion("../opbasm.py")
 
 
 proc readMemFile(fname: string): ref seq[int32] =
