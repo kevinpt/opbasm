@@ -133,6 +133,8 @@ PicoBlaze-6 enhancements
 
 The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory. Opbasm provides -m to do the same as well as -s to limit the scratchpad memory size to 64 or 128 bytes. MEM format files are output by default. KCPSM6-style HEX format is activated with *-x*.
 
+The predefined string "Opbasm_version$" is available to record the assembler version starting from version 1.3.3. This is a substitute for "KCPSM6_version$" which is not predefined by Opbasm.
+
 Syntax extensions
 -----------------
 
@@ -284,7 +286,7 @@ To compile to PicoBlaze-6, use the following:
 
 By default, Opbasm outputs *.mem* format ROM listings as produced by KCPSM3. If you want to output the *.hex* format listings produced by KCPSM6 pass the *-x* option. The only difference is that *.mem* format includes an "@nnn" address directive setting the starting offset for the memory.
 
-Opbasm returns 0 on success and can be used with automated builds using make or another build/scripting system.
+Opbasm returns 0 on success and can be incorporated into automated builds using make or another build/scripting system.
 
 Templating
 ~~~~~~~~~~

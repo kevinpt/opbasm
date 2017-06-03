@@ -334,6 +334,14 @@ Format                                Example                      Result
 
 The Opbasm macro package has :ref:`additional methods <Portable string and table operations>` for generating strings that are portable across PB3 and PB6.
 
+There are three predefined strings you can reference in your PB6 code:
+
+=============== ===============================
+timestamp$      Build timestamp in H:M:S format
+datestamp$      Build datestamp in M D Y format
+Opbasm_version$ Opbasm assembler version
+=============== ===============================
+
 .. _inst-table:
 
 table
