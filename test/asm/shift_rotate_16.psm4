@@ -1,0 +1,77 @@
+include(`setup.m4')
+
+;VALIDATES: sl0_16, sr0_16, sl1_16, sr1_16, sla_16, sra_16, slx_16, srx_16, rl16, rr16
+
+;:::::::::: 16-bit Shifts and rotates ::::::::::
+
+reg16(rx, s0,s1)
+
+load16(rx, 0xFF40)
+
+sl0_16(rx, 1)
+assert_true(regupper(rx) == 0xFE)
+assert_true(reglower(rx) == 0x80)
+sr0_16(rx, 2)
+assert_true(regupper(rx) == 0x3F)
+assert_true(reglower(rx) == 0xA0)
+
+load16(rx, 0xFF40)
+
+sl1_16(rx, 1)
+assert_true(regupper(rx) == 0xFE)
+assert_true(reglower(rx) == 0x81)
+
+sr1_16(rx, 2)
+assert_true(regupper(rx) == 0xFF)
+assert_true(reglower(rx) == 0xA0)
+
+clearcy
+load16(rx, 0x1F0F)
+sla_16(rx, 3)
+assert_true(regupper(rx) == 0xF8)
+assert_true(reglower(rx) == 0x78)
+
+setcy
+sra_16(rx, 4)
+assert_true(regupper(rx) == 0x1F)
+assert_true(reglower(rx) == 0x87)
+
+
+load16(rx, 0xFF0D)
+slx_16(rx, 5)
+assert_true(regupper(rx) == 0xE1)
+assert_true(reglower(rx) == 0xBF)
+
+srx_16(rx, 6)
+assert_true(regupper(rx) == 0xFF)
+assert_true(reglower(rx) == 0x86)
+
+
+load16(rx, 0xFF30)
+srx_16(rx, 2)
+assert_true(regupper(rx) == 0xFF)
+assert_true(reglower(rx) == 0xCC)
+slx_16(rx, 3)
+assert_true(regupper(rx) == 0xFE)
+assert_true(reglower(rx) == 0x60)
+
+
+load16(rx, 0x0F30)
+srx_16(rx, 2)
+assert_true(regupper(rx) == 0x03)
+assert_true(reglower(rx) == 0xCC)
+slx_16(rx, 3)
+assert_true(regupper(rx) == 0x1E)
+assert_true(reglower(rx) == 0x60)
+
+
+load16(rx, 0x0081)
+rl16(rx, 2)
+assert_true(regupper(rx) == 0x02)
+assert_true(reglower(rx) == 0x04)
+rr16(rx, 3)
+assert_true(regupper(rx) == 0x80)
+assert_true(reglower(rx) == 0x40)
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate
