@@ -39,6 +39,8 @@ The following instruction mnemonics are used in the PicoBlaze processors:
 `default_jump`_
 =============== =========== =========== =========== ===========
 
+The Xilinx PicoBlaze-3 assembler only supports the ``address``, ``constant``, and ``namereg`` directives.
+
 .. rubric:: PicoBlaze-6 directives
 
 ========== ===========
@@ -82,7 +84,6 @@ Instructions generally use the following formats with a few minor exceptions:
 The fields have the following meanings:
 
 ================== ================================================================================
-``<flag state>``   One of the condition codes for zero and carry (Z, NZ, C, or NC)
 ``<instruction>``  Instruction mnemonic or directive
 ``<register>``     One of the 16 currently active registers (s0-sF)
 ``<literal>``      Constant literal (hex [nn], decimal [nnn'd], binary [nnnnnnnn'b], or char ["c"])
@@ -174,7 +175,7 @@ The PicoBlaze has a simple architecture that operates on information stored in t
 
     The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the :ref:`inst-regbank` instruction. The default register names are case-insensitive so "SA", "sa", "Sa", and "sA" are all valid.
     
-    All register values, flags, and the call stack are initialized to 0 on initial FPGA power up but the registers retain thier values on subsequent resets. Your code should not assume registers are cleared after a reset.
+    All register values, flags, and the call stack are initialized to 0 on initial FPGA power up but the registers retain their values on subsequent resets. Your code should not assume registers are cleared after a reset.
 
   Instruction memory
     Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6. This memory is implemented outside the PicoBlaze core component and attached to the instruction memory port. Because the PicoBlaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.
@@ -209,19 +210,19 @@ The `return`_ and `jump`_ have a conditional form where the first operand is a f
 Interrupts
 ----------
 
-The PicoBlaze has a single ``interrupt`` input. When interrupts are enabled and this pin transitions high, the normal execution is suspended and the processor jumps to a special interrupt handler routine. This behavior lets your code respond to external events in the FPGA fabric without having to explicitly poll for changes in state.
+The PicoBlaze has a single ``interrupt`` input. When interrupts are enabled and this pin transitions high, the normal execution is suspended and the processor jumps to a special interrupt handler routine. This behavior lets your code respond to external events in the FPGA fabric without having to explicitly poll for changes in state. Handling multiple interrupts requires external logic to multiplex them onto the single input provided by the PicoBlaze.
 
-The PB3 has a fixed interrupt vector address of 0x3FF which is the last instruction in the 1K instruction memory space. You must insert a `jump`_ instruction here that branches to your ISR code. The PB6 defaults to 0x3FF but you can change the default vector address with the ``interrupt_vector`` generic on the ``KCPSM6`` component. This gives you the option to place the vector at the start of your ISR without the nedd for an extra ``jump``.
+The PB3 has a fixed interrupt vector address of 0x3FF which is the last instruction in the 1K instruction memory space. You must insert a `jump`_ instruction here that branches to your ISR code. The PB6 defaults to 0x3FF but you can change the default vector address with the ``interrupt_vector`` generic on the ``KCPSM6`` component. This gives you the option to place the vector at the start of your ISR without the need for an extra ``jump``.
 
 The ``interrupt`` signal should stay high for at least two clock cycles to guarantee it is seen by the processor. An optional ``interrupt_ack`` output signal is provided to interface with external interrupt generating logic. It notifies you when the processor has started processing the interrupt, at which point it is safe to release the ``interrupt`` input signal.
 
-Interrupts are contolled with the `enable`_ and `disable`_ instructions. they take a special dummy operand of "interrupt". A special `returni`_ instruction is used to exit from the ISR and resume normal execution. It takes an operand of "enable" or"disable" to set the new state of the interrupt flag after the return. You cannot use the normal `return`_ instruction to accomplish this since the original interrupt saved the flag and register bank state which would not be restored with normal ``return``.
+Interrupts are controlled with the `enable`_ and `disable`_ instructions. they take a special dummy operand of "interrupt". A special `returni`_ instruction is used to exit from the ISR and resume normal execution. It takes an operand of "enable" or"disable" to set the new state of the interrupt flag after the return. You cannot use the normal `return`_ instruction to accomplish this since the original interrupt saved the flag and register bank state and only ``returni`` can restore it so that your normal code is not affected by the change of execution state.
   
 
 Directives
 ----------
 
-The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are used, instead, to alter the behavior of the assembler.
+The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are instead used to alter the behavior of the assembler.
 
 .. _inst-address:
 
@@ -237,7 +238,7 @@ Format                                Example           Result
 ``address <label>``                   address MyISR     The instruction offset is addr. of MyISR
 ===================================== ================= ========================================
 
-This is useful for placing code at the interrupt vector location or implementing complex memory layouts such as bank switched pages. The second veriant with a label as ab operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a `jump`_ for the entry point.
+This allows you to place code at the interrupt vector location or implement complex memory layouts such as bank switched pages. The second veriant with a label as an operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a `jump`_ for the entry point.
 
 .. _inst-constant:
 
@@ -305,7 +306,9 @@ Format                                Example                  Result
 namereg
 ~~~~~~~
 
-The ``namereg`` directive lets you rename a register mnemonic. This allows you to create more descriptive register names rather the default s0-sF. Once namereg has been applied the affected register can only be referenced by its new name. Another call to ``namereg`` is needed to change its name again. The new name is case sensitive unlike the default where both "sn" "Sn" are accepted.
+The ``namereg`` directive lets you rename a register mnemonic. This allows you to create more descriptive register names rather the default s0-sF. Once namereg has been applied, the affected register can only be referenced by its new name. Another call to ``namereg`` is needed to change its name again. The new name is case sensitive unlike the default where both "sn" "Sn" are accepted.
+
+The new name takes effect after this directive. Previous references to the old register name remain valid. You can rename the register again at any point.
 
 ===================================== ======================== ========================================
 Format                                Example                  Result
@@ -330,6 +333,14 @@ Format                                Example                      Result
 ===================================== ============================ ========================================
 
 The Opbasm macro package has :ref:`additional methods <Portable string and table operations>` for generating strings that are portable across PB3 and PB6.
+
+There are three predefined strings you can reference in your PB6 code:
+
+=============== ===============================
+timestamp$      Build timestamp in H:M:S format
+datestamp$      Build datestamp in M D Y format
+Opbasm_version$ Opbasm assembler version
+=============== ===============================
 
 .. _inst-table:
 
@@ -1145,12 +1156,12 @@ Format                                Example                Result
 Missing instructions
 --------------------
 
-The PicoBlaze processors have a minimal instruction set owing to their compact implementation. Some notable instructions commonly seen in other processor architectures are missing. It is possible, however, to replicate their behavior with alternate instructions.
+The PicoBlaze processors have a minimal instruction set owing to their compact implementation. Some notable instructions commonly seen in other processor architectures are missing. However, it is possible to replicate their behavior with alternate instructions.
 
 nop
 ~~~
 
-The NOP instruction represents a no-operation that has no effect on the processor state and only adds a processing delay to following code. To get the effect of a NOP you can use the following:
+The NOP instruction represents a no-operation that has no effect on the processor state and only adds a processing delay to following code. To get the effect of a NOP you can assign a register to itself:
 
  .. code-block:: picoblaze
  

@@ -26,7 +26,7 @@
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="top" title="Opbasm 1.3 documentation" href="../index.html" />
-    <link rel="next" title="Opbsim" href="opbsim.html" />
+    <link rel="next" title="PicoBlaze architecture reference" href="language.html" />
     <link rel="prev" title="Open PicoBlaze Assembler" href="../index.html" />
 
    
@@ -229,7 +229,7 @@
 <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="nb">evalx(</span><span class="s">CNAME</span><span class="nb">)</span>         <span class="c">; Expands to &quot;load s0, CNAME&quot;</span>
 </pre></div>
 </div>
-<p id="m4-define">You can define aliases for registers without altering the original as with NAMEREG.</p>
+<p id="m4-define">You can define aliases for registers without altering the original as with <a class="reference internal" href="language.html#inst-namereg"><em>namereg</em></a>.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">define(</span><span class="s">alt_name</span><span class="p">,</span> <span class="s">s0</span><span class="nb">)</span>
 <span class="k">load</span> <span class="n">alt_name</span><span class="p">,</span> <span class="mh">01</span>             <span class="c">; Expands to &quot;load s0, 01&quot;</span>
 <span class="k">add</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">01</span>                    <span class="c">; s0 register is still visible</span>
@@ -256,7 +256,7 @@
 </pre></div>
 </div>
 <p>If you need a NUL terminated string, the <a class="reference internal" href="library.html#pb.cstr" title="cstr"><tt class="xref pb pb-macro docutils literal"><span class="pre">cstr()</span></tt></a> macro works the same but appends a terminating 0:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">asciiord_cstr(</span><span class="s">`1234&#39;</span><span class="nb">)</span>     <span class="c">; Expands to &quot;49, 50, 51, 52, 0&quot;</span>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">cstr(</span><span class="s">`1234&#39;</span><span class="nb">)</span>     <span class="c">; Expands to &quot;49, 50, 51, 52, 0&quot;</span>
 </pre></div>
 </div>
 <p>The <a class="reference internal" href="library.html#pb.words_le" title="words_le"><tt class="xref pb pb-macro docutils literal"><span class="pre">words_le()</span></tt></a> and <a class="reference internal" href="library.html#pb.words_be" title="words_be"><tt class="xref pb pb-macro docutils literal"><span class="pre">words_be()</span></tt></a> macros convert a list of 16-bit numbers into little-endian or big-endian bytes.</p>
@@ -283,7 +283,7 @@
 </pre></div>
 </div>
 <p>You can omit either block of the <tt class="docutils literal"><span class="pre">ifdef()</span></tt> macro if you want generation only for the defined or undefined conditions. To control the selected code block you pass defined variables with the <tt class="docutils literal"><span class="pre">-D</span></tt> option to Opbasm:</p>
-<div class="highlight-shell"><div class="highlight"><pre>opbasm -DVARNAME -DMAXVAL<span class="o">=</span><span class="m">42</span> foo.psm4
+<div class="highlight-console"><div class="highlight"><pre><span class="go">opbasm -DVARNAME -DMAXVAL=42 foo.psm4</span>
 </pre></div>
 </div>
 <p>This will define &#8220;VARNAME&#8221; as an empty string and &#8220;MAXVAL&#8221; with the string &#8220;42&#8221; which will be passed on unaltered to the assembler. These defined variables become macros which will be substituted with their value like any other macro.</p>
@@ -803,7 +803,7 @@
 </div>
 <div class="section" id="string-and-table-operations">
 <span id="string-and-table-ops"></span><span id="id4"></span><h2>String and table operations<a class="headerlink" href="#string-and-table-operations" title="Permalink to this headline">¶</a></h2>
-<p>PicoBlaze-3 doesn&#8217;t have the ability to handle strings as efficiently as PB6 but it is still necessary to work with them at times. Suppose that you have a subroutine &#8220;write_char&#8221; that writes characters in s0 out to a peripheral. You can write entire strings with the following:</p>
+<p>PicoBlaze-3 doesn&#8217;t have the ability to handle strings as efficiently as PB6 because it lacks the <a class="reference internal" href="language.html#inst-load-return"><em>load&amp;return</em></a> instruction but it is still necessary to work with them at times. Suppose that you have a subroutine &#8220;write_char&#8221; that writes characters in s0 out to a peripheral. You can write entire strings with the following:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">callstring(</span><span class="s">write_char</span><span class="p">,</span> <span class="s">s0</span><span class="p">,</span> <span class="s">`My</span> <span class="s">string&#39;</span><span class="nb">)</span> <span class="c">; Note use of m4 quotes `&#39; to enclose the string</span>
 </pre></div>
 </div>
@@ -1509,7 +1509,7 @@ are skipped. Invalid BCD digits are not detected.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">expr(</span><span class="s">s0</span> <span class="o">:=</span> <span class="s">s1</span> <span class="o">+</span> <span class="s">s2</span> <span class="o">=:</span> <span class="s">s3</span> <span class="o">&gt;&gt;</span> <span class="m">2</span><span class="nb">)</span>
 </pre></div>
 </div>
-<p>Arithmetic is performed on <tt class="docutils literal"><span class="pre">s0</span></tt> at each stage. The reverse assignment to <cite>s3`</cite> captures the intermediate result of <tt class="docutils literal"><span class="pre">s1</span> <span class="pre">+</span> <span class="pre">s2</span></tt> and then continues with the right shift applied to <tt class="docutils literal"><span class="pre">s0</span></tt>. This expands to:</p>
+<p>Arithmetic is performed on <tt class="docutils literal"><span class="pre">s0</span></tt> at each stage. The reverse assignment to <tt class="docutils literal"><span class="pre">s3</span></tt> captures the intermediate result of <tt class="docutils literal"><span class="pre">s1</span> <span class="pre">+</span> <span class="pre">s2</span></tt> and then continues with the right shift applied to <tt class="docutils literal"><span class="pre">s0</span></tt>. This expands to:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; Expression: s0 := s1 + s2 =: s3 &gt;&gt; 2</span>
 <span class="k">LOAD</span> <span class="n">s0</span><span class="p">,</span> <span class="n">s1</span>
 <span class="k">ADD</span> <span class="n">s0</span><span class="p">,</span> <span class="n">s2</span>
@@ -1747,7 +1747,7 @@ are skipped. Invalid BCD digits are not detected.</p>
 <div class="section" id="manually-running-m4">
 <h2>Manually running m4<a class="headerlink" href="#manually-running-m4" title="Permalink to this headline">¶</a></h2>
 <p>Some users may be unable to use Opbasm due to formal release procedures requiring a &#8220;golden&#8221; assembler. The m4 macro package can still be used with other PicoBlaze assemblers by manually running code through m4:</p>
-<div class="highlight-sh"><div class="highlight"><pre>&gt; m4 picoblaze.m4 <span class="o">[</span>input <span class="nb">source</span><span class="o">]</span> &gt; expanded_macros.gen.psm
+<div class="highlight-console"><div class="highlight"><pre><span class="gp">&gt;</span> m4 picoblaze.m4 <span class="o">[</span>input <span class="nb">source</span><span class="o">]</span> &gt; expanded_macros.gen.psm
 </pre></div>
 </div>
 <p>The picoblaze.m4 file is located in the opbasm_lib directory of the source distribution.</p>
@@ -1782,7 +1782,7 @@ are skipped. Invalid BCD digits are not detected.</p>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
       <li>Previous: <a href="../index.html" title="previous chapter">Open PicoBlaze Assembler</a></li>
-      <li>Next: <a href="opbsim.html" title="next chapter">Opbsim</a></li>
+      <li>Next: <a href="language.html" title="next chapter">PicoBlaze architecture reference</a></li>
   </ul></li>
 </ul>
 </div>

@@ -26,7 +26,6 @@
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="top" title="Opbasm 1.3 documentation" href="../index.html" />
-    <link rel="next" title="PicoBlaze architecture reference" href="language.html" />
     <link rel="prev" title="Opbsim" href="opbsim.html" />
 
    
@@ -650,7 +649,7 @@ Constant is a number in m4 syntax and cannot be a named constant</li>
 <p>Zero flag is indeterminate. Use normal <a class="reference internal" href="language.html#inst-compare"><em>compare</em></a> instruction for == and !=</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">This calls the setcy() macro and depends on the tempreg</p>
+<p class="last">This calls the <a class="reference internal" href="#pb.setcy" title="setcy"><tt class="xref pb pb-macro docutils literal"><span class="pre">setcy()</span></tt></a> macro and depends on the tempreg</p>
 </div>
 <p class="rubric">Example:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="nb">evalh(</span><span class="o">-</span><span class="m">20</span><span class="nb">)</span>
@@ -4991,7 +4990,6 @@ Arg3 and Arg4 are a 16-bit pair to XOR to the result.</p>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
       <li>Previous: <a href="opbsim.html" title="previous chapter">Opbsim</a></li>
-      <li>Next: <a href="language.html" title="next chapter">PicoBlaze architecture reference</a></li>
   </ul></li>
 </ul>
 </div><h3>Other projects</h3>

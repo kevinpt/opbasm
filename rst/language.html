@@ -27,7 +27,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="top" title="Opbasm 1.3 documentation" href="../index.html" />
     <link rel="next" title="PicoBlaze assembly tutorial" href="tutorial.html" />
-    <link rel="prev" title="Opbasm PicoBlaze macro library reference" href="library.html" />
+    <link rel="prev" title="m4 support in Opbasm" href="m4.html" />
 
    
   
@@ -158,6 +158,7 @@
 </tr>
 </tbody>
 </table>
+<p>The Xilinx PicoBlaze-3 assembler only supports the <tt class="docutils literal"><span class="pre">address</span></tt>, <tt class="docutils literal"><span class="pre">constant</span></tt>, and <tt class="docutils literal"><span class="pre">namereg</span></tt> directives.</p>
 <p class="rubric">PicoBlaze-6 directives</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -207,16 +208,13 @@ An optional label creates a named reference that can be referred to by other ins
 <col width="82%" />
 </colgroup>
 <tbody valign="top">
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">&lt;flag</span> <span class="pre">state&gt;</span></tt></td>
-<td>One of the condition codes for zero and carry (Z, NZ, C, or NC)</td>
-</tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">&lt;instruction&gt;</span></tt></td>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">&lt;instruction&gt;</span></tt></td>
 <td>Instruction mnemonic or directive</td>
 </tr>
-<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">&lt;register&gt;</span></tt></td>
+<tr class="row-even"><td><tt class="docutils literal"><span class="pre">&lt;register&gt;</span></tt></td>
 <td>One of the 16 currently active registers (s0-sF)</td>
 </tr>
-<tr class="row-even"><td><tt class="docutils literal"><span class="pre">&lt;literal&gt;</span></tt></td>
+<tr class="row-odd"><td><tt class="docutils literal"><span class="pre">&lt;literal&gt;</span></tt></td>
 <td>Constant literal (hex [nn], decimal [nnn&#8217;d], binary [nnnnnnnn&#8217;b], or char [&#8220;c&#8221;])</td>
 </tr>
 </tbody>
@@ -317,7 +315,7 @@ syntactic marker. The <a class="reference internal" href="#inst-address"><em>add
 <dt>Registers</dt>
 <dd><p class="first">A set of 16 8-bit registers. They default to the registers named s0-sF but can be renamed with the <a class="reference internal" href="#inst-namereg"><em>namereg</em></a> directive.</p>
 <p>The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the <a class="reference internal" href="#inst-regbank"><em>regbank</em></a> instruction. The default register names are case-insensitive so &#8220;SA&#8221;, &#8220;sa&#8221;, &#8220;Sa&#8221;, and &#8220;sA&#8221; are all valid.</p>
-<p class="last">All register values, flags, and the call stack are initialized to 0 on initial FPGA power up but the registers retain thier values on subsequent resets. Your code should not assume registers are cleared after a reset.</p>
+<p class="last">All register values, flags, and the call stack are initialized to 0 on initial FPGA power up but the registers retain their values on subsequent resets. Your code should not assume registers are cleared after a reset.</p>
 </dd>
 <dt>Instruction memory</dt>
 <dd>Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6. This memory is implemented outside the PicoBlaze core component and attached to the instruction memory port. Because the PicoBlaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.</dd>
@@ -344,14 +342,14 @@ This is accessed with the <a class="reference internal" href="#outputk">outputk<
 </div>
 <div class="section" id="interrupts">
 <h2>Interrupts<a class="headerlink" href="#interrupts" title="Permalink to this headline">¶</a></h2>
-<p>The PicoBlaze has a single <tt class="docutils literal"><span class="pre">interrupt</span></tt> input. When interrupts are enabled and this pin transitions high, the normal execution is suspended and the processor jumps to a special interrupt handler routine. This behavior lets your code respond to external events in the FPGA fabric without having to explicitly poll for changes in state.</p>
-<p>The PB3 has a fixed interrupt vector address of 0x3FF which is the last instruction in the 1K instruction memory space. You must insert a <a class="reference internal" href="#jump">jump</a> instruction here that branches to your ISR code. The PB6 defaults to 0x3FF but you can change the default vector address with the <tt class="docutils literal"><span class="pre">interrupt_vector</span></tt> generic on the <tt class="docutils literal"><span class="pre">KCPSM6</span></tt> component. This gives you the option to place the vector at the start of your ISR without the nedd for an extra <tt class="docutils literal"><span class="pre">jump</span></tt>.</p>
+<p>The PicoBlaze has a single <tt class="docutils literal"><span class="pre">interrupt</span></tt> input. When interrupts are enabled and this pin transitions high, the normal execution is suspended and the processor jumps to a special interrupt handler routine. This behavior lets your code respond to external events in the FPGA fabric without having to explicitly poll for changes in state. Handling multiple interrupts requires external logic to multiplex them onto the single input provided by the PicoBlaze.</p>
+<p>The PB3 has a fixed interrupt vector address of 0x3FF which is the last instruction in the 1K instruction memory space. You must insert a <a class="reference internal" href="#jump">jump</a> instruction here that branches to your ISR code. The PB6 defaults to 0x3FF but you can change the default vector address with the <tt class="docutils literal"><span class="pre">interrupt_vector</span></tt> generic on the <tt class="docutils literal"><span class="pre">KCPSM6</span></tt> component. This gives you the option to place the vector at the start of your ISR without the need for an extra <tt class="docutils literal"><span class="pre">jump</span></tt>.</p>
 <p>The <tt class="docutils literal"><span class="pre">interrupt</span></tt> signal should stay high for at least two clock cycles to guarantee it is seen by the processor. An optional <tt class="docutils literal"><span class="pre">interrupt_ack</span></tt> output signal is provided to interface with external interrupt generating logic. It notifies you when the processor has started processing the interrupt, at which point it is safe to release the <tt class="docutils literal"><span class="pre">interrupt</span></tt> input signal.</p>
-<p>Interrupts are contolled with the <a class="reference internal" href="#enable">enable</a> and <a class="reference internal" href="#disable">disable</a> instructions. they take a special dummy operand of &#8220;interrupt&#8221;. A special <a class="reference internal" href="#returni">returni</a> instruction is used to exit from the ISR and resume normal execution. It takes an operand of &#8220;enable&#8221; or&#8221;disable&#8221; to set the new state of the interrupt flag after the return. You cannot use the normal <a class="reference internal" href="#return">return</a> instruction to accomplish this since the original interrupt saved the flag and register bank state which would not be restored with normal <tt class="docutils literal"><span class="pre">return</span></tt>.</p>
+<p>Interrupts are controlled with the <a class="reference internal" href="#enable">enable</a> and <a class="reference internal" href="#disable">disable</a> instructions. they take a special dummy operand of &#8220;interrupt&#8221;. A special <a class="reference internal" href="#returni">returni</a> instruction is used to exit from the ISR and resume normal execution. It takes an operand of &#8220;enable&#8221; or&#8221;disable&#8221; to set the new state of the interrupt flag after the return. You cannot use the normal <a class="reference internal" href="#return">return</a> instruction to accomplish this since the original interrupt saved the flag and register bank state and only <tt class="docutils literal"><span class="pre">returni</span></tt> can restore it so that your normal code is not affected by the change of execution state.</p>
 </div>
 <div class="section" id="directives">
 <h2>Directives<a class="headerlink" href="#directives" title="Permalink to this headline">¶</a></h2>
-<p>The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are used, instead, to alter the behavior of the assembler.</p>
+<p>The following are the assembler directives used by Opbasm. These are special keywords used in place of machine instructions. They do not produce any code directly but are instead used to alter the behavior of the assembler.</p>
 <div class="section" id="address">
 <span id="inst-address"></span><h3>address<a class="headerlink" href="#address" title="Permalink to this headline">¶</a></h3>
 <p>The <tt class="docutils literal"><span class="pre">address</span></tt> directive is used to change the address where the next instruction will be assembled to.</p>
@@ -378,7 +376,7 @@ This is accessed with the <a class="reference internal" href="#outputk">outputk<
 </tr>
 </tbody>
 </table>
-<p>This is useful for placing code at the interrupt vector location or implementing complex memory layouts such as bank switched pages. The second veriant with a label as ab operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a <a class="reference internal" href="#jump">jump</a> for the entry point.</p>
+<p>This allows you to place code at the interrupt vector location or implement complex memory layouts such as bank switched pages. The second veriant with a label as an operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a <a class="reference internal" href="#jump">jump</a> for the entry point.</p>
 </div>
 <div class="section" id="constant">
 <span id="inst-constant"></span><h3>constant<a class="headerlink" href="#constant" title="Permalink to this headline">¶</a></h3>
@@ -493,7 +491,8 @@ memory</td>
 </div>
 <div class="section" id="namereg">
 <span id="inst-namereg"></span><h3>namereg<a class="headerlink" href="#namereg" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">namereg</span></tt> directive lets you rename a register mnemonic. This allows you to create more descriptive register names rather the default s0-sF. Once namereg has been applied the affected register can only be referenced by its new name. Another call to <tt class="docutils literal"><span class="pre">namereg</span></tt> is needed to change its name again. The new name is case sensitive unlike the default where both &#8220;sn&#8221; &#8220;Sn&#8221; are accepted.</p>
+<p>The <tt class="docutils literal"><span class="pre">namereg</span></tt> directive lets you rename a register mnemonic. This allows you to create more descriptive register names rather the default s0-sF. Once namereg has been applied, the affected register can only be referenced by its new name. Another call to <tt class="docutils literal"><span class="pre">namereg</span></tt> is needed to change its name again. The new name is case sensitive unlike the default where both &#8220;sn&#8221; &#8220;Sn&#8221; are accepted.</p>
+<p>The new name takes effect after this directive. Previous references to the old register name remain valid. You can rename the register again at any point.</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="37%" />
@@ -538,6 +537,24 @@ memory</td>
 </tbody>
 </table>
 <p>The Opbasm macro package has <a class="reference internal" href="m4.html#portable-string-and-table-operations"><em>additional methods</em></a> for generating strings that are portable across PB3 and PB6.</p>
+<p>There are three predefined strings you can reference in your PB6 code:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="33%" />
+<col width="67%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>timestamp$</td>
+<td>Build timestamp in H:M:S format</td>
+</tr>
+<tr class="row-even"><td>datestamp$</td>
+<td>Build datestamp in M D Y format</td>
+</tr>
+<tr class="row-odd"><td>Opbasm_version$</td>
+<td>Opbasm assembler version</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section" id="table">
 <span id="inst-table"></span><h3>table<a class="headerlink" href="#table" title="Permalink to this headline">¶</a></h3>
@@ -1825,10 +1842,10 @@ the result is zero and the previous Z flag was set.</p>
 </div>
 <div class="section" id="missing-instructions">
 <h2>Missing instructions<a class="headerlink" href="#missing-instructions" title="Permalink to this headline">¶</a></h2>
-<p>The PicoBlaze processors have a minimal instruction set owing to their compact implementation. Some notable instructions commonly seen in other processor architectures are missing. It is possible, however, to replicate their behavior with alternate instructions.</p>
+<p>The PicoBlaze processors have a minimal instruction set owing to their compact implementation. Some notable instructions commonly seen in other processor architectures are missing. However, it is possible to replicate their behavior with alternate instructions.</p>
 <div class="section" id="nop">
 <h3>nop<a class="headerlink" href="#nop" title="Permalink to this headline">¶</a></h3>
-<p>The NOP instruction represents a no-operation that has no effect on the processor state and only adds a processing delay to following code. To get the effect of a NOP you can use the following:</p>
+<p>The NOP instruction represents a no-operation that has no effect on the processor state and only adds a processing delay to following code. To get the effect of a NOP you can assign a register to itself:</p>
 <blockquote>
 <div><div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="n">s0</span> <span class="c">; No change to registers or flags == NOP</span>
 </pre></div>
@@ -1887,7 +1904,7 @@ the result is zero and the previous Z flag was set.</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="library.html" title="previous chapter">Opbasm PicoBlaze macro library reference</a></li>
+      <li>Previous: <a href="m4.html" title="previous chapter">m4 support in Opbasm</a></li>
       <li>Next: <a href="tutorial.html" title="next chapter">PicoBlaze assembly tutorial</a></li>
   </ul></li>
 </ul>

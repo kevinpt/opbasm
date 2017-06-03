@@ -369,7 +369,7 @@ Opbasm PicoBlaze macro library reference
   
   Zero flag is indeterminate. Use normal :ref:`inst-compare` instruction for == and !=
   
-  .. note:: This calls the setcy() macro and depends on the tempreg
+  .. note:: This calls the :pb:macro:`setcy` macro and depends on the tempreg
   
   
   .. rubric:: Example:
