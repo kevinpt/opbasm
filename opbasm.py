@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.3.2'
+__version__ = '1.3.3'
 
 
 class FatalError(Exception):
@@ -615,9 +615,11 @@ class Assembler(object):
     '''Initialize predefined strings'''
     ts = self.timestamp.strftime('%H:%M:%S')
     ds = self.timestamp.strftime('%d %b %Y')
+    ver = __version__
     strings = {
       'timestamp$' : Symbol('timestamp$', ts, '"{}"'.format(ts)),
       'datestamp$' : Symbol('datestamp$', ds, '"{}"'.format(ds)),
+      'Opbasm_version$' : Symbol('Opbasm_version$', ver, '"{}"'.format(ver)),
     }
     
     for s in strings.itervalues():
@@ -666,7 +668,8 @@ class Assembler(object):
                   })
 
     # Build argument string for defines fed into m4
-    m4_def_args = ' '.join('-D{}={}'.format(k,v) if v else '-D{}'.format(k) for k,v in m4_defines.iteritems())
+    m4_def_args = \
+      ' '.join('-D{}={}'.format(k,v) if v else '-D{}'.format(k) for k,v in m4_defines.iteritems())
 
     m4_cmd = find_m4()
     cmd = '"{}" {} {} "{}" -'.format(m4_cmd, m4_options, m4_def_args, macro_defs)
@@ -733,7 +736,8 @@ class Assembler(object):
       m = const_def.search(l)
       if m:
         if m.group(3) not in ('";"', '","', '"`"', '"\'"'):
-          # Wrap quoted chars in m4 quotes to protect ",". This doesn't work for ";" so we leave it in pb syntax
+          # Wrap quoted chars in m4 quotes to protect ",".
+          # This doesn't work for ";" so we leave it in pb syntax.
           arg2 = m.group(3).strip()
           if arg2[0] == '"':
             arg2 = "`{}'".format(arg2)
@@ -1129,7 +1133,8 @@ class Assembler(object):
              cur_addr, self.mem_size-1))
 
         s.address = cur_addr
-        cur_addr += self.statement_words(s) # Move to next address. Could be > 1 if a string or table operand
+        # Move to next address. Could be > 1 if a string or table operand
+        cur_addr += self.statement_words(s)
 
       elif s.command == 'address':
         cur_addr = self.get_address(s.arg1)
@@ -1615,7 +1620,8 @@ def parse_command_line():
         parser.error(_('Invalid entry point address'))
 
     # Convert m4 definitions into a dict
-    options.m4_defines = {t[0]:t[1] if len(t) == 2 else None for t in (d.split('=') for d in options.m4_defines)}
+    options.m4_defines = \
+      {t[0]:t[1] if len(t) == 2 else None for t in (d.split('=') for d in options.m4_defines)}
   return options
 
 
@@ -1706,7 +1712,8 @@ def find_reachability(addresses, itable, follow_keeps=False):
             find_reachability((s.immediate,), itable, follow_keeps)
 
           # Stop on unconditional jump
-          if s.command == 'jump' and s.arg2 is None and 'jump_table' not in s.tags: # Only 1 argument -> unconditional
+          # Only 1 argument -> unconditional
+          if s.command == 'jump' and s.arg2 is None and 'jump_table' not in s.tags:
             break
 
       # Continue with next instruction if it exists
@@ -2162,7 +2169,8 @@ def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp, default
       hdl = re.sub(r'{{{}_..}}'.format(k), v, hdl)
 
   hdl = hdl.replace('{source file}', input_file)  # Extension not used by KCPSM3.exe
-  # We don't support {psmname} because it is followed by a hard-coded extension in the templates which may be invalid
+  # We don't support {psmname} because it is followed by a hard-coded extension in the
+  # templates which may be invalid
   hdl = hdl.replace('{name}', os.path.splitext(hdl_file)[0])
   hdl = hdl.replace('{timestamp}', timestamp)
   # Used in ROM_form_7S_1K5_with_ecc
@@ -2505,7 +2513,8 @@ def main():
   for hdl_name, template_file in templates.iteritems():
     # Prepare INIT strings for the memory width found in the template
     data_format = template_data_size(templates[hdl_name])
-    if data_format == TemplateDataFormat.ROMBoth: # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
+    if data_format == TemplateDataFormat.ROMBoth:
+      # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
       minit = minit_9.copy()
       minit.update(minit_18) # Merge the init strings together for both types
     elif data_format == TemplateDataFormat.ROM9:
