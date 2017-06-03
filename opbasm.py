@@ -2171,7 +2171,7 @@ def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp, default
   hdl = hdl.replace('{source file}', input_file)  # Extension not used by KCPSM3.exe
   # We don't support {psmname} because it is followed by a hard-coded extension in the
   # templates which may be invalid
-  hdl = hdl.replace('{name}', os.path.splitext(hdl_file)[0])
+  hdl = hdl.replace('{name}', os.path.splitext(os.path.basename(hdl_file))[0])
   hdl = hdl.replace('{timestamp}', timestamp)
   # Used in ROM_form_7S_1K5_with_ecc
   hdl = hdl.replace('{default_jump}', '{:018b}'.format(default_jump))
