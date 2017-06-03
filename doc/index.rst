@@ -67,25 +67,25 @@ If your OS has a package manager, it may be preferable to install Python setupto
 
 The easiest way to install Opbasm is from `PyPI <https://pypi.python.org/pypi/opbasm>`_.
 
-.. code-block:: sh
+.. code-block:: console
 
   > pip install --upgrade opbasm
 
 This will download and install the latest release, upgrading if you already have it installed. If you don't have ``pip`` you may have the ``easy_install`` command available which can be used to install ``pip`` on your system:
 
-.. code-block:: sh
+.. code-block:: console
 
   > easy_install pip
   
 You can also use ``pip`` to get the latest development code from Github:
 
-.. code-block:: sh
+.. code-block:: console
 
   > pip install --upgrade https://github.com/kevinpt/opbasm/tarball/master
 
 If you manually downloaded a source package or created a clone with Git you can install Opbasm with the following command run from the base Opbasm directory:
 
-.. code-block:: sh
+.. code-block:: console
 
   > python setup.py install
 
@@ -95,7 +95,7 @@ After a successful install the Opbasm scripts will be available. On Linux they s
 
 If you can't use the installer script, it is possible to run *opbasm.py* directly without installation.
 
-.. code-block:: sh
+.. code-block:: console
 
   > python opbasm.py ...
 
@@ -248,7 +248,7 @@ The assembler is invoked with the *opbasm* script. It supports the following com
 
 To compile to PicoBlaze-3 opcodes, use the following:
 
-.. code-block:: sh
+.. code-block:: console
 
   > opbasm foo.psm
   OPBASM - Open PicoBlaze Assembler
@@ -275,7 +275,7 @@ To compile to PicoBlaze-3 opcodes, use the following:
 
 To compile to PicoBlaze-6, use the following:
 
-.. code-block:: sh
+.. code-block:: console
 
   > opbasm -6 foo.psm
   OPBASM - Open PicoBlaze Assembler
@@ -297,7 +297,7 @@ The native KCPSM assemblers are hard-coded to look for a template named *ROM_for
 
 To save the bother of hunting down templates when you start a new project, you can generate copies of the default templates included with Opbasm using the following command:
 
-.. code-block:: sh
+.. code-block:: console
 
   > opbasm -g
   Retrieving default templates...
@@ -402,7 +402,8 @@ Once the layout is described, ``pb_update`` runs the ``data2mem`` program with t
   Release 14.5 - xdl P.58f (lin64)
   Copyright (c) 1995-2012 Xilinx, Inc.  All rights reserved.
 
-  Loading device for application Rf_Device from file '6slx4.nph' in environment /usr/local/packages/Xilinx/14.5/ISE_DS/ISE/.
+  Loading device for application Rf_Device from file '6slx4.nph' in environment
+    /usr/local/packages/Xilinx/14.5/ISE_DS/ISE/.
      "foobar" is an NCD, version 3.2, device xc6slx4, package tqg144, speed -3
   Successfully converted design 'foobar.ncd' to 'foobar.xdl'.
   Required memory depth: 4096
@@ -449,10 +450,10 @@ PicoBlaze syntax highlighting rules for Gedit and Notepad++ have been included i
    :hidden:
 
    rst/m4
-   rst/opbsim
-   rst/library
    rst/language
    rst/tutorial
+   rst/opbsim
+   rst/library
 
 
 Licensing

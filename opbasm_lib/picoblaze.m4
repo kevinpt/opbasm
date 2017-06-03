@@ -1994,7 +1994,7 @@ define(`isnum', `ifelse(regexp($1, `^-?\(0[xXbB][0-9a-fA-F]+\|[0-9]+\)$'),0,1,0)
 ; Zero flag is indeterminate. Use normal :ref:`inst-compare` instruction for == and !=
 ;
 ; Note:
-;   This calls the setcy() macro and depends on the tempreg
+;   This calls the :pb:macro:`setcy` macro and depends on the tempreg
 ; Example:
 ;   load s0, evalh(-20)
 ;   load s1, 42

@@ -126,7 +126,7 @@ An :pb:macro:`evalx` macro is available which works like the builtin ``eval()`` 
 
 .. _m4-define:
 
-You can define aliases for registers without altering the original as with NAMEREG.
+You can define aliases for registers without altering the original as with :ref:`inst-namereg`.
 
 .. code-block:: picoblaze
 
@@ -166,7 +166,7 @@ If you need a NUL terminated string, the :pb:macro:`cstr` macro works the same b
 
 .. code-block:: picoblaze
 
-  asciiord_cstr(`1234')     ; Expands to "49, 50, 51, 52, 0"
+  cstr(`1234')     ; Expands to "49, 50, 51, 52, 0"
 
 The :pb:macro:`words_le` and :pb:macro:`words_be` macros convert a list of 16-bit numbers into little-endian or big-endian bytes.
 
@@ -199,7 +199,7 @@ You may want to conditionally generate portions of a program or pass build time 
   
 You can omit either block of the ``ifdef()`` macro if you want generation only for the defined or undefined conditions. To control the selected code block you pass defined variables with the ``-D`` option to Opbasm:
 
-.. code-block:: shell
+.. code-block:: console
 
   opbasm -DVARNAME -DMAXVAL=42 foo.psm4
   
@@ -763,7 +763,7 @@ The first argument to the ``var_delay_*()`` macros is the maximum delay value to
 String and table operations
 ---------------------------
 
-PicoBlaze-3 doesn't have the ability to handle strings as efficiently as PB6 but it is still necessary to work with them at times. Suppose that you have a subroutine "write_char" that writes characters in s0 out to a peripheral. You can write entire strings with the following:
+PicoBlaze-3 doesn't have the ability to handle strings as efficiently as PB6 because it lacks the :ref:`inst-load_return` instruction but it is still necessary to work with them at times. Suppose that you have a subroutine "write_char" that writes characters in s0 out to a peripheral. You can write entire strings with the following:
 
 .. code-block:: picoblaze
 
@@ -1461,7 +1461,7 @@ Operations are evaluated from left to right with *no precedence*. The target reg
 
   expr(s0 := s1 + s2 =: s3 >> 2)
 
-Arithmetic is performed on ``s0`` at each stage. The reverse assignment to `s3`` captures the intermediate result of ``s1 + s2`` and then continues with the right shift applied to ``s0``. This expands to:
+Arithmetic is performed on ``s0`` at each stage. The reverse assignment to ``s3`` captures the intermediate result of ``s1 + s2`` and then continues with the right shift applied to ``s0``. This expands to:
 
 .. code-block:: picoblaze
 
@@ -1625,7 +1625,7 @@ Manually running m4
 
 Some users may be unable to use Opbasm due to formal release procedures requiring a "golden" assembler. The m4 macro package can still be used with other PicoBlaze assemblers by manually running code through m4:
 
-.. code-block:: sh
+.. code-block:: console
 
   > m4 picoblaze.m4 [input source] > expanded_macros.gen.psm
 
