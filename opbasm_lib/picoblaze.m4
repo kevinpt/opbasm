@@ -308,8 +308,8 @@ xor $1, $2')
 ; Args:
 ;   Arg1: Optional prefix to name
 ; Example:
-;   randlabel(PREFIX_) ; Expands to "PREFIX_?????"
-define(`randlabel', `esyscmd(`python -c "import sys; import random; import string; sys.stdout.write(\"$1\" + \"\".join([random.choice(string.ascii_letters) for _ in xrange(5)]))"')')
+;   randlabel(PREFIX_) ; Expands to "__PREFIX_?????"
+define(`randlabel', `esyscmd(`python -c "import sys; import random; import string; sys.stdout.write(\"__$1\" + \"\".join([random.choice(string.ascii_letters) for _ in xrange(5)]))"')')
 
 ;---------------------------------
 ; Generate a unique name for a label.
@@ -876,14 +876,15 @@ define(`retlt', `return c  ; if less than')
 ;   Arg3: Optional else clause or next else-if comparison expression
 ;   Arg4-ArgN: Additional else-if clauses
 ;
-; The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >, <=, >=, ==, !=, or &
+; The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >, <=, >=, ==, !=, &, or ~&
 ; or of the form ``reg`` which is treated as ``reg != 0``.
 ;
 ; Signed comparison is invoked with ``signed(comparison expr.)``
 ; With signed comparison the right operand cannot be a named constant.
 ;
 ; With the & operator, a :ref:`inst-test` instruction is used in place of compare. The true
-; clause is executed when the result is non-zero.
+; clause is executed when the result is non-zero (mask matches). The ~& operator executes the
+; true clause when the test result is zero (no match).
 ;
 ; This macro performs a comparison of the left and right operands and then inserts
 ; the if* macro selected by the operation.
@@ -895,10 +896,10 @@ define(`if', `ifelse(eval($# > 3),1,`_if(_iftokens($1), `$2', `if(shift(shift($@
 `_if(_iftokens($1), `$2', `$3')')')
 
 ; Split comparison expression into tokens
-define(`_iftokens', `ifelse(regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\([^ ]+\)'),-1,`$1, !=, 0',`regexp(`$1', `\(\w+\) *\(s?[<>=!&]+\) *\([^ ]+\)', `\1, \2, \3')')')
+define(`_iftokens', `ifelse(regexp(`$1', `\(\w+\) *\(s?[<>=!~&]+\) *\([^ ]+\)'),-1,`$1, !=, 0',`regexp(`$1', `\(\w+\) *\(s?[<>=!~&]+\) *\([^ ]+\)', `\1, \2, \3')')')
 
 define(`_if', `; If $1 $2 $3'
-`ifelse(regexp($2,`^\(s<\|s>=\)$'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
+`ifelse(regexp($2,`^\(s<\|s>=\)$'),0,`compares($1, $3)',regexp($2,`^~?&'),0,`test $1, evalx($3, 16, 2)',dnl
 regexp($2,`^\(>\|<=\)$'),0,`_comp_gt_or_le($1,$3)',dnl
 regexp($2,`^\(s<=\|s>\)$'),0,`_comps_gt_or_le($1,$3)',dnl
 `compare $1, evalx($3, 16, 2)')'
@@ -909,7 +910,8 @@ $2,<=,`ifelse(isnum(const2m4($3)),1,`iflt(`$4',`$5')',`ifge(`$4',`$5')')',
 $2,s>,`ifelse(isnum(const2m4($3)),1,`ifge(`$4',`$5')',`iflt(`$4',`$5')')',
 $2,s<=,`ifelse(isnum(const2m4($3)),1,`iflt(`$4',`$5')',`ifge(`$4',`$5')')',
 $2,==,`ifeq(`$4',`$5')', $2,!=,`ifne(`$4',`$5')',
-$2,&,`ifne(`$4',`$5')', `errmsg(`Invalid operation: $2')' )')'
+$2,&,`ifne(`$4',`$5')', $2,~&,`ifeq(`$4',`$5')',
+`errmsg(`Invalid operation: $2')' )')'
 
 ;---------------------------------
 ; Convert a Boolean expression to use signed comparison.
@@ -1062,7 +1064,7 @@ _elbl:' `popdef(`_clbl')'`popdef(`_elbl')')
 ; Args:
 ;   Arg1: Boolean comparison expression
 ;   Arg2: Code block for loop body
-; The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, or &
+; The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, &, or ~&
 ; Example:
 ;   load s0, 15'd
 ;   dowhile(s0 != 10, `output s3, P_foo
@@ -1073,7 +1075,7 @@ _dw(_iftokens($1))
 _elbl:' `popdef(`_clbl')'`popdef(`_elbl')')
 
 define(`_dw',dnl
-`ifelse(regexp($2, `^\(s<\|s>=\)$'),0,`compares($1, $3)',regexp($2,`^&'),0,`test $1, evalx($3, 16, 2)',dnl
+`ifelse(regexp($2, `^\(s<\|s>=\)$'),0,`compares($1, $3)',regexp($2,`^~?&'),0,`test $1, evalx($3, 16, 2)',dnl
 regexp($2,`^\(>\|<=\)$'),0,`_comp_gt_or_le($1,$3)',dnl
 regexp($2,`^\(s<=\|s>\)$'),0,`_comps_gt_or_le($1,$3)',dnl
 `compare $1, evalx($3, 16, 2)')'
@@ -1084,7 +1086,8 @@ $2,<=,`ifelse(isnum(const2m4($3)),1,`jlt(_clbl)',`jge(_clbl)')',dnl
 $2,s>,`ifelse(isnum(const2m4($3)),1,`jge(_clbl)',`jlt(_clbl)')',dnl
 $2,s<=,`ifelse(isnum(const2m4($3)),1,`jlt(_clbl)',`jge(_clbl)')',dnl
 $2,==,`jump z, _clbl', $2,!=,`jump nz, _clbl',dnl
-$2,&,`jump nz, _clbl', `errmsg(`Invalid operation: $2')')'
+$2,&,`jump nz, _clbl', $2,~&,`jump z, _clbl',dnl
+`errmsg(`Invalid operation: $2')')'
 )
 
 ; Wrapper used to swap arguments when using C-style "do { } while()" syntax

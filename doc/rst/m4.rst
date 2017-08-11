@@ -390,7 +390,7 @@ PicoBlaze assembly depends on using the carry and zero flags directly to handle 
 Conditional if-then-else
 ------------------------
 
-A high level :pb:macro:`if` macro is present that provides evaluation of infix Boolean expressions. It takes the form of ``if(<expr>,<true block>,[<expr>,<true block 2>...|<else block>])``. The expression syntax uses conventional C operators ==, !=, <, ,>=, >, <=, and &. Additional expressions after the first true block produce else-if evaluation similar to m4's ``ifelse()`` macro. It is important to guard code blocks with m4 quotes to avoid errors caused by m4 splitting strings with internal commas. The :pb:macro:`if` macro implements a :ref:`inst-compare` instruction and generates the appropriate branch logic to test the flags. Unique generated labels are inserted into the code to manage the sequencing of the code blocks.
+A high level :pb:macro:`if` macro is present that provides evaluation of infix Boolean expressions. It takes the form of ``if(<expr>,<true block>,[<expr>,<true block 2>...|<else block>])``. The expression syntax uses conventional C operators ==, !=, <, ,>=, >, <=, &, and ~&. Additional expressions after the first true block produce else-if evaluation similar to m4's ``ifelse()`` macro. It is important to guard code blocks with m4 quotes to avoid errors caused by m4 splitting strings with internal commas. The :pb:macro:`if` macro implements a :ref:`inst-compare` instruction and generates the appropriate branch logic to test the flags. Unique generated labels are inserted into the code to manage the sequencing of the code blocks.
 
 .. code-block:: picoblaze
 
@@ -407,12 +407,20 @@ A high level :pb:macro:`if` macro is present that provides evaluation of infix B
     output s1, 02'
   )
 
-In addition, the & operator can be used to generate a :ref:`inst-test` instruction instead of :ref:`inst-compare`. The true block is executed if the test result is non-zero:
+In addition, the & and ~& operators can be used to generate a :ref:`inst-test` instruction instead of :ref:`inst-compare`. For & the true block is executed if the test result is non-zero:
 
 .. code-block:: picoblaze
 
   ; Check if MSB is set
   if(s0 & 0x80, `load s1, 00')
+  
+For ~& the true block is executed if the test result is zero:
+
+.. code-block:: picoblaze
+
+  ; Check if MSB is clear
+  if(s0 ~& 0x80, `load s1, 00')
+
 
 You can invoke signed comparison using the :pb:macro:`compares` macro by wrapping the expression in :pb:macro:`signed`:
 
