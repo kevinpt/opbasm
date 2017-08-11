@@ -853,7 +853,7 @@ of the clock period.</p>
 </tr>
 </tbody>
 </table>
-<p>The Boolean expression must be of the form: <tt class="docutils literal"><span class="pre">reg</span> <span class="pre">op</span> <span class="pre">reg|expression</span></tt> where op is &lt;, &gt;=, ==, !=, or &amp;</p>
+<p>The Boolean expression must be of the form: <tt class="docutils literal"><span class="pre">reg</span> <span class="pre">op</span> <span class="pre">reg|expression</span></tt> where op is &lt;, &gt;=, ==, !=, &amp;, or ~&amp;</p>
 <p class="rubric">Example:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="m">15&#39;d</span>
 <span class="nb">dowhile(</span><span class="s">s0</span> <span class="o">!=</span> <span class="m">10</span><span class="p">,</span> <span class="s">`output</span> <span class="s">s3</span><span class="p">,</span> <span class="s">P_foo</span>
@@ -1569,12 +1569,13 @@ The first register corresponds to the highest address</li>
 </tr>
 </tbody>
 </table>
-<p>The Boolean expression must be of the form: <tt class="docutils literal"><span class="pre">reg</span> <span class="pre">op</span> <span class="pre">reg|expression</span></tt> where op is &lt;, &gt;, &lt;=, &gt;=, ==, !=, or &amp;
+<p>The Boolean expression must be of the form: <tt class="docutils literal"><span class="pre">reg</span> <span class="pre">op</span> <span class="pre">reg|expression</span></tt> where op is &lt;, &gt;, &lt;=, &gt;=, ==, !=, &amp;, or ~&amp;
 or of the form <tt class="docutils literal"><span class="pre">reg</span></tt> which is treated as <tt class="docutils literal"><span class="pre">reg</span> <span class="pre">!=</span> <span class="pre">0</span></tt>.</p>
 <p>Signed comparison is invoked with <tt class="docutils literal"><span class="pre">signed(comparison</span> <span class="pre">expr.)</span></tt>
 With signed comparison the right operand cannot be a named constant.</p>
 <p>With the &amp; operator, a <a class="reference internal" href="language.html#inst-test"><em>test</em></a> instruction is used in place of compare. The true
-clause is executed when the result is non-zero.</p>
+clause is executed when the result is non-zero (mask matches). The ~&amp; operator executes the
+true clause when the test result is zero (no match).</p>
 <p>This macro performs a comparison of the left and right operands and then inserts
 the if* macro selected by the operation.</p>
 <p class="rubric">Example:</p>
@@ -2623,7 +2624,7 @@ normally be suppressed.</p>
 </tbody>
 </table>
 <p class="rubric">Example:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">randlabel(</span><span class="s">PREFIX_</span><span class="nb">)</span> <span class="c">; Expands to &quot;PREFIX_?????&quot;</span>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">randlabel(</span><span class="s">PREFIX_</span><span class="nb">)</span> <span class="c">; Expands to &quot;__PREFIX_?????&quot;</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -3659,7 +3660,7 @@ The labels will be unique to each included file.</p>
 </tbody>
 </table>
 <p class="rubric">Example:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">uniqlabel(</span><span class="s">PREFIX_</span><span class="nb">)</span> <span class="c">; Expands to &quot;PREFIX_f0_0001&quot;</span>
+<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">uniqlabel(</span><span class="s">PREFIX_</span><span class="nb">)</span> <span class="c">; Expands to &quot;__PREFIX_f0_0001&quot;</span>
 </pre></div>
 </div>
 </dd></dl>
@@ -4878,7 +4879,7 @@ Use the popvars() macro to remove the variable definitions.</p>
 </tr>
 </tbody>
 </table>
-<p>The Boolean expression must be of the form: <tt class="docutils literal"><span class="pre">reg</span> <span class="pre">op</span> <span class="pre">reg|expression</span></tt> where op is &lt;, &gt;=, ==, !=, or &amp;</p>
+<p>The Boolean expression must be of the form: <tt class="docutils literal"><span class="pre">reg</span> <span class="pre">op</span> <span class="pre">reg|expression</span></tt> where op is &lt;, &gt;=, ==, !=, &amp;, or ~&amp;</p>
 <p class="rubric">Example:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>
 <span class="nb">while(</span><span class="s">s0</span> <span class="o">&lt;</span> <span class="m">10</span><span class="p">,</span> <span class="s">`output</span> <span class="s">s3</span><span class="p">,</span> <span class="s">P_foo</span>

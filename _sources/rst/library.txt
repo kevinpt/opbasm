@@ -511,7 +511,7 @@ Opbasm PicoBlaze macro library reference
   :param Arg1: Boolean comparison expression
   :param Arg2: Code block for loop body
   
-  The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, or &
+  The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, &, or ~&
   
   .. rubric:: Example:
   
@@ -986,14 +986,15 @@ Opbasm PicoBlaze macro library reference
   :param Arg4-ArgN: Additional else-if clauses
   
   
-  The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >, <=, >=, ==, !=, or &
+  The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >, <=, >=, ==, !=, &, or ~&
   or of the form ``reg`` which is treated as ``reg != 0``.
   
   Signed comparison is invoked with ``signed(comparison expr.)``
   With signed comparison the right operand cannot be a named constant.
   
   With the & operator, a :ref:`inst-test` instruction is used in place of compare. The true
-  clause is executed when the result is non-zero.
+  clause is executed when the result is non-zero (mask matches). The ~& operator executes the
+  true clause when the test result is zero (no match).
   
   This macro performs a comparison of the left and right operands and then inserts
   the if* macro selected by the operation.
@@ -1724,7 +1725,7 @@ Opbasm PicoBlaze macro library reference
   
   .. code-block:: picoblaze
   
-     randlabel(PREFIX_) ; Expands to "PREFIX_?????"
+     randlabel(PREFIX_) ; Expands to "__PREFIX_?????"
   
 
 .. pb:macro:: reg16(Arg1, Arg2, Arg3)
@@ -2415,7 +2416,7 @@ Opbasm PicoBlaze macro library reference
   
   .. code-block:: picoblaze
   
-     uniqlabel(PREFIX_) ; Expands to "PREFIX_f0_0001"
+     uniqlabel(PREFIX_) ; Expands to "__PREFIX_f0_0001"
   
 
 .. pb:macro:: use_ascii2bcd(Arg1, Arg2, Arg3)
@@ -3303,7 +3304,7 @@ Opbasm PicoBlaze macro library reference
   :param Arg1: Boolean comparison expression
   :param Arg2: Code block for loop body
   
-  The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, or &
+  The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, &, or ~&
   
   .. rubric:: Example:
   
