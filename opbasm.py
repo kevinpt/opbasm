@@ -114,7 +114,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.3.3'
+__version__ = '1.3.4'
 
 
 class FatalError(Exception):
@@ -713,8 +713,6 @@ class Assembler(object):
     # We need to first protect '}' chars inside strings to prevent them from being
     # turned into m4 syntax.
     curly_string = re.compile(r'^.*"(.*}.*)".*$')
-    # The signed() macro needs its right paren escaped to prevent pattern matching failures
-    signed_macro = re.compile(r'(signed\([^)]+\))', re.IGNORECASE)
 
     # Convert constant directives into const() macros
     const_def = re.compile(r'^([^;]*)constant\s+([^,]+)\s*,\s*("."|[^;]+)(;.*)?', re.IGNORECASE)
@@ -727,11 +725,6 @@ class Assembler(object):
       if m:
         escaped = m.group(1).replace('}', "`'_rcurly`'")
         l = re.sub(r'^(.*").*(".*)$',r'\1{}\2'.format(escaped),l)
-
-      m = signed_macro.search(l)
-      if m:
-        escaped = m.group(1).replace(')', "`'_rparen`'")
-        l = re.sub(r'signed\([^)]+\)', escaped, l)
 
       m = const_def.search(l)
       if m:
@@ -754,23 +747,23 @@ class Assembler(object):
     # Now we can run pattern substitutions to convert the C-style syntax into m4
     ecode = ''.join(elines)
     # else-if clause
-    ecode = re.sub(r'}(?:\s*;.*\n)*\s*else(?:\s*;.*\n)*\s*if\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"', \1,`", ecode)
-    ecode = re.sub(r'if\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'if(\1, `', ecode) # if statement
+    ecode = re.sub(r'}(?:\s*;.*\n)*\s*else(?:\s*;.*\n)*\s*if\s*\((.*?)\)(?:\s*;.*\n)*\s*{', r"', \1,`", ecode)
+    ecode = re.sub(r'if\s*\((.*?)\)(?:\s*;.*\n)*\s*{', r'if(\1, `', ecode) # if statement
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*else(?:\s*;.*\n)*\s*{', r"', `", ecode) # else clause
     ecode = re.sub(r'do(?:\s*;.*\n)*\s*{', r'_dowhile2(`', ecode) # start of do-while
 
     # proc def
-    ecode = re.sub(r'proc\s+(\w+)\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"proc(\1,`\2',`", ecode)
+    ecode = re.sub(r'proc\s+(\w+)\s*\((.*?)\)(?:\s*;.*\n)*\s*{', r"proc(\1,`\2',`", ecode)
     # func def
-    ecode = re.sub(r'func\s+(\w+)\s*\(([^)]*)\)\s*:?\s*(\d*)(?:\s*;.*\n)*\s*{', r"func(\1,`\2',\3,`", ecode)
+    ecode = re.sub(r'func\s+(\w+)\s*\((.*?)\)\s*:?\s*(\d*)(?:\s*;.*\n)*\s*{', r"func(\1,`\2',\3,`", ecode)
     # isr def
-    ecode = re.sub(r'isr\s+(\w+)\s*\(([^)]*)\)\s*:?\s*(\w*)(?:\s*;.*\n)*\s*{', r"isr(\1,`\2',`\3',`", ecode)
+    ecode = re.sub(r'isr\s+(\w+)\s*\((.*?)\)\s*:?\s*(\w*)(?:\s*;.*\n)*\s*{', r"isr(\1,`\2',`\3',`", ecode)
 
     # while following a block
-    ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r"')\nwhile(\1, `", ecode)
-    ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\(([^)]*)\)', r"',\1)", ecode) # end of do-while
-    ecode = re.sub(r'while\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'while(\1, `', ecode) # plain while
-    ecode = re.sub(r'for\s*\(([^)]*)\)(?:\s*;.*\n)*\s*{', r'for(\1, `', ecode) # for loop
+    ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\((.*?)\)(?:\s*;.*\n)*\s*{', r"')\nwhile(\1, `", ecode)
+    ecode = re.sub(r'}(?:\s*;.*\n)*\s*while\s*\((.*?)\)', r"',\1)", ecode) # end of do-while
+    ecode = re.sub(r'while\s*\((.*?)\)(?:\s*;.*\n)*\s*{', r'while(\1, `', ecode) # plain while
+    ecode = re.sub(r'for\s*\((.*?)\)(?:\s*;.*\n)*\s*{', r'for(\1, `', ecode) # for loop
     ecode = re.sub(r'}', r"')", ecode) # end of a block
     return ecode
 
