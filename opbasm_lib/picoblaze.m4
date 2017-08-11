@@ -1048,7 +1048,7 @@ define(`warnmsg', `errprint($1  __file__ line __line__)')
 ; Args:
 ;   Arg1: Boolean comparison expression
 ;   Arg2: Code block for loop body
-; The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, or &
+; The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, &, or ~&
 ; Example:
 ;   load s0, 00
 ;   while(s0 < 10, `output s3, P_foo

@@ -94,7 +94,7 @@ Char          "A"            A or ```A'``
 
 In general you use m4 syntax for literals passed as arguments to macros within parentheses. The only exception is :pb:macro:`pbhex` which takes a list of hex values in PicoBlaze format. Be careful not to use PicoBlaze hex format in other m4 contexts as it will be misinterpreted as decimal if only digits 0-9 are used.
 
-m4 includes the ability to evaluate arbitrary integer expressions using the builtin ``eval()`` macro. Its default output is an m4 decimal integer so the similar :pb:macro:`evalh` and :pb:macro:`evald` are provided to evaluate expressions resulting in PicoBlaze hex or decimal format.
+m4 includes the ability to evaluate arbitrary integer expressions using the builtin ``eval()`` macro. Its default output is an m4 decimal integer so the similar :pb:macro:`evalh`, :pb:macro:`evald`, and :pb:macro:`evalb` are provided to evaluate expressions resulting in PicoBlaze hex, decimal, or binary format.
 
 .. code-block:: picoblaze
 
@@ -115,6 +115,13 @@ The :pb:macro:`evala` macro works like :pb:macro:`evalh` but expands to a 12-bit
   address evala(DATA_ORG)       ; Expands to "address 200"
 
 m4 expressions support all of the C language operators as well as ``**`` for exponentiation.
+
+Note that :pb:macro:`evalh`, :pb:macro:`evald`, and :pb:macro:`evalb` cannot be nested within other macros because they expand with a comment reporting the original expression to make the listing file easier to read. If you need to evaluate an expression within another macro you should use the builtin ``eval()`` macro. Of particular note it is important to know that Picoblaze :ref:`inst-constant` directives are temporarily converted into an undocumented ``const()`` macro so that constants defined in Picoblaze syntax are accessible to m4. As a consequence you can't use the custom eval macros that generate a comment to compute a constant value.
+
+.. code-block:: picoblaze
+
+  constant BAD_CONST,  evalh(1+1)       ; This will fail during m4 expansion
+  constant GOOD_CONST, eval(1+1, 16, 2) ; Generate zero-padded hex constant
 
 An :pb:macro:`evalx` macro is available which works like the builtin ``eval()`` but also accepts strings that are not valid expressions.
 

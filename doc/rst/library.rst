@@ -3304,7 +3304,7 @@ Opbasm PicoBlaze macro library reference
   :param Arg1: Boolean comparison expression
   :param Arg2: Code block for loop body
   
-  The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, or &
+  The Boolean expression must be of the form: ``reg op reg|expression`` where op is <, >=, ==, !=, &, or ~&
   
   .. rubric:: Example:
   
