@@ -859,9 +859,14 @@ class Assembler(object):
         if s.label.startswith('.'): # Local label
           xlabel = self.expand_label(s.label)
           s.xlabel = xlabel
-        else: # Global label
-          self.cur_context = s.label
+        elif s.label.startswith('__'): # Macro label
+          # "__" prefix is ignored for context changes so that macro generated
+          # labels won't interfere with user expectations for local label references.
           xlabel = s.label
+        else: # Global label created by user
+          self.cur_context = s.label # Change to new block context
+          xlabel = s.label
+
 
         if xlabel in self.labels:
           raise FatalError(s, _('Redefinition of label:'), xlabel)
