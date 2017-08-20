@@ -118,13 +118,24 @@ __version__ = '1.3.4'
 
 
 class FatalError(Exception):
+  pass
+
+class ParseError(FatalError):
+  pass
+
+
+class StatementError(FatalError):
   '''General error reporting exception'''
   def __init__(self, statement, *args):
     self.statement = statement
     self.args = args
 
   def __str__(self):
-    return '{}\n{}'.format(self.statment, self.args)
+    if self.statement is not None:
+      return '{}\n{}'.format(self.statment, self.args)
+    else:
+      return '{}'.format(self.args)
+
 
 
 def get_op_info(use_pb6):
@@ -241,8 +252,6 @@ regex_parser = re.compile(r'''
 
 regex_register = re.compile(r'^s[0-9A-F]$', re.IGNORECASE)
 
-class ParseError(ValueError):
-  pass
 
 def regex_parse_statement(l):
   '''Regex based parser that performs significantly faster than the original pyparsing
@@ -508,10 +517,8 @@ def parse_lines(lines, op_info, source_file, index):
         error_line = _('{} line {} (expanded line {})').format(ix_line[2], ix_line[1], i+1)
       else:
         error_line = _('{} line {}').format(source_file, i+1)
-      print(error(_('PARSE ERROR:')) + _(' Bad statement in {}:\n  {}').format(error_line, l))
 
-
-      sys.exit(1)
+      raise ParseError(_(' Bad statement in {}:\n  {}').format(error_line, l))
 
     ix_line = index[i] if index is not None else None
     statements.append(Statement(ptree['statement'], i+1, source_file, ix_line))
@@ -534,16 +541,29 @@ def find_m4():
 def find_standard_m4_macros():
   macro_file = os.path.join(find_lib_dir(), 'picoblaze.m4')
   if not os.path.exists(macro_file):
-    print(_('  No m4 macro directory found'), macro_file)
-    sys.exit(1)
+    raise FatalError(_('  No m4 macro directory found') + ' ' + macro_file)
 
   return macro_file
 
+class AssemblerConfig(object):
+  def __init__(self, options=None):
+    self.mem_size = 1024
+    self.scratch_size = 0
+    self.use_pb6 = True
+    self.use_m4 = False
+    self.m4_defines = {}
+    self.debug_preproc = None
+    self.use_static_analysis = False
+    self.remove_dead_code = False
+    self.output_dir = '.'
+    self.entry_point = [0x3FF]
+    self.verbose = False
+    self.quiet = True
+
+    if options is not None:
+      self.config(options)
   
-class Assembler(object):
-  '''Main object for running assembler and tracking symbol information'''
-  def __init__(self, top_source_file, timestamp, options, upper_env_names):
-    self.top_source_file = top_source_file
+  def config(options):
     self.mem_size = options.mem_size
     self.scratch_size = options.scratch_size
     self.use_pb6 = options.use_pb6
@@ -551,10 +571,22 @@ class Assembler(object):
     self.m4_defines = options.m4_defines
     self.debug_preproc = options.debug_preproc
     self.use_static_analysis = options.report_dead_code or options.remove_dead_code
-    self.m4_file_num = 0
+    self.remove_dead_code = options.remove_dead_code
     self.output_dir = options.output_dir
-    self.timestamp = timestamp
+    self.entry_point = options.entry_point
     self.verbose = options.verbose
+    self.quiet = options.quiet
+
+
+class Assembler(object):
+  '''Main object for running assembler and tracking symbol information'''
+
+  def __init__(self, top_source_file, options, timestamp=None):
+    self.config = Assembler.AssemblerConfig(options)
+    self.command_line_mode = False
+    self.top_source_file = top_source_file
+    self.m4_file_num = 0
+    self.timestamp = timestamp if timestamp is not None else get_timestamp()
 
     self.constants = self._init_constants()
     self.labels = {}
@@ -563,16 +595,38 @@ class Assembler(object):
 
     self.registers = None
     self.init_registers()
+
     self.strings = self._init_strings()
     self.tables = {}
 
     self.sources = {}
     self.default_jump = None
 
-    self.op_info = get_op_info(options.use_pb6)
-    self.upper_env_names = upper_env_names
+    self.op_info = get_op_info(self.config.use_pb6)
+    self.upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
     
     self.line_index = {}
+
+    # Results
+    self.assembled_code = None
+    self.dead_instructions = None # FIXME: move into optimizer
+    self.entry_points = set()
+    self.valid_asm = False
+    self._mmap = None
+    self._stats = None
+
+  @property
+  def mmap(self):
+    if self._mmap is None:
+      self.build_memmap()
+    return self._mmap
+
+  @property
+  def stats(self):
+    if self._stats is None:
+      self.code_stats()
+    return self._stats
+
 
   def init_registers(self):
     '''Initialize table of register names'''
@@ -632,20 +686,20 @@ class Assembler(object):
     '''Determine if file should be preprocessed for m4 macros and generate
     expanded file with ".gen.psm" extension
     '''
-    if (not self.use_m4) and os.path.splitext(source_file)[1] not in ('.psm4', '.m4'): # No change
+    if (not self.config.use_m4) and os.path.splitext(source_file)[1] not in ('.psm4', '.m4'): # No change
       return source_file
 
     pp_source_file = os.path.splitext(source_file)[0] + '.gen.psm'
-    pp_source_file = add_output_dir(self.output_dir, pp_source_file)
+    pp_source_file = build_path(self.config.output_dir, pp_source_file)
 
     # Look for common picoblaze.m4 macro definitions
     macro_defs = find_standard_m4_macros()
-    proc_mode = 'PB6' if self.use_pb6 else 'PB3' # Definition for active processor type
+    proc_mode = 'PB6' if self.config.use_pb6 else 'PB3' # Definition for active processor type
 
     # Preprocess C-style syntax
     pure_m4 = self.preprocess_c_style(source_file)
-    if self.debug_preproc:
-      with io.open(self.debug_preproc, 'w', encoding='utf-8') as fh:
+    if self.config.debug_preproc:
+      with io.open(self.config.debug_preproc, 'w', encoding='utf-8') as fh:
         print(pure_m4, file=fh)
 
     self.m4_file_num += 1
@@ -659,7 +713,7 @@ class Assembler(object):
 
     m4_options = ' '.join(m4_options)
     
-    m4_defines = self.m4_defines.copy()
+    m4_defines = self.config.m4_defines.copy()
     # Set default defines for m4, overriding any attempt to redefine them by the user
     m4_defines.update({proc_mode:None,
                   'M4_FILE_NUM':self.m4_file_num,
@@ -673,7 +727,7 @@ class Assembler(object):
 
     m4_cmd = find_m4()
     cmd = '"{}" {} {} "{}" -'.format(m4_cmd, m4_options, m4_def_args, macro_defs)
-    if self.verbose:
+    if self.config.verbose:
       print('  Running m4 on file "{}":\n\t{}'.format(source_file, cmd))
 
     p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -788,14 +842,12 @@ class Assembler(object):
           source_lines[active_file] = int(m.group(1))
         else: # Expanded macro
           if active_file is None: # This shouldn't happen
-            print(error(_('ERROR:')) + ' Missing file name from expanded m4 source "{}"'.format(l))
-            sys.exit(2)
+            raise FatalError(' Missing file name from expanded m4 source "{}"'.format(l))
 
           source_lines[active_file] = int(m.group(1))
       else: # Ordinary source line
         if active_file is None: # This shouldn't happen
-          print(error(_('ERROR:')) + ' Missing file name from expanded m4 source "{}"'.format(l))
-          sys.exit(3)
+          raise FatalError(' Missing file name from expanded m4 source "{}"'.format(l))
 
         elines.append(l)
         index.append((cur_line, source_lines[active_file], active_file))
@@ -862,9 +914,8 @@ class Assembler(object):
 
 
         if xlabel in self.labels:
-          raise FatalError(s, _('Redefinition of label:'), xlabel)
+          raise StatementError(s, _('Redefinition of label:'), xlabel)
 
-        #print('### LABEL DEF:', xlabel)
         self.labels[xlabel] = Symbol(s.label, -1, source_file=source_file, source_line=s.line)
 
       # Recursively include additional sources
@@ -878,29 +929,29 @@ class Assembler(object):
             include_file = os.path.join(os.path.dirname(source_file), include_file)
 
           if not os.path.exists(include_file):
-            raise FatalError(s, _('Include file not found:'), include_file)
+            raise StatementError(s, _('Include file not found:'), include_file)
 
           for inc_file in self.process_includes(include_file):
             yield inc_file
         else:
-          raise FatalError(s, _('Invalid include parameter'), s.arg1)
+          raise StatementError(s, _('Invalid include parameter'), s.arg1)
 
       # Handle constant definitions before flattening
       elif s.command == 'constant':
         if s.arg1 is None or s.arg2 is None:
-          raise FatalError(s, _('Missing argument to constant directive'))
+          raise StatementError(s, _('Missing argument to constant directive'))
 
         if s.arg1 in self.constants:
-          raise FatalError(s, _('Redefinition of constant:'), s.arg1)
+          raise StatementError(s, _('Redefinition of constant:'), s.arg1)
 
         # Prevent the use of 3 or less character constants that are valid hex literals
         if len(s.arg1) <= 3 and hex_to_int(s.arg1) is not None:
-          raise FatalError(s, _('Invalid constant. Conflicts with hex literal'), s.arg1)
+          raise StatementError(s, _('Invalid constant. Conflicts with hex literal'), s.arg1)
 
         if s.arg2[0] == '%': # Look up env variable
           ename = s.arg2[1:]
           if ename.upper() not in self.upper_env_names:
-            raise FatalError(s, _('Unknown environment variable:'), ename)
+            raise StatementError(s, _('Unknown environment variable:'), ename)
           ename = self.upper_env_names[ename.upper()]
           cval = convert_literal(os.getenv(ename))
           self.constants[s.arg1] = Symbol(s.arg1, cval, val_text=s.arg2, \
@@ -913,26 +964,26 @@ class Assembler(object):
 
       elif s.command == 'string':
         if s.arg1 is None or s.arg2 is None:
-          raise FatalError(s, _('Missing argument to STRING directive'))
+          raise StatementError(s, _('Missing argument to STRING directive'))
         if s.arg1[-1] != '$':
-          raise FatalError(s, _('Invalid string name (missing $):'), s.arg1)
+          raise StatementError(s, _('Invalid string name (missing $):'), s.arg1)
         if s.arg1 in self.strings:
-          raise FatalError(s, _('Redefinition of string:'), s.arg1)
+          raise StatementError(s, _('Redefinition of string:'), s.arg1)
         if s.arg2[0] != '"' or s.arg2[-1] != '"':
-          raise FatalError(s, _('Not a valid string:'), s.arg2)
+          raise StatementError(s, _('Not a valid string:'), s.arg2)
 
         self.strings[s.arg1] = Symbol(s.arg1, s.arg2[1:-1], s.arg2, \
             source_file=source_file, source_line=s.line)
 
       elif s.command == 'table':
         if s.arg1 is None or s.arg2 is None:
-          raise FatalError(s, _('Missing argument to TABLE directive'))
+          raise StatementError(s, _('Missing argument to TABLE directive'))
         if s.arg1[-1] != '#':
-          raise FatalError(s, _('Invalid table name (missing #):'), s.arg1)
+          raise StatementError(s, _('Invalid table name (missing #):'), s.arg1)
         if s.arg1 in self.strings:
-          raise FatalError(s, _('Redefinition of table:'), s.arg1)
+          raise StatementError(s, _('Redefinition of table:'), s.arg1)
         if s.table_def is False:
-          raise FatalError(s, _('Missing table definition'))
+          raise StatementError(s, _('Missing table definition'))
 
         # Determine the radix of the elements
         if s.arg2[-1].endswith('d'):
@@ -946,12 +997,12 @@ class Assembler(object):
         try:
           tbl = [int(e, radix) for e in s.arg2[:-1]]
         except ValueError:
-          raise FatalError(s, _('Invalid table element (radix {})').format(radix))
+          raise StatementError(s, _('Invalid table element (radix {})').format(radix))
 
         # Ensure table values are within range
         for e in tbl:
           if not (0 <= e < 256):
-            raise FatalError(s, _('Table value out of range:'), e)
+            raise StatementError(s, _('Table value out of range:'), e)
 
         val_text = '[' + ', '.join(s.arg2[:-1]) + s.arg2[-1]
         self.tables[s.arg1] = Symbol(s.arg1, tbl, val_text, \
@@ -976,7 +1027,7 @@ class Assembler(object):
           include_file = os.path.join(os.path.dirname(include_stack[-1]), include_file)
 
         if include_file in include_stack:
-          raise FatalError(s, _('Recursive include:'), s.arg1)
+          raise StatementError(s, _('Recursive include:'), s.arg1)
         else:
           include_stack.append(include_file)
           islist = list(self.flatten_includes(self.sources[include_file], include_stack))
@@ -997,7 +1048,7 @@ class Assembler(object):
     '''Lookup the address assigned to addr_label'''
 
     xlabel = self.expand_label(addr_label)
-    #print('## GA:', addr_label, xlabel)
+
     if xlabel in self.labels:
       self.labels[xlabel].in_use = True
       return self.labels[xlabel].value
@@ -1077,12 +1128,12 @@ class Assembler(object):
       if array_name is not None:
         if array_name[-1] == '$':
           if array_name not in self.strings:
-            raise FatalError(s, _('Unknown string:'), array_name)
+            raise StatementError(s, _('Unknown string:'), array_name)
           num_words = len(self.strings[array_name].value)
     
         else: # Table
           if array_name not in self.tables:
-            raise FatalError(s, _('Unknown table:'), array_name)
+            raise StatementError(s, _('Unknown table:'), array_name)
           num_words = len(self.tables[array_name].value)
 
       return num_words
@@ -1120,15 +1171,15 @@ class Assembler(object):
 
         #print('### SET LABEL:', xlabel)
         if xlabel not in self.labels:
-          raise FatalError(s, _('Label not found "{}". Possibly removed.').format(xlabel))
+          raise StatementError(s, _('Label not found "{}". Possibly removed.').format(xlabel))
 
         self.labels[xlabel].value = cur_addr
         s.address = cur_addr
 
       if s.is_instruction():
-        if bounds_check and cur_addr >= self.mem_size:
-          raise FatalError(s, _('Address exceeds memory bounds: {:03X} (limit {:03X})').format( \
-             cur_addr, self.mem_size-1))
+        if bounds_check and cur_addr >= self.config.mem_size:
+          raise StatementError(s, _('Address exceeds memory bounds: {:03X} (limit {:03X})').format( \
+             cur_addr, self.config.mem_size-1))
 
         s.address = cur_addr
         # Move to next address. Could be > 1 if a string or table operand
@@ -1137,11 +1188,11 @@ class Assembler(object):
       elif s.command == 'address':
         cur_addr = self.get_address(s.arg1)
         if cur_addr is None:
-          raise FatalError(s, _('Invalid address:'), s.arg1)
+          raise StatementError(s, _('Invalid address:'), s.arg1)
 
-        if bounds_check and cur_addr >= self.mem_size:
-          raise FatalError(s, _('Address exceeds memory bounds: {:03X} (limit {:03X})').format(\
-            cur_addr, self.mem_size-1))
+        if bounds_check and cur_addr >= self.config.mem_size:
+          raise StatementError(s, _('Address exceeds memory bounds: {:03X} (limit {:03X})').format(\
+            cur_addr, self.config.mem_size-1))
 
     # Assign phony addresses to non-instruction lines with comment or label
     for s in reversed(slist):
@@ -1151,7 +1202,6 @@ class Assembler(object):
       elif s.comment or s.command:
         s.address = cur_addr
 
-    
 
     # Pass 3: Validate and assemble instructions
     instructions = []
@@ -1165,8 +1215,8 @@ class Assembler(object):
       if s.is_instruction():
         # Verify instruction is valid
         if s.command not in self.op_info['opcodes']:
-          raise FatalError(s, _('Invalid PicoBlaze-{} instruction:').format( \
-            6 if self.use_pb6 else 3), s.command)
+          raise StatementError(s, _('Invalid PicoBlaze-{} instruction:').format( \
+            6 if self.config.use_pb6 else 3), s.command)
 
         s.opcode = self.op_info['opcodes'][s.command] # Set base opcode
 
@@ -1185,31 +1235,31 @@ class Assembler(object):
 
           if s.command in self.op_info['addr_opcodes']: # Include address for call and jump
             if addr_label is None:
-              raise FatalError(s, _('Missing address'))
+              raise StatementError(s, _('Missing address'))
 
             s.immediate = self.get_address(addr_label)
             if s.immediate is None:
-              raise FatalError(s, _('Invalid address:'), addr_label)
-            if bounds_check and s.immediate >= self.mem_size:
-              raise FatalError(s, _('Out of range address'))
+              raise StatementError(s, _('Invalid address:'), addr_label)
+            if bounds_check and s.immediate >= self.config.mem_size:
+              raise StatementError(s, _('Out of range address'))
 
         elif s.command in self.op_info['one_reg_opcodes']:
           if s.arg1 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
           if s.arg2 is not None:
-            raise FatalError(s, _('Illegal operand:'), s.arg2)
+            raise StatementError(s, _('Illegal operand:'), s.arg2)
 
           s.regx = self.get_register(s.arg1)
           if s.regx is None:
-            raise FatalError(s, _('Invalid register:'), s.arg1)
+            raise StatementError(s, _('Invalid register:'), s.arg1)
 
         elif s.command in self.op_info['two_reg_opcodes']:
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
 
           s.regx = self.get_register(s.arg1)
           if s.regx is None:
-            raise FatalError(s, _('Invalid register:'), s.arg1)
+            raise StatementError(s, _('Invalid register:'), s.arg1)
 
           s.regy = self.get_register(s.arg2)
           if s.regy is not None: # Using y register opcode
@@ -1223,29 +1273,29 @@ class Assembler(object):
               if s.arg2.endswith("'upper") or s.arg2.endswith("'lower"):
                 xlabel = self.expand_label(s.arg2.split("'")[0])
                 if xlabel in self.removed_labels:
-                  raise FatalError(s, _('Label has been removed: {}\n       Add ";PRAGMA keep [on,off]" to preserve this label').format(s.arg2))
+                  raise StatementError(s, _('Label has been removed: {}\n       Add ";PRAGMA keep [on,off]" to preserve this label').format(s.arg2))
                 else:
-                  raise FatalError(s, _('Unknown label:'), s.arg2)
+                  raise StatementError(s, _('Unknown label:'), s.arg2)
               else:
-                raise FatalError(s, _('Invalid operand:'), s.arg2)
+                raise StatementError(s, _('Invalid operand:'), s.arg2)
             if not (0 <= s.immediate < 256):
-              raise FatalError(s, _('Immediate value out of range:'), s.immediate)
+              raise StatementError(s, _('Immediate value out of range:'), s.immediate)
 
             if s.command in ('fetch', 'store'):
-              if s.immediate >= self.scratch_size:
-                raise FatalError(s, _('Scratchpad address out of range:'), hex(s.immediate))
+              if s.immediate >= self.config.scratch_size:
+                raise StatementError(s, _('Scratchpad address out of range:'), hex(s.immediate))
 
         elif s.command in ('enable', 'disable'):
           if s.arg1 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
           if s.arg1.lower() != 'interrupt' or s.arg2 is not None:
-            raise FatalError(s, _('Invalid operand to {}').format(s.command.upper()))
+            raise StatementError(s, _('Invalid operand to {}').format(s.command.upper()))
 
         elif s.command == 'returni':
           if s.arg1 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
           if s.arg1.lower() not in ('enable', 'disable'):
-            raise FatalError(s, _('Invalid operand to RETURNI'))
+            raise StatementError(s, _('Invalid operand to RETURNI'))
 
           if s.arg1.lower() == 'enable':
             s.opcode += 1
@@ -1253,22 +1303,22 @@ class Assembler(object):
         # Irregular PicoBlaze-6 instructions
         elif s.command in ('call@', 'jump@'):
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
           s.regx = self.get_register(s.arg1)
           if s.regx is None:
-            raise FatalError(s, _('Invalid register:'), s.arg1)
+            raise StatementError(s, _('Invalid register:'), s.arg1)
 
           s.regy = self.get_register(s.arg2)
           if s.regy is None:
-            raise FatalError(s, _('Invalid register:'), s.arg2)
+            raise StatementError(s, _('Invalid register:'), s.arg2)
 
         elif s.command == 'load&return':
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
 
           s.regx = self.get_register(s.arg1)
           if s.regx is None:
-            raise FatalError(s, _('Invalid register:'), s.arg1)
+            raise StatementError(s, _('Invalid register:'), s.arg1)
 
           elems = []
           if s.arg2.endswith('$'):
@@ -1296,19 +1346,19 @@ class Assembler(object):
           else:
             s.immediate = self.get_constant(s.arg2)
             if s.immediate is None:
-              raise FatalError(s, _('Invalid operand:'), s.arg2)
+              raise StatementError(s, _('Invalid operand:'), s.arg2)
 
 
         elif s.command == 'outputk':
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
 
           port = self.get_constant(s.arg2)
           if port is None:
-            raise FatalError(s, _('Invalid operand:'), s.arg2)
+            raise StatementError(s, _('Invalid operand:'), s.arg2)
           if not 0 <= port < 16:
             port_name = '{:02X}'.format(port) if port == convert_literal(s.arg2) else '{} ({:02X})'.format(s.arg2, port)
-            raise FatalError(s, _('Invalid port for OUTPUTK <value>, <port>:  {}\n       Port must range from 0 to F').format(port_name))
+            raise StatementError(s, _('Invalid port for OUTPUTK <value>, <port>:  {}\n       Port must range from 0 to F').format(port_name))
 
           elems = []
           if s.arg1.endswith('$'):
@@ -1332,24 +1382,24 @@ class Assembler(object):
           else: # Single constant argument
             const = self.get_constant(s.arg1)
             if const is None:
-              raise FatalError(s, _('Invalid operand:'), s.arg1)
+              raise StatementError(s, _('Invalid operand:'), s.arg1)
             if not (0 <= const < 256):
-              raise FatalError(s, _('Immediate value out of range:'), const)
+              raise StatementError(s, _('Immediate value out of range:'), const)
 
           s.immediate = (const << 4) + port
 
         elif s.command == 'regbank':
           if s.arg1 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
           if s.arg1.lower() not in ('a', 'b'):
-            raise FatalError(s, _('Invalid operand to REGBANK'))
+            raise StatementError(s, _('Invalid operand to REGBANK'))
 
           if s.arg1.lower() == 'b':
             s.opcode += 1
 
         elif s.command == 'star':
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
 
           # The STAR instruction has special rules for RegX (arg1)
           # It MUST be in the form: s[hexdigit]
@@ -1357,7 +1407,7 @@ class Assembler(object):
           if len(s.arg1) == 2 and s.arg1[0].lower() == 's' and s.arg1[1] in string.hexdigits:
             s.regx = int(s.arg1[1], 16)
           else:
-            raise FatalError(s, _('Invalid register:'), s.arg1)
+            raise StatementError(s, _('Invalid register:'), s.arg1)
 
           # PB6 has the STAR sX, kk variant so we will accept a constant
           # as the second argument as well as a register.
@@ -1372,9 +1422,9 @@ class Assembler(object):
             s.immediate = self.get_constant(s.arg2)
 
             if s.immediate is None:
-              raise FatalError(s, _('Invalid operand:'), s.arg2)
+              raise StatementError(s, _('Invalid operand:'), s.arg2)
             if not (0 <= s.immediate < 256):
-              raise FatalError(s, _('Immediate value out of range:'), s.immediate)
+              raise StatementError(s, _('Immediate value out of range:'), s.immediate)
 
 
         elif s.command == 'inst':
@@ -1382,21 +1432,21 @@ class Assembler(object):
           # address map for its value so we treat it as an instruction with 0x00 opcode.
 
           if s.arg1 is None:
-            raise FatalError(s, _('Missing operand'))
+            raise StatementError(s, _('Missing operand'))
           s.immediate = convert_literal(s.arg1)
           if s.immediate is None or not 0 <= s.immediate < 2**18:
-            raise FatalError(s, _('Invalid INST value:'), s.arg1)
+            raise StatementError(s, _('Invalid INST value:'), s.arg1)
 
         else:
-          raise FatalError(s, _('Unknown instruction:'), s.command)
+          raise StatementError(s, _('Unknown instruction:'), s.command)
 
 
       else: # Not an instruction
         if s.command == 'namereg':
           if s.arg1 is None or s.arg2 is None:
-            raise FatalError(s, _('Missing argument to NAMEREG directive'))
+            raise StatementError(s, _('Missing argument to NAMEREG directive'))
           if s.arg1 not in self.registers:
-            raise FatalError(s, _('Unknown register name:'), s.arg1)
+            raise StatementError(s, _('Unknown register name:'), s.arg1)
 
           self.registers[s.arg2] = self.get_register(s.arg1)
           del self.registers[s.arg1]
@@ -1404,19 +1454,19 @@ class Assembler(object):
 
         elif s.command == 'default_jump':
           if self.default_jump is not None:
-            raise FatalError(s, _('Redefinition of default jump'))
+            raise StatementError(s, _('Redefinition of default jump'))
           if s.arg2 is not None:
-            raise FatalError(s, _('Too many arguments to DEFAULT_JUMP'))
+            raise StatementError(s, _('Too many arguments to DEFAULT_JUMP'))
 
           self.default_jump = self.get_address(s.arg1)
           if self.default_jump is None:
-            raise FatalError(s, _('Invalid address:'), s.arg1)
+            raise StatementError(s, _('Invalid address:'), s.arg1)
 
       instructions.append(s)
 
 
     # Pass 4: Find continuous blocks of labeled load&return instructions
-    if self.use_pb6 and self.use_static_analysis:
+    if self.config.use_pb6 and self.config.use_static_analysis:
       cur_label = None
       prev_jump = None
       for s in instructions:
@@ -1453,7 +1503,7 @@ class Assembler(object):
           prev_jump = None
 
     # Apply keep_auto to INST directives
-    if self.use_static_analysis:
+    if self.config.use_static_analysis:
       for s in instructions:
         if s.command == 'inst' and 'keep' not in s.tags:
           s.tags['keep_auto'] = (True,)
@@ -1476,11 +1526,357 @@ class Assembler(object):
         s.command = None
         if s.label is not None:
           if s.xlabel in self.labels:
-            #print('### Deleting label:', s.xlabel)
             del self.labels[s.xlabel]
             self.removed_labels.add(s.xlabel)
           s.label = None
           s.xlabel = None
+
+  def _print(self, *args, **keys):
+    flush = False
+    if 'flush' in keys:
+      flush = keys['flush']
+      del keys['flush']
+
+    if not self.config.quiet:
+      print(*args, **keys)
+      if flush:
+        sys.stdout.flush()
+
+  def assemble_all(self):
+    # FIXME: defer til later
+    # Create output directory(ies) if it doesn't exist
+    try:
+      os.makedirs(self.config.output_dir)
+    except OSError as e:
+      if e.errno != errno.EEXIST:
+        raise  # Some other OS error
+
+    # Read input source
+    for fname in self.process_includes():
+      self._print(_('  Reading source:'), fname)
+
+    # Assemble program
+    self._print(_('\n  Assembling code... '), flush=True)
+
+    assembled_code = self.assemble(bounds_check=not self.config.remove_dead_code)
+
+    dead_instructions = None
+    entry_points = None
+    if self.config.use_static_analysis:
+      self._print(_('\n  Beginning optimizations...\n'))
+      # Run static analysis
+      self._print(_('  Static analysis: searching for dead code... '), end='')
+      entry_points = set((self.default_jump & 0xFFF, 0))
+      entry_points |= set(self.config.entry_point)
+      find_dead_code(assembled_code, entry_points)
+      self._print(success(_('COMPLETE')))
+
+      if self.command_line_mode:
+        # Summarize analysis
+        self._print(_('    Entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
+          sorted(entry_points)]))
+        dead_instructions = len([s for s in assembled_code if s.removable()])
+        self._print(_('    {} dead instructions found').format(dead_instructions))
+
+
+    if self.config.remove_dead_code:
+      self.remove_dead_code(assembled_code) # FIXME: move into optimizer
+
+      # Reinitialize registers to default names
+      self.init_registers()
+
+      self._print(_('  Removing dead code... '), end='')
+      # Reassemble code with dead code removed
+      assembled_code = self.raw_assemble(assembled_code)
+
+      self._print(success(_('COMPLETE')))
+
+
+    # Verify that no instructions have been assigned to the same address
+    instructions = [s for s in assembled_code if s.is_instruction()]
+    prev_addresses = {}
+
+    for i in instructions:
+      if i.address in prev_addresses:
+        raise FatalError(_('Two instructions are assigned to address {:03X}\n   First: {}\n  Second: {}\n').format(i.address, \
+          prev_addresses[i.address].error_line, i.error_line))
+        break
+      else:
+        prev_addresses[i.address] = i
+
+    self._print('  ' + success(_('SUCCESS') + '\n'))
+
+    self.assembled_code = assembled_code
+    self.dead_instructions = dead_instructions # FIXME: move into optimizer
+    self.entry_points = entry_points
+    self.valid_asm = True
+
+  def code_stats(self):
+    '''Analyze assembled code to determine addressing parameters'''
+    inst_count = 0
+    last_inst = None
+    for s in self.assembled_code:
+      if s.is_instruction():
+        inst_count += 1
+        last_inst = s
+
+    if last_inst is not None:
+      addr_bits = max(10, last_inst.address.bit_length())
+      last_addr = last_inst.address
+    else:
+      addr_bits = 10
+      last_addr = 0
+
+    nom_size = 2 ** addr_bits
+
+    stats = {
+      'inst_count': inst_count,
+      'addr_bits': addr_bits,
+      'last_addr': last_addr,
+      'nom_size': nom_size
+    }
+
+    self._stats = stats
+    return stats
+
+
+  def instruction_usage(self):
+    '''Analyze assembled code to determine instruction histogram'''
+    usage = dict((k, 0) for k in self.op_info['opcodes'].iterkeys())
+    del usage['inst'] # Not a real opcode
+
+    for s in self.assembled_code:
+      if s.is_instruction() and s.command in usage:
+        usage[s.command] += 1
+
+    return usage
+
+
+  def build_memmap(self):
+    '''Insert assembled instructions into a memory array'''
+    # Ensure mem size is a power of 2
+    addr_bits = (self.config.mem_size-1).bit_length()
+    adj_mem_size = 2 ** addr_bits
+
+    mmap = [self.default_jump] * adj_mem_size
+    for s in self.assembled_code:
+      if s.is_instruction():
+        mmap[s.address] = s.machine_word()
+
+    if 0: # FIXME: Implement CRC support
+      # Compute CRC
+      # Convert to 9-bit words
+      mmap9 = []
+      for w in mmap:
+        mmap9.append( ((w >> 8) & 0x100) + (w & 0xFF) )
+        mmap9.append( ((w >> 9) & 0x100) + ((w >> 8) & 0xFF) )
+
+      for xor in (0xFFFF, 0x0000):
+        for poly in (0x8005, 0x1021, 0x8007):
+          for reflect in (True, False):
+            crc = gen_crc(16, 9, poly, 0x0000, xor, reflect, reflect, mmap9)
+            print('### CRC: {:04X} {:04X} {:5s} = {:04X}'.format(xor, poly, str(reflect), crc))
+
+    self._mmap = mmap
+    return mmap
+
+  def write_hex_file(self, fname):
+    '''Write a memory map as a hex format file'''
+    with open(fname, 'w') as fh:
+      for m in self.mmap:
+        print('{:05X}'.format(m), file=fh)
+
+  def write_mem_file(self, fname):
+    '''Write a memory map as a mem format file'''
+    with open(fname, 'w') as fh:
+      # Write MEM file header (one start address)
+      print('@00000000', file=fh)
+      # Write data lines
+      for m in self.mmap:
+        print('{:05X}'.format(m), file=fh)
+
+  def write_mif_file(self, fname):
+    '''Write a memory map in Altera's MIF format.'''
+    with open(fname, 'w') as fh:
+      # Write MIF file header
+      print('DEPTH = {};         -- memory words'.format(len(self.mmap)), file=fh)
+      print('WIDTH = 18;           -- bits per word', file=fh)
+      print('ADDRESS_RADIX = HEX;  -- Address radix (BIN, DEC, HEX, OCT or UNS)', file=fh)
+      print('DATA_RADIX = HEX;     -- Data radix', file=fh)
+      print('CONTENT', file=fh)
+      print('BEGIN', file=fh)
+      # Write data lines -> 'Address : Content' in multiples of 8
+      for a in xrange(len(self.mmap) // 8):
+        d = ' '.join('{:05X}'.format(w) for w in self.mmap[a*8:(a+1)*8])
+        print('{:04X} : {};'.format(a*8, d), file=fh)
+
+      # Write MIF footer
+      print('END;', file=fh)
+
+
+  def write_log_file(self, log_file, colorize):
+    '''Write a log file with details of assembled code'''
+    with io.open(log_file, 'w', encoding='utf-8') as fh:
+
+      def printf(*args):
+        # For Python 2.x we have to ensure all args are unicode strings
+        # before passing them to print().
+        return print(*[unicode(a) for a in args], file=fh)
+
+      printf(_('Open PicoBlaze Assembler log for program "{}"').format(self.top_source_file))
+      printf(_('Generated by opbasm v{}').format(__version__))
+      printf(_('  Assembled on {}').format(self.timestamp.isoformat()))
+      printf(_('  PicoBlaze-{} mode\n').format(6 if self.config.use_pb6 else 3))
+
+      printf(_('  Last occupied address: {:03X} hex').format(self.stats['last_addr']))
+      printf(_('  Nominal program memory size: {}K ({})  address({}:0)').format( \
+                  self.stats['nom_size'] // 1024, self.stats['nom_size'], self.stats['addr_bits']-1))
+      printf(_('  Actual memory size:'), self.config.mem_size)
+      printf(_('  Occupied memory locations:'), self.stats['inst_count'])
+      printf(_('  Memory locations available:'), self.config.mem_size - self.stats['inst_count'])
+      printf(_('  Scratchpad size:'), self.config.scratch_size)
+
+      if self.dead_instructions is not None:
+        printf('\n\n' + underline(_('Optimizations')))
+        printf(_('  Static analysis:\n    Dead instructions {}: {}').format( \
+          _('removed') if self.config.remove_dead_code else _('found'), self.dead_instructions))
+        printf(_('    Analyzed entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
+          sorted(self.entry_points)]))
+
+
+      printf('\n\n' + underline(_('Assembly listing')))
+      for s in self.assembled_code:
+        printf(s.format(show_addr=True, show_dead=self.config.use_static_analysis, colorize=colorize))
+
+      if self.default_jump is None or self.default_jump == 0:
+        # Decoding of "all zeros" instruction varies between processors
+        zero_instr = 'LOAD s0, s0' if self.config.use_pb6 else 'LOAD s0, 00'
+        printf(_('\nAll unused memory locations contain zero (equivalent to "{}")'.format(zero_instr)))
+      else:
+        printf(_('\nAll unused memory locations contain a DEFAULT_JUMP to {:03X}').format(asm.default_jump & 0xFFF))
+
+      printf('\n\n' + underline(_('PSM files that have been assembled')))
+      for f in self.sources.iterkeys():
+        printf('   ', os.path.abspath(f))
+
+      printf('\n\n' + underline(_('List of defined constants')))
+      headings = [_('   CONSTANT name'), _('Value'), _('Source PSM file')]
+      rows = [(('   ' if self.constants[c].in_use else '*  ') + c, \
+        self.constants[c].val_text, self.constants[c].source_file) \
+        for c in sorted(self.constants.iterkeys())]
+      for r in format_table(rows, headings, indent=1):
+        printf(r)
+
+      if not all(c.in_use for c in self.constants.itervalues()): # Show caption
+        printf(_('\n       * Unreferenced constant(s)'))
+
+
+      if len(self.tables) == 0:
+        printf(_('\n\n  No tables defined'))
+      else:
+        printf('\n\n' + underline(_('List of defined tables')))
+        headings = [_('   TABLE name'), _('Value'), _('Source PSM file')]
+        rows = [(('   ' if self.tables[t].in_use else '*  ') + t, \
+          self.tables[t].val_text, self.tables[t].source_file) \
+          for t in sorted(self.tables.iterkeys())]
+        for r in format_table(rows, headings, indent=1):
+          printf(r)
+
+      if not all(t.in_use for t in self.tables.itervalues()): # Show caption
+        printf(_('\n       * Unreferenced table(s)'))
+
+
+      printf('\n\n' + underline(_('List of text strings')))
+      headings = [_('   STRING name'), _('Value'), _('Source PSM file')]
+      rows = [(('   ' if self.strings[s].in_use else '*  ') + s, \
+        self.strings[s].val_text, self.strings[s].source_file) \
+        for s in sorted(self.strings.iterkeys())]
+      for r in format_table(rows, headings, indent=1):
+        printf(r)
+
+      if not all(s.in_use for s in self.strings.itervalues()): # Show caption
+        printf(_('\n       * Unreferenced string(s)'))
+
+
+      printf('\n\n' + underline(_('List of line labels')))
+      headings = [_('   Label'), _('Addr'), _('Source PSM file')]
+      rows = [(('   ' if self.labels[l].in_use else '*  ') + l, \
+        '{:03X}'.format(self.labels[l].value), self.labels[l].source_file) \
+        for l in sorted(self.labels.iterkeys())]
+      for r in format_table(rows, headings, indent=1):
+        printf(r)
+
+      if not all(l.in_use for l in self.labels.itervalues()): # Show caption
+        printf(_('\n       * Unreferenced label(s)'))
+
+
+      printf('\n\n' + underline(_('List of pragma blocks')))
+      all_blocks = extract_pragma_blocks(self.assembled_code)
+      headings = [_('Name'), _('Addr range'), _('Value')]
+      rows = [(b.name, '({:03X} - {:03X})'.format(b.start, b.end), \
+        ' '.join([unicode(a) for a in b.args])) for b in all_blocks]
+      for r in format_table(rows, headings, indent=3):
+        printf(r)
+
+      printf('\n\n' + underline(_('Instruction usage statistics')))
+      inst_usage = self.instruction_usage()
+      headings = [_('Instruction'), _('Instances')]
+      rows = [(i.upper(), inst_usage[i] if inst_usage[i] > 0 else '-') \
+        for i in sorted(inst_usage.iterkeys())]
+      for r in format_table(rows, headings, indent=3):
+        printf(r)
+
+
+  def write_template_file(self, templates):
+
+    minit_18 = build_xilinx_mem_init(self.mmap)
+    minit_9 = build_xilinx_mem_init(self.mmap, split_data=True)
+
+    # Find longest template file name so we can align the warning messages
+    # about unmapped INIT fields.
+    longest_template_name = max(len(v[1]) for v in templates.itervalues())
+
+    for hdl_name in templates.iterkeys():
+      template_file, target_file = templates[hdl_name]
+      # Prepare INIT strings for the memory width found in the template
+      data_format = template_data_size(template_file)
+      if data_format == TemplateDataFormat.ROMBoth:
+        # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
+        minit = minit_9.copy()
+        minit.update(minit_18) # Merge the init strings together for both types
+      elif data_format == TemplateDataFormat.ROM9:
+        minit = minit_9
+      elif data_format == TemplateDataFormat.ROM18:
+        minit = minit_18
+      elif data_format == TemplateDataFormat.ROMECC:
+        minit = build_xilinx_ecc_mem_init(mmap)
+      else:
+        raise FatalError(_('Unknown template data format'))
+
+      file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
+      all_inits_replaced = write_hdl_file(self.top_source_file, target_file, template_file, minit, self.timestamp.isoformat(), self.default_jump)
+
+      field_size = 19
+      unmapped_warn = warn(_('WARNING:')) + _(' Unmapped INIT fields found in template') if not all_inits_replaced else ''
+      self._print('{:>{}} {:<{}}   {}'.format(file_type, field_size, target_file, longest_template_name, unmapped_warn))
+
+
+  def write_formatted_source(self, output_dir):
+    self._print(_('\n  Formatted source:'))
+    for fname, source in self.sources.iteritems():
+      if fname == '-': fname = 'stdin'
+      fname = os.path.splitext(os.path.basename(fname))[0] + '.fmt'
+      fname = build_path(output_dir, fname)
+      self._print('   ', fname)
+      with io.open(fname, 'w', encoding='utf-8') as fh:
+        for s in source:
+          print(s.format(), file=fh)
+
+    self._print('')
+
+
+
+##############################################
 
 
 
@@ -1514,7 +1910,8 @@ def asm_error(*args, **kwargs):
   print(error(_('\nERROR:')), *args, file=sys.stderr)
   if 'statement' in kwargs:
     s = kwargs['statement']
-    print('  {}:  {}'.format(s.error_line, s.format().lstrip()))
+    if s is not None:
+      print('  {}:  {}'.format(s.error_line, s.format().lstrip()))
   if 'exit' in kwargs:
     sys.exit(kwargs['exit'])
 
@@ -1623,35 +2020,9 @@ def parse_command_line():
   return options
 
 
-def build_memmap(slist, mem_size, default_jump):
-  '''Insert assembled instructions into a memory array'''
-  # Ensure mem size is a power of 2
-  addr_bits = (mem_size-1).bit_length()
-  adj_mem_size = 2 ** addr_bits
-
-  mmap = [default_jump] * adj_mem_size
-  for s in slist:
-    if s.is_instruction():
-      mmap[s.address] = s.machine_word()
-      
-  if 0:
-    # Compute CRC
-    # Convert to 9-bit words
-    mmap9 = []
-    for w in mmap:
-      mmap9.append( ((w >> 8) & 0x100) + (w & 0xFF) )
-      mmap9.append( ((w >> 9) & 0x100) + ((w >> 8) & 0xFF) )
-      
-    for xor in (0xFFFF, 0x0000):
-      for poly in (0x8005, 0x1021, 0x8007):
-        for reflect in (True, False):
-          crc = gen_crc(16, 9, poly, 0x0000, xor, reflect, reflect, mmap9)
-          print('### CRC: {:04X} {:04X} {:5s} = {:04X}'.format(xor, poly, str(reflect), crc))
-  return mmap
-
-
 def find_dead_code(assembled_code, entry_points):
   '''Perform dead code analysis'''
+  # FIXME: move into optimizer
   itable = build_instruction_table(assembled_code)
   analyze_code_reachability(assembled_code, itable, entry_points)
   analyze_recursive_keeps(assembled_code, itable)
@@ -1812,81 +2183,9 @@ def extract_pragma_blocks(slist):
   return all_blocks      
 
 
-
-def write_hex_file(fname, mmap):
-  '''Write a memory map as a hex format file'''
-  with open(fname, 'w') as fh:
-    for m in mmap:
-      print('{:05X}'.format(m), file=fh)
-
-def write_mem_file(fname, mmap):
-  '''Write a memory map as a mem format file'''
-  with open(fname, 'w') as fh:
-    # write MEM file header (one start address)
-    print('@00000000', file=fh)
-    # write data lines 
-    for m in mmap:
-      print('{:05X}'.format(m), file=fh)
-
-def write_mif_file(fname, mmap):
-  '''Write a memory map in Altera's MIF format.'''
-  with open(fname, 'w') as fh:
-    # write MIF file header
-    print('DEPTH = {};         -- memory words'.format(len(mmap)), file=fh)
-    print('WIDTH = 18;           -- bits per word', file=fh)
-    print('ADDRESS_RADIX = HEX;  -- Address radix (BIN, DEC, HEX, OCT or UNS)', file=fh)
-    print('DATA_RADIX = HEX;     -- Data radix', file=fh)
-    print('CONTENT', file=fh)
-    print('BEGIN', file=fh)
-    # write data lines -> 'Address : Content' in multiples of 8
-    for a in xrange(len(mmap) // 8):
-      d = ' '.join('{:05X}'.format(w) for w in mmap[a*8:(a+1)*8])
-      print('{:04X} : {};'.format(a*8, d), file=fh)
-
-    # write MIF footer
-    print('END;', file=fh)
-
 def get_timestamp():
   '''Get a current datestamp'''
   return datetime.datetime.now().replace(microsecond=0)
-
-def code_stats(assembled_code):
-  '''Analyze assembled code to determine addressing parameters'''
-  inst_count = 0
-  last_inst = None
-  for s in assembled_code:
-    if s.is_instruction():
-      inst_count += 1
-      last_inst = s
-
-  if last_inst is not None:
-    addr_bits = max(10, last_inst.address.bit_length())
-    last_addr = last_inst.address
-  else:
-    addr_bits = 10
-    last_addr = 0
-
-  nom_size = 2 ** addr_bits
-
-  stats = {
-    'inst_count': inst_count,
-    'addr_bits': addr_bits,
-    'last_addr': last_addr,
-    'nom_size': nom_size
-  }
-
-  return stats
-
-def instruction_usage(assembled_code, asm):
-  '''Analyse assembled code to determine instruction histogram'''
-  stats = dict((k, 0) for k in asm.op_info['opcodes'].iterkeys())
-  del stats['inst'] # Not a real opcode
-
-  for s in assembled_code:
-    if s.is_instruction() and s.command in stats:
-      stats[s.command] += 1
-
-  return stats
 
 
 def underline(s, char='-'):
@@ -1911,117 +2210,6 @@ def format_table(rows, col_names, indent=0):
 
   return tbl
 
-
-def write_log_file(log_file, assembled_code, stats, asm, colorize, show_dead):
-  '''Write a log file with details of assembled code'''
-  with io.open(log_file, 'w', encoding='utf-8') as fh:
-    def printf(*args):
-      # For Python 2.x we have to ensure all args are unicode strings
-      # before passing them to print().
-      return print(*[unicode(a) for a in args], file=fh)
-
-    printf(_('Open PicoBlaze Assembler log for program "{}"').format(asm.top_source_file))
-    printf(_('Generated by opbasm v{}').format(__version__))
-    printf(_('  Assembled on {}').format(asm.timestamp.isoformat()))
-    printf(_('  PicoBlaze-{} mode\n').format(6 if asm.use_pb6 else 3))
-
-    printf(_('  Last occupied address: {:03X} hex').format(stats['last_addr']))
-    printf(_('  Nominal program memory size: {}K ({})  address({}:0)').format( \
-                stats['nom_size'] // 1024, stats['nom_size'], stats['addr_bits']-1))
-    printf(_('  Actual memory size:'), asm.mem_size)
-    printf(_('  Occupied memory locations:'), stats['inst_count'])
-    printf(_('  Memory locations available:'), asm.mem_size - stats['inst_count'])
-    printf(_('  Scratchpad size:'), asm.scratch_size)
-
-    if stats['dead_inst'] is not None:
-      printf('\n\n' + underline(_('Optimizations')))
-      printf(_('  Static analysis:\n    Dead instructions {}: {}').format( \
-        _('removed') if stats['dead_removed'] else _('found'), stats['dead_inst']))
-      printf(_('    Analyzed entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
-        sorted(stats['entry_points'])]))
-
-
-    printf('\n\n' + underline(_('Assembly listing')))
-    for s in assembled_code:
-      printf(s.format(show_addr=True, show_dead=show_dead, colorize=colorize))
-
-    if asm.default_jump is None or asm.default_jump == 0:
-      # Decoding of "all zeros" instruction varies between processors
-      zero_instr = 'LOAD s0, s0' if asm.use_pb6 else 'LOAD s0, 00'
-      printf(_('\nAll unused memory locations contain zero (equivalent to "{}")'.format(zero_instr)))
-    else:
-      printf(_('\nAll unused memory locations contain a DEFAULT_JUMP to {:03X}').format(asm.default_jump & 0xFFF))
-
-    printf('\n\n' + underline(_('PSM files that have been assembled')))
-    for f in asm.sources.iterkeys():
-      printf('   ', os.path.abspath(f))
-
-    printf('\n\n' + underline(_('List of defined constants')))
-    headings = [_('   CONSTANT name'), _('Value'), _('Source PSM file')]
-    rows = [(('   ' if asm.constants[c].in_use else '*  ') + c, \
-      asm.constants[c].val_text, asm.constants[c].source_file) \
-      for c in sorted(asm.constants.iterkeys())]
-    for r in format_table(rows, headings, indent=1):
-      printf(r)
-
-    if not all(c.in_use for c in asm.constants.itervalues()): # Show caption
-      printf(_('\n       * Unreferenced constant(s)'))
-      
-
-    if len(asm.tables) == 0:
-      printf(_('\n\n  No tables defined'))
-    else:
-      printf('\n\n' + underline(_('List of defined tables')))
-      headings = [_('   TABLE name'), _('Value'), _('Source PSM file')]
-      rows = [(('   ' if asm.tables[t].in_use else '*  ') + t, \
-        asm.tables[t].val_text, asm.tables[t].source_file) \
-        for t in sorted(asm.tables.iterkeys())]
-      for r in format_table(rows, headings, indent=1):
-        printf(r)
-
-    if not all(t.in_use for t in asm.tables.itervalues()): # Show caption
-      printf(_('\n       * Unreferenced table(s)'))
-
-
-    printf('\n\n' + underline(_('List of text strings')))
-    headings = [_('   STRING name'), _('Value'), _('Source PSM file')]
-    rows = [(('   ' if asm.strings[s].in_use else '*  ') + s, \
-      asm.strings[s].val_text, asm.strings[s].source_file) \
-      for s in sorted(asm.strings.iterkeys())]
-    for r in format_table(rows, headings, indent=1):
-      printf(r)
-
-    if not all(s.in_use for s in asm.strings.itervalues()): # Show caption
-      printf(_('\n       * Unreferenced string(s)'))
-
-
-    printf('\n\n' + underline(_('List of line labels')))
-    headings = [_('   Label'), _('Addr'), _('Source PSM file')]
-    rows = [(('   ' if asm.labels[l].in_use else '*  ') + l, \
-      '{:03X}'.format(asm.labels[l].value), asm.labels[l].source_file) \
-      for l in sorted(asm.labels.iterkeys())]
-    for r in format_table(rows, headings, indent=1):
-      printf(r)
-
-    if not all(l.in_use for l in asm.labels.itervalues()): # Show caption
-      printf(_('\n       * Unreferenced label(s)'))
-
-
-    printf('\n\n' + underline(_('List of pragma blocks')))
-    all_blocks = extract_pragma_blocks(assembled_code)
-    headings = [_('Name'), _('Addr range'), _('Value')]
-    rows = [(b.name, '({:03X} - {:03X})'.format(b.start, b.end), \
-      ' '.join([unicode(a) for a in b.args])) for b in all_blocks]
-    for r in format_table(rows, headings, indent=3):
-      printf(r)
-
-    printf('\n\n' + underline(_('Instruction usage statistics')))
-    inst_usage = instruction_usage(assembled_code, asm)
-    headings = [_('Instruction'), _('Instances')]
-    rows = [(i.upper(), inst_usage[i] if inst_usage[i] > 0 else '-') \
-      for i in sorted(inst_usage.iterkeys())]
-    for r in format_table(rows, headings, indent=3):
-      printf(r)
 
 def build_xilinx_mem_init(mmap, split_data=False):
   '''Create a dict of Xilinx BRAM INIT and INITP strings'''
@@ -2192,7 +2380,6 @@ def next_crc(size, data_size, crc, poly, reflect_in, data):
   bits = '{:0{}b}'.format(data, data_size)
   
   if reflect_in:
-    #print('#### {} {}'.format(bits, bits[::-1]))
     bits = bits[::-1]
 
   for b in bits:
@@ -2222,8 +2409,8 @@ def find_templates(template_file):
       else:
         templates['verilog'] = template_file
     else:
-      print(_('Given template file \'{}\' does not exist.').format(template_file))
-      sys.exit(1)
+      raise FatalError(_('Given template file \'{}\' does not exist.').format(template_file))
+
 
   else: # Search for standard templates
     vhdl_templates = ('ROM_form.vhd', 'ROM_form.vhdl')
@@ -2320,7 +2507,9 @@ def get_standard_templates():
     shutil.copyfile(p, f)
 
 
-def add_output_dir(output_dir, fname):
+
+def build_path(output_dir, fname):
+  '''Build a file path located in the output directory'''
   return os.path.normpath(os.path.join(output_dir, os.path.split(fname)[1]))
 
 
@@ -2351,13 +2540,18 @@ def main():
     sys.exit(0)
 
   if options.hex_output:
-    hex_mem_file = add_output_dir(options.output_dir, options.module_name + '.hex')
+    hex_mem_file = build_path(options.output_dir, options.module_name + '.hex')
   elif options.mif_output:
-    hex_mem_file = add_output_dir(options.output_dir, options.module_name + '.mif')
+    hex_mem_file = build_path(options.output_dir, options.module_name + '.mif')
   else:
-    hex_mem_file = add_output_dir(options.output_dir, options.module_name + '.mem')
+    hex_mem_file = build_path(options.output_dir, options.module_name + '.mem')
 
-  templates = find_templates(options.template_file)
+  try:
+    templates = find_templates(options.template_file)
+  except StatementError, e:
+    asm_error(*e.args, exit=1)
+  except FatalError, e:
+    asm_error(str(e), exit=1)
 
   # Make sure the extension of the generated VHDL file matches the template extension
   if 'vhdl' in templates:
@@ -2365,9 +2559,14 @@ def main():
   else:
     vhdl_ext = '.vhdl'
 
-  vhdl_file = add_output_dir(options.output_dir, options.module_name + vhdl_ext)
-  verilog_file = add_output_dir(options.output_dir, options.module_name + '.v')
-  log_file = add_output_dir(options.output_dir, options.module_name + '.log')
+  # Convert template values into tuples
+  vhdl_file = build_path(options.output_dir, options.module_name + vhdl_ext)
+  verilog_file = build_path(options.output_dir, options.module_name + '.v')
+
+  for hdl in templates.iterkeys():
+    templates[hdl] = (templates[hdl], vhdl_file if hdl == 'vhdl' else verilog_file)
+
+  log_file = build_path(options.output_dir, options.module_name + '.log')
 
   
   if options.input_file == '-': # Ensure a module name was provided
@@ -2384,89 +2583,24 @@ def main():
   printq(_('  Device configuration:\n    Memory size: {}, Scratchpad size: {}\n').format(\
     options.mem_size, options.scratch_size))
 
-  timestamp = get_timestamp()
-  upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
-  asm = Assembler(options.input_file, timestamp, options, upper_env_names)
-
-  # Create output directory(ies) if it doesn't exist
-  try:
-    os.makedirs(options.output_dir)
-  except OSError as e:
-    if e.errno != errno.EEXIST:
-      raise  # Some other OS error
-
+  # Assemble the code
+  asm = Assembler(options.input_file, options)
+  asm.command_line_mode = True
 
   try:
-    # Read input source
-    for fname in asm.process_includes():
-      printq(_('  Reading source:'), fname)
-
-    # Assemble program
-    printq(_('\n  Assembling code... '))
-    sys.stdout.flush()
-
-    assembled_code = asm.assemble(bounds_check=not options.remove_dead_code)
-
-  except FatalError, e:
+    assembled_code = asm.assemble_all()
+  except StatementError, e:
     asm_error(*e.args, exit=1, statement=e.statement)
-
-  dead_instructions = None
-  entry_points = None
-  if options.remove_dead_code or options.report_dead_code:
-    printq(_('\n  Beginning optimizations...\n'))
-    # Run static analysis
-    printq(_('  Static analysis: searching for dead code... '), end='')
-    entry_points = set((asm.default_jump & 0xFFF, 0))
-    entry_points |= set(options.entry_point)
-    find_dead_code(assembled_code, entry_points)
-    printq(success(_('COMPLETE')))
-
-    # Summarize analysis
-    printq(_('    Entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
-      sorted(entry_points)]))
-    dead_instructions = len([s for s in assembled_code if s.removable()])
-    printq(_('    {} dead instructions found').format(dead_instructions))
+  except FatalError, e:
+    asm_error(str(e), exit=1)
 
 
-  if options.remove_dead_code:
-    asm.remove_dead_code(assembled_code)
-
-    # Reinitialize registers to default names
-    asm.init_registers()
-
-    printq(_('  Removing dead code... '), end='')
-    # Reassemble code with dead code removed
-    try:
-      assembled_code = asm.raw_assemble(assembled_code)
-    except FatalError, e:
-      asm_error(*e.args, exit=1, statement=e.statement)
-
-    printq(success(_('COMPLETE')))
-
-    
-  # Verify that no instructions have been assigned to the same address
-  instructions = [s for s in assembled_code if s.is_instruction()]
-  prev_addresses = {}
-  valid_asm = True
-  for i in instructions:
-    if i.address in prev_addresses:
-      asm_error(_('Two instructions are assigned to address {:03X}\n   First: {}\n  Second: {}\n').format(i.address, \
-        prev_addresses[i.address].error_line, i.error_line))
-      valid_asm = False
-      break
-    else:
-      prev_addresses[i.address] = i
-
-  if valid_asm: printq('  ' + success(_('SUCCESS') + '\n'))
-      
   # Print summary
-  stats = code_stats(assembled_code)
-  stats['dead_inst'] = dead_instructions
-  stats['dead_removed'] = options.remove_dead_code
-  stats['entry_points'] = entry_points
-  if not options.quiet:
+  stats = asm.code_stats()
+
+  if not asm.config.quiet:
     print(_('    {} instructions out of {} ({}%)').format(stats['inst_count'], \
-          options.mem_size, int(stats['inst_count'] / options.mem_size * 100)))
+          asm.config.mem_size, int(stats['inst_count'] / asm.config.mem_size * 100)))
     print(_('    Highest occupied address: {:03X} hex').format(stats['last_addr']))
 
     if len(templates) > 0:
@@ -2483,68 +2617,28 @@ def main():
   if options.debug_preproc:
     printq('{:>{}}'.format(_('preprocessor:'), field_size), options.debug_preproc)
 
-  mmap = build_memmap(assembled_code, options.mem_size, asm.default_jump)
   if options.hex_output:
-    write_hex_file(hex_mem_file, mmap)
+    asm.write_hex_file(hex_mem_file)
   elif options.mif_output:
-    write_mif_file(hex_mem_file, mmap)
+    asm.write_mif_file(hex_mem_file)
   else:
-    write_mem_file(hex_mem_file, mmap)
+    asm.write_mem_file(hex_mem_file)
   
   printq('{:>{}}'.format(_('mem map:'), field_size), hex_mem_file)
   
-  show_dead = True if options.report_dead_code or options.remove_dead_code else False
-  write_log_file(log_file, assembled_code, stats, asm, options.color_log, show_dead)
+  asm.write_log_file(log_file, options.color_log)
   printq('{:>{}}'.format(_('log file:'), field_size), log_file)
 
-  minit_18 = build_xilinx_mem_init(mmap)
-  minit_9 = build_xilinx_mem_init(mmap, split_data=True)
+  try:
+    asm.write_template_file(templates)
+  except StatementError, e:
+    asm_error(*e.args, exit=1, statement=e.statement)
+  except FatalError, e:
+    asm_error(str(e), exit=1)
 
-  # Find longest template file name so we can align the warning messages
-  # about unmapped INIT fields.
-  longest_template_name = 0
-  if 'vhdl' in templates:
-    longest_template_name = len(vhdl_file)
-  if 'verilog' in templates:
-    longest_template_name = max(len(verilog_file), longest_template_name)
+  asm.write_formatted_source(options.output_dir)
 
-  for hdl_name, template_file in templates.iteritems():
-    # Prepare INIT strings for the memory width found in the template
-    data_format = template_data_size(templates[hdl_name])
-    if data_format == TemplateDataFormat.ROMBoth:
-      # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
-      minit = minit_9.copy()
-      minit.update(minit_18) # Merge the init strings together for both types
-    elif data_format == TemplateDataFormat.ROM9:
-      minit = minit_9
-    elif data_format == TemplateDataFormat.ROM18:
-      minit = minit_18
-    elif data_format == TemplateDataFormat.ROMECC:
-      minit = build_xilinx_ecc_mem_init(mmap)
-    else:
-      asm_error(_('Unknown template data format'), exit=1)
-
-    target_file = vhdl_file if hdl_name == 'vhdl' else verilog_file
-    file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
-    all_inits_replaced = write_hdl_file(options.input_file, target_file, template_file, minit, timestamp.isoformat(), asm.default_jump)
-
-    unmapped_warn = warn(_('WARNING:')) + _(' Unmapped INIT fields found in template') if not all_inits_replaced else ''
-    printq('{:>{}} {:<{}}   {}'.format(file_type, field_size, target_file, longest_template_name, unmapped_warn))
-    
-
-  printq(_('\n  Formatted source:'))
-  for fname, source in asm.sources.iteritems():
-    if fname == '-': fname = 'stdin'
-    fname = os.path.splitext(os.path.basename(fname))[0] + '.fmt'
-    fname = add_output_dir(options.output_dir, fname)
-    printq('   ', fname)
-    with io.open(fname, 'w', encoding='utf-8') as fh:
-      for s in source:
-        print(s.format(), file=fh)
-
-  printq('')
-
-  sys.exit(0 if valid_asm else 1)
+  sys.exit(0 if asm.valid_asm else 1)
 
 
 if __name__ == '__main__':
