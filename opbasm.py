@@ -545,16 +545,220 @@ def find_standard_m4_macros():
 
   return macro_file
 
+class Optimizer(object):
+  name = ''
+
+  def __init__(self):
+    self.priority = 10
+
+  def apply(self, asm, assembled_code):
+    return []
+
+  def summary(self, printf):
+    pass
+
+
+class StaticAnalyzer(Optimizer):
+  name = 'static'
+
+  def __init__(self):
+    self.priority = 50
+    self.dead_instructions = None
+    self.entry_points = None
+
+  def apply(self, asm, assembled_code):
+
+    self.keep_instructions(asm, assembled_code)
+
+    self.dead_instructions = None
+    self.entry_points = None
+
+    # Run static analysis
+    asm._print(_('  Static analysis: searching for dead code... '), end='')
+    self.entry_points = set((asm.default_jump & 0xFFF, 0))
+    self.entry_points |= set(asm.config.entry_point)
+    self.find_dead_code(assembled_code, self.entry_points)
+    asm._print(success(_('COMPLETE')))
+
+    if asm.command_line_mode:
+      # Summarize analysis
+      asm._print(_('    Entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
+        sorted(self.entry_points)]))
+      self.dead_instructions = len([s for s in assembled_code if s.removable()])
+      asm._print(_('    {} dead instructions found').format(self.dead_instructions))
+
+    return assembled_code
+
+
+  def keep_instructions(self, asm, assembled_code):
+    '''Mark instructions we want to automatically keep'''
+    # Find continuous blocks of labeled load&return instructions
+    if asm.config.use_pb6:
+      cur_label = None
+      prev_jump = None
+      for s in assembled_code:
+        if s.label is not None:
+          cur_label = s.xlabel
+          prev_jump = None
+
+        unconditional_jump = s.command == 'jump' and s.arg2 is None
+
+        # Mark l&r for preservation if its associated label is referenced by other code
+        # Mark two or more consecutive unconditional jumps for preservation as part of a jump table
+        if s.command == 'load&return' or (unconditional_jump and prev_jump):
+          if cur_label is not None and asm.labels[cur_label].in_use:
+            if 'keep' not in s.tags:
+              s.tags['keep_auto'] = (True,)
+
+              # Mark this as the (possible) end of a jump table and flag it for preservation
+              if unconditional_jump: # and s.arg1 in self.labels:
+                s.tags['jump_table_end'] = (True,)
+                s.tags['keep'] = (True,) # For jump table instructions we need to tag with 'keep'
+                del s.tags['keep_auto']
+
+                # Mark previous jump as part of a jump table and flag it for preservation
+                if 'jump_table_end' in prev_jump.tags: del prev_jump.tags['jump_table_end']
+                prev_jump.tags['jump_table'] = (True,)
+                prev_jump.tags['keep'] = (True,) # For jump table instructions we need to tag with 'keep'
+
+        elif s.is_instruction() and not unconditional_jump: cur_label = None
+
+        # Remember previous jump instruction to identify jump tables
+        if unconditional_jump:
+          prev_jump = s
+        elif s.is_instruction():
+          prev_jump = None
+
+    # Apply keep_auto to INST directives
+    for s in assembled_code:
+      if s.command == 'inst' and 'keep' not in s.tags:
+        s.tags['keep_auto'] = (True,)
+
+
+  def find_dead_code(self, assembled_code, entry_points):
+    '''Perform dead code analysis'''
+    itable = self.build_instruction_table(assembled_code)
+    self.analyze_code_reachability(assembled_code, itable, entry_points)
+    self.analyze_recursive_keeps(assembled_code, itable)
+
+
+  def build_instruction_table(self, slist):
+    '''Build index of all instruction statements by address'''
+    itable = {}
+    for s in slist:
+      if s.is_instruction():
+        itable[s.address] = s
+
+    return itable
+
+
+  def analyze_code_reachability(self, slist, itable, entry_points):
+    '''Scan assembled statements for reachability'''
+
+    addresses = set(entry_points)
+    addresses.add(0)
+
+    self.find_reachability(addresses, itable)
+
+
+  def analyze_recursive_keeps(self, slist, itable):
+    '''Scan assembled statements for reachability'''
+
+    for s in slist:
+      if s.is_instruction() and 'keep' in s.tags:
+        self.find_reachability((s.address,), itable, follow_keeps=True)
+
+
+  def find_reachability(self, addresses, itable, follow_keeps=False):
+    '''Recursive function that follows graph of executable statements to determine
+       reachability'''
+
+    for a in addresses:
+      while a in itable:
+        s = itable[a]
+        if s.reachable: break # Skip statements already visited
+        if follow_keeps and 'keep_auto' in s.tags: break
+
+        if s.is_instruction():
+          if not follow_keeps:
+            s.reachable = True
+          elif 'keep' not in s.tags:
+            s.tags['keep_auto'] = (True,)
+
+          # Stop on unconditional return, returni, load&return, and jump@ instructions
+          if s.command in ('returni', 'load&return', 'jump@') or \
+             (s.command == 'return' and s.arg1 is None):
+            break
+
+          # Follow branch address for jump and call
+          if s.command in ('jump', 'call'):
+            if not follow_keeps or (s.immediate in itable and 'keep' not in itable[s.immediate].tags):
+              self.find_reachability((s.immediate,), itable, follow_keeps)
+
+            # Stop on unconditional jump
+            # Only 1 argument -> unconditional
+            if s.command == 'jump' and s.arg2 is None and 'jump_table' not in s.tags:
+              break
+
+        # Continue with next instruction if it exists
+        a += 1
+
+
+  def summary(self, printf):
+    printf(_('  Static analysis:\n    Dead instructions {}: {}').format( \
+      _('found'), self.dead_instructions))
+    printf(_('    Analyzed entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
+      sorted(self.entry_points)]))
+
+
+class DeadCodeRemover(Optimizer):
+  name = 'dead_code'
+
+  def __init__(self):
+    self.priority = 60
+
+  def apply(self, asm, assembled_code):
+    self.remove_dead_code(asm, assembled_code)
+
+    # Reinitialize registers to default names
+    asm.init_registers()
+
+    asm._print(_('  Dead code removal: '), end='')
+    # Reassemble code with dead code removed
+    assembled_code = asm.raw_assemble(assembled_code, optimize = False)
+
+    asm._print(success(_('COMPLETE')))
+
+    return assembled_code
+
+
+  def remove_dead_code(self, asm, assembled_code):
+    '''Mark unreachable code for removal'''
+    for s in assembled_code:
+      if s.removable():
+        s.comment = _('REMOVED: ') + s.format().lstrip()
+        s.command = None
+        if s.label is not None:
+          if s.xlabel in self.labels:
+            del asm.labels[s.xlabel]
+            asm.removed_labels.add(s.xlabel)
+          s.label = None
+          s.xlabel = None
+
+  def summary(self, printf):
+    printf(_('  Dead code removal: Applied'))
+
+
+
 class AssemblerConfig(object):
   def __init__(self, options=None):
+    # Set defaults
     self.mem_size = 1024
     self.scratch_size = 0
     self.use_pb6 = True
     self.use_m4 = False
     self.m4_defines = {}
     self.debug_preproc = None
-    self.use_static_analysis = False
-    self.remove_dead_code = False
     self.output_dir = '.'
     self.entry_point = [0x3FF]
     self.verbose = False
@@ -563,15 +767,13 @@ class AssemblerConfig(object):
     if options is not None:
       self.config(options)
   
-  def config(options):
+  def config(self, options):
     self.mem_size = options.mem_size
     self.scratch_size = options.scratch_size
     self.use_pb6 = options.use_pb6
     self.use_m4 = options.use_m4
     self.m4_defines = options.m4_defines
     self.debug_preproc = options.debug_preproc
-    self.use_static_analysis = options.report_dead_code or options.remove_dead_code
-    self.remove_dead_code = options.remove_dead_code
     self.output_dir = options.output_dir
     self.entry_point = options.entry_point
     self.verbose = options.verbose
@@ -581,8 +783,8 @@ class AssemblerConfig(object):
 class Assembler(object):
   '''Main object for running assembler and tracking symbol information'''
 
-  def __init__(self, top_source_file, options, timestamp=None):
-    self.config = Assembler.AssemblerConfig(options)
+  def __init__(self, top_source_file, options=None, timestamp=None):
+    self.config = AssemblerConfig(options)
     self.command_line_mode = False
     self.top_source_file = top_source_file
     self.m4_file_num = 0
@@ -590,7 +792,7 @@ class Assembler(object):
 
     self.constants = self._init_constants()
     self.labels = {}
-    self.removed_labels = set()
+    self.removed_labels = set() # Labels eliminated by an optimizer
     self.cur_context = ''
 
     self.registers = None
@@ -606,11 +808,10 @@ class Assembler(object):
     self.upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
     
     self.line_index = {}
+    self.optimizers = {}
 
     # Results
     self.assembled_code = None
-    self.dead_instructions = None # FIXME: move into optimizer
-    self.entry_points = set()
     self.valid_asm = False
     self._mmap = None
     self._stats = None
@@ -627,6 +828,9 @@ class Assembler(object):
       self.code_stats()
     return self._stats
 
+  @property
+  def optimizer_sequence(self):
+    return sorted(self.optimizers.itervalues(), key=lambda o: o.priority)
 
   def init_registers(self):
     '''Initialize table of register names'''
@@ -680,7 +884,9 @@ class Assembler(object):
       s.in_use = True
 
     return strings
-    
+
+  def add_optimizer(self, opt):
+    self.optimizers[opt.name] = opt
 
   def preprocess_with_m4(self, source_file):
     '''Determine if file should be preprocessed for m4 macros and generate
@@ -1154,7 +1360,7 @@ class Assembler(object):
     return self.raw_assemble(slist, 0, bounds_check)
 
 
-  def raw_assemble(self, slist, start_address=0, bounds_check=True):
+  def raw_assemble(self, slist, start_address=0, bounds_check=True, optimize=True):
     '''Generate assembled instructions from a raw statement list'''
     cur_addr = start_address
     self.default_jump = None
@@ -1464,72 +1670,21 @@ class Assembler(object):
 
       instructions.append(s)
 
-
-    # Pass 4: Find continuous blocks of labeled load&return instructions
-    if self.config.use_pb6 and self.config.use_static_analysis:
-      cur_label = None
-      prev_jump = None
-      for s in instructions:
-        if s.label is not None:
-          cur_label = s.xlabel
-          prev_jump = None
-        
-        unconditional_jump = s.command == 'jump' and s.arg2 is None
-
-        # Mark l&r for preservation if its associated label is referenced by other code
-        # Mark two or more consecutive unconditional jumps for preservation as part of a jump table
-        if s.command == 'load&return' or (unconditional_jump and prev_jump):
-          if cur_label is not None and self.labels[cur_label].in_use:
-            if 'keep' not in s.tags:
-              s.tags['keep_auto'] = (True,)
-              
-              # Mark this as the (possible) end of a jump table and flag it for preservation
-              if unconditional_jump: # and s.arg1 in self.labels:
-                s.tags['jump_table_end'] = (True,)
-                s.tags['keep'] = (True,) # For jump table instructions we need to tag with 'keep'
-                del s.tags['keep_auto']
-
-                # Mark previous jump as part of a jump table and flag it for preservation
-                if 'jump_table_end' in prev_jump.tags: del prev_jump.tags['jump_table_end']
-                prev_jump.tags['jump_table'] = (True,)
-                prev_jump.tags['keep'] = (True,) # For jump table instructions we need to tag with 'keep'
-
-        elif s.is_instruction() and not unconditional_jump: cur_label = None
-        
-        # Remember previous jump instruction to identify jump tables
-        if unconditional_jump:
-          prev_jump = s
-        elif s.is_instruction():
-          prev_jump = None
-
-    # Apply keep_auto to INST directives
-    if self.config.use_static_analysis:
-      for s in instructions:
-        if s.command == 'inst' and 'keep' not in s.tags:
-          s.tags['keep_auto'] = (True,)
-
-
     # Create default jump instruction
-    if self.default_jump is None:
+    if self.default_jump is None: # Fill with 0's by default
       self.default_jump = 0
-    else:
+    else: # Fill with jump instructions
       self.default_jump = self.op_info['opcodes']['jump'] + self.default_jump
+
+
+    # Run optimizers
+    if optimize and len(self.optimizers) > 0:
+      self._print(_('\n  Beginning optimizations...\n'))
+      for opt in self.optimizer_sequence:
+        instructions = opt.apply(self, instructions)
 
     return instructions
 
-
-  def remove_dead_code(self, assembled_code):
-    '''Mark unreachable code for removal'''
-    for s in assembled_code:
-      if s.removable():
-        s.comment = _('REMOVED: ') + s.format().lstrip()
-        s.command = None
-        if s.label is not None:
-          if s.xlabel in self.labels:
-            del self.labels[s.xlabel]
-            self.removed_labels.add(s.xlabel)
-          s.label = None
-          s.xlabel = None
 
   def _print(self, *args, **keys):
     flush = False
@@ -1558,39 +1713,9 @@ class Assembler(object):
     # Assemble program
     self._print(_('\n  Assembling code... '), flush=True)
 
-    assembled_code = self.assemble(bounds_check=not self.config.remove_dead_code)
-
-    dead_instructions = None
-    entry_points = None
-    if self.config.use_static_analysis:
-      self._print(_('\n  Beginning optimizations...\n'))
-      # Run static analysis
-      self._print(_('  Static analysis: searching for dead code... '), end='')
-      entry_points = set((self.default_jump & 0xFFF, 0))
-      entry_points |= set(self.config.entry_point)
-      find_dead_code(assembled_code, entry_points)
-      self._print(success(_('COMPLETE')))
-
-      if self.command_line_mode:
-        # Summarize analysis
-        self._print(_('    Entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
-          sorted(entry_points)]))
-        dead_instructions = len([s for s in assembled_code if s.removable()])
-        self._print(_('    {} dead instructions found').format(dead_instructions))
-
-
-    if self.config.remove_dead_code:
-      self.remove_dead_code(assembled_code) # FIXME: move into optimizer
-
-      # Reinitialize registers to default names
-      self.init_registers()
-
-      self._print(_('  Removing dead code... '), end='')
-      # Reassemble code with dead code removed
-      assembled_code = self.raw_assemble(assembled_code)
-
-      self._print(success(_('COMPLETE')))
-
+    remove_dead_code = 'dead_code' in self.optimizers
+    # Skip bounds check on first assemble if dead code removal is in use
+    assembled_code = self.assemble(bounds_check=not remove_dead_code)
 
     # Verify that no instructions have been assigned to the same address
     instructions = [s for s in assembled_code if s.is_instruction()]
@@ -1607,8 +1732,6 @@ class Assembler(object):
     self._print('  ' + success(_('SUCCESS') + '\n'))
 
     self.assembled_code = assembled_code
-    self.dead_instructions = dead_instructions # FIXME: move into optimizer
-    self.entry_points = entry_points
     self.valid_asm = True
 
   def code_stats(self):
@@ -1736,24 +1859,23 @@ class Assembler(object):
       printf(_('  Memory locations available:'), self.config.mem_size - self.stats['inst_count'])
       printf(_('  Scratchpad size:'), self.config.scratch_size)
 
-      if self.dead_instructions is not None:
+      if len(self.optimizers) > 0:
         printf('\n\n' + underline(_('Optimizations')))
-        printf(_('  Static analysis:\n    Dead instructions {}: {}').format( \
-          _('removed') if self.config.remove_dead_code else _('found'), self.dead_instructions))
-        printf(_('    Analyzed entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
-          sorted(self.entry_points)]))
 
+      for opt in self.optimizer_sequence:
+          opt.summary(printf)
 
       printf('\n\n' + underline(_('Assembly listing')))
+      use_static_analysis = 'static' in self.optimizers
       for s in self.assembled_code:
-        printf(s.format(show_addr=True, show_dead=self.config.use_static_analysis, colorize=colorize))
+        printf(s.format(show_addr=True, show_dead=use_static_analysis, colorize=colorize))
 
       if self.default_jump is None or self.default_jump == 0:
         # Decoding of "all zeros" instruction varies between processors
         zero_instr = 'LOAD s0, s0' if self.config.use_pb6 else 'LOAD s0, 00'
         printf(_('\nAll unused memory locations contain zero (equivalent to "{}")'.format(zero_instr)))
       else:
-        printf(_('\nAll unused memory locations contain a DEFAULT_JUMP to {:03X}').format(asm.default_jump & 0xFFF))
+        printf(_('\nAll unused memory locations contain a DEFAULT_JUMP to {:03X}').format(self.default_jump & 0xFFF))
 
       printf('\n\n' + underline(_('PSM files that have been assembled')))
       for f in self.sources.iterkeys():
@@ -2018,76 +2140,6 @@ def parse_command_line():
     options.m4_defines = \
       {t[0]:t[1] if len(t) == 2 else None for t in (d.split('=') for d in options.m4_defines)}
   return options
-
-
-def find_dead_code(assembled_code, entry_points):
-  '''Perform dead code analysis'''
-  # FIXME: move into optimizer
-  itable = build_instruction_table(assembled_code)
-  analyze_code_reachability(assembled_code, itable, entry_points)
-  analyze_recursive_keeps(assembled_code, itable)
-
-
-def build_instruction_table(slist):
-  '''Build index of all instruction statements by address'''
-  itable = {}
-  for s in slist:
-    if s.is_instruction():
-      itable[s.address] = s
-
-  return itable
-
-
-def analyze_code_reachability(slist, itable, entry_points):
-  '''Scan assembled statements for reachability'''
-
-  addresses = set(entry_points)
-  addresses.add(0)
-
-  find_reachability(addresses, itable)
-
-
-def analyze_recursive_keeps(slist, itable):
-  '''Scan assembled statements for reachability'''
-
-  for s in slist:
-    if s.is_instruction() and 'keep' in s.tags:
-      find_reachability((s.address,), itable, follow_keeps=True)
-
-
-def find_reachability(addresses, itable, follow_keeps=False):
-  '''Recursive function that follows graph of executable statements to determine
-     reachability'''
-  for a in addresses:
-    while a in itable:
-      s = itable[a]
-      if s.reachable: break # Skip statements already visited
-      if follow_keeps and 'keep_auto' in s.tags: break
-
-      if s.is_instruction():
-        if not follow_keeps:
-          s.reachable = True
-        elif 'keep' not in s.tags:
-          s.tags['keep_auto'] = (True,)
-          
-        # Stop on unconditional return, returni, load&return, and jump@ instructions
-        if s.command in ('returni', 'load&return', 'jump@') or \
-           (s.command == 'return' and s.arg1 is None):
-          break
-
-        # Follow branch address for jump and call
-        if s.command in ('jump', 'call'):
-          if not follow_keeps or (s.immediate in itable and 'keep' not in itable[s.immediate].tags):
-            find_reachability((s.immediate,), itable, follow_keeps)
-
-          # Stop on unconditional jump
-          # Only 1 argument -> unconditional
-          if s.command == 'jump' and s.arg2 is None and 'jump_table' not in s.tags:
-            break
-
-      # Continue with next instruction if it exists
-      a += 1
-
 
 
 def parse_pragma(comment):
@@ -2586,6 +2638,13 @@ def main():
   # Assemble the code
   asm = Assembler(options.input_file, options)
   asm.command_line_mode = True
+
+  if options.report_dead_code or options.remove_dead_code:
+    asm.add_optimizer(StaticAnalyzer())
+
+  if options.remove_dead_code:
+    asm.add_optimizer(DeadCodeRemover())
+
 
   try:
     assembled_code = asm.assemble_all()
