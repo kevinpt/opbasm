@@ -547,6 +547,7 @@ def find_standard_m4_macros():
 
 class Optimizer(object):
   name = ''
+  requires = []
 
   def __init__(self):
     self.priority = 10
@@ -557,8 +558,19 @@ class Optimizer(object):
   def summary(self, printf):
     pass
 
+  def register(self, asm):
+    # Register this optimizer
+    asm.optimizers[self.name] = self
+
+    # Register any other required optimizers recursively
+    for opt_class in self.requires:
+      opt = opt_class()
+      if opt.name not in asm.optimizers:
+        opt.register(asm)
+
 
 class StaticAnalyzer(Optimizer):
+  '''Analyzes code for reachability by statically tracing execution paths'''
   name = 'static'
 
   def __init__(self):
@@ -593,7 +605,7 @@ class StaticAnalyzer(Optimizer):
   def keep_instructions(self, asm, assembled_code):
     '''Mark instructions we want to automatically keep'''
     # Find continuous blocks of labeled load&return instructions
-    if asm.config.use_pb6:
+    if asm.config.target_arch == 'pb6':
       cur_label = None
       prev_jump = None
       for s in assembled_code:
@@ -712,22 +724,27 @@ class StaticAnalyzer(Optimizer):
 
 
 class DeadCodeRemover(Optimizer):
+  '''Removes instructions marked as dead'''
   name = 'dead_code'
+  requires = [StaticAnalyzer]
 
   def __init__(self):
     self.priority = 60
+    self.removed = 0
 
   def apply(self, asm, assembled_code):
+    self.removed = 0
     self.remove_dead_code(asm, assembled_code)
 
-    # Reinitialize registers to default names
-    asm.init_registers()
+    if self.removed > 0:
+      # Reinitialize registers to default names
+      asm.init_registers()
 
-    asm._print(_('  Dead code removal: '), end='')
-    # Reassemble code with dead code removed
-    assembled_code = asm.raw_assemble(assembled_code, optimize = False)
+      asm._print(_('  Dead code removal: '), end='')
+      # Reassemble code with dead code removed
+      assembled_code = asm.raw_assemble(assembled_code, optimize = False)
 
-    asm._print(success(_('COMPLETE')))
+      asm._print(success(_('COMPLETE')))
 
     return assembled_code
 
@@ -736,8 +753,12 @@ class DeadCodeRemover(Optimizer):
     '''Mark unreachable code for removal'''
     for s in assembled_code:
       if s.removable():
+        # Convert the old instruction into a comment
         s.comment = _('REMOVED: ') + s.format().lstrip()
         s.command = None
+        self.removed += 1
+
+        # Track any removed labels
         if s.label is not None:
           if s.xlabel in self.labels:
             del asm.labels[s.xlabel]
@@ -746,8 +767,10 @@ class DeadCodeRemover(Optimizer):
           s.xlabel = None
 
   def summary(self, printf):
-    printf(_('  Dead code removal: Applied'))
+    printf(_('  Dead code removal: {}'.format(_('Applied') if self.removed > 0 else _('None'))))
 
+
+_all_optimizers = set([StaticAnalyzer, DeadCodeRemover])
 
 
 class AssemblerConfig(object):
@@ -755,10 +778,11 @@ class AssemblerConfig(object):
     # Set defaults
     self.mem_size = 1024
     self.scratch_size = 0
-    self.use_pb6 = True
+    self.target_arch = 'pb6'
     self.use_m4 = False
     self.m4_defines = {}
     self.debug_preproc = None
+    self.optimize_level = 0
     self.output_dir = '.'
     self.entry_point = [0x3FF]
     self.verbose = False
@@ -770,10 +794,11 @@ class AssemblerConfig(object):
   def config(self, options):
     self.mem_size = options.mem_size
     self.scratch_size = options.scratch_size
-    self.use_pb6 = options.use_pb6
+    self.target_arch = options.target_arch
     self.use_m4 = options.use_m4
     self.m4_defines = options.m4_defines
     self.debug_preproc = options.debug_preproc
+    self.optimize_level = options.optimize_level
     self.output_dir = options.output_dir
     self.entry_point = options.entry_point
     self.verbose = options.verbose
@@ -804,7 +829,7 @@ class Assembler(object):
     self.sources = {}
     self.default_jump = None
 
-    self.op_info = get_op_info(self.config.use_pb6)
+    self.op_info = get_op_info(self.config.target_arch == 'pb6') # FIXME: Make more general
     self.upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
     
     self.line_index = {}
@@ -815,6 +840,12 @@ class Assembler(object):
     self.valid_asm = False
     self._mmap = None
     self._stats = None
+
+    # Configure optimizers implied by optimization level
+    for opt_class in _all_optimizers:
+      opt = opt_class()
+      if opt.priority < self.config.optimize_level * 100:
+        self.add_optimizer(opt)
 
   @property
   def mmap(self):
@@ -886,7 +917,7 @@ class Assembler(object):
     return strings
 
   def add_optimizer(self, opt):
-    self.optimizers[opt.name] = opt
+    opt.register(self)
 
   def preprocess_with_m4(self, source_file):
     '''Determine if file should be preprocessed for m4 macros and generate
@@ -900,7 +931,8 @@ class Assembler(object):
 
     # Look for common picoblaze.m4 macro definitions
     macro_defs = find_standard_m4_macros()
-    proc_mode = 'PB6' if self.config.use_pb6 else 'PB3' # Definition for active processor type
+    #FIXME: Make more general
+    proc_mode = 'PB6' if self.config.target_arch == 'pb6' else 'PB3' # Definition for active processor type
 
     # Preprocess C-style syntax
     pure_m4 = self.preprocess_c_style(source_file)
@@ -1422,7 +1454,7 @@ class Assembler(object):
         # Verify instruction is valid
         if s.command not in self.op_info['opcodes']:
           raise StatementError(s, _('Invalid PicoBlaze-{} instruction:').format( \
-            6 if self.config.use_pb6 else 3), s.command)
+            6 if self.config.target_arch == 'pb6' else 3), s.command)
 
         s.opcode = self.op_info['opcodes'][s.command] # Set base opcode
 
@@ -1849,7 +1881,7 @@ class Assembler(object):
       printf(_('Open PicoBlaze Assembler log for program "{}"').format(self.top_source_file))
       printf(_('Generated by opbasm v{}').format(__version__))
       printf(_('  Assembled on {}').format(self.timestamp.isoformat()))
-      printf(_('  PicoBlaze-{} mode\n').format(6 if self.config.use_pb6 else 3))
+      printf(_('  PicoBlaze-{} mode\n').format(6 if self.config.target_arch == 'pb6' else 3))
 
       printf(_('  Last occupied address: {:03X} hex').format(self.stats['last_addr']))
       printf(_('  Nominal program memory size: {}K ({})  address({}:0)').format( \
@@ -1872,7 +1904,7 @@ class Assembler(object):
 
       if self.default_jump is None or self.default_jump == 0:
         # Decoding of "all zeros" instruction varies between processors
-        zero_instr = 'LOAD s0, s0' if self.config.use_pb6 else 'LOAD s0, 00'
+        zero_instr = 'LOAD s0, s0' if self.config.target_arch == 'pb6' else 'LOAD s0, 00'
         printf(_('\nAll unused memory locations contain zero (equivalent to "{}")'.format(zero_instr)))
       else:
         printf(_('\nAll unused memory locations contain a DEFAULT_JUMP to {:03X}').format(self.default_jump & 0xFFF))
@@ -2066,7 +2098,8 @@ def parse_command_line():
         help=_('Write MIF in place of MEM file'))
   parser.add_option('-o', '--outdir', dest='output_dir', default='.', help=_('Output directory'))
 
-
+  parser.add_option('-O', '--optimize', dest='optimize_level', action='store', \
+        default=0, type=int, help=_('Optimization level'))
   parser.add_option('-d', '--report-dead-code', dest='report_dead_code', action='store_true', \
         default=False, help=_('Perform dead code analysis shown in log file'))
   parser.add_option('-r', '--remove-dead-code', dest='remove_dead_code', action='store_true', \
@@ -2139,6 +2172,7 @@ def parse_command_line():
     # Convert m4 definitions into a dict
     options.m4_defines = \
       {t[0]:t[1] if len(t) == 2 else None for t in (d.split('=') for d in options.m4_defines)}
+
   return options
 
 
@@ -2569,8 +2603,22 @@ def main():
   '''Main application code'''
   options = parse_command_line()
   
+  # Convert options into assembler config
+  config = AssemblerConfig()
+  config.mem_size = options.mem_size
+  config.scratch_size = options.scratch_size
+  config.target_arch = 'pb6' if options.use_pb6 else 'pb3'
+  config.use_m4 = options.use_m4
+  config.m4_defines = options.m4_defines
+  config.debug_preproc = options.debug_preproc
+  config.optimize_level = options.optimize_level
+  config.output_dir = options.output_dir
+  config.entry_point = options.entry_point
+  config.verbose = options.verbose
+  config.quiet = options.quiet
+
   def printq(*args, **keys):
-    if not options.quiet: print(*args, **keys)
+    if not config.quiet: print(*args, **keys)
 
   printq(note(_('OPBASM - Open PicoBlaze Assembler {}').format(__version__)))
 
@@ -2592,11 +2640,11 @@ def main():
     sys.exit(0)
 
   if options.hex_output:
-    hex_mem_file = build_path(options.output_dir, options.module_name + '.hex')
+    hex_mem_file = build_path(config.output_dir, options.module_name + '.hex')
   elif options.mif_output:
-    hex_mem_file = build_path(options.output_dir, options.module_name + '.mif')
+    hex_mem_file = build_path(config.output_dir, options.module_name + '.mif')
   else:
-    hex_mem_file = build_path(options.output_dir, options.module_name + '.mem')
+    hex_mem_file = build_path(config.output_dir, options.module_name + '.mem')
 
   try:
     templates = find_templates(options.template_file)
@@ -2612,13 +2660,13 @@ def main():
     vhdl_ext = '.vhdl'
 
   # Convert template values into tuples
-  vhdl_file = build_path(options.output_dir, options.module_name + vhdl_ext)
-  verilog_file = build_path(options.output_dir, options.module_name + '.v')
+  vhdl_file = build_path(config.output_dir, options.module_name + vhdl_ext)
+  verilog_file = build_path(config.output_dir, options.module_name + '.v')
 
   for hdl in templates.iterkeys():
     templates[hdl] = (templates[hdl], vhdl_file if hdl == 'vhdl' else verilog_file)
 
-  log_file = build_path(options.output_dir, options.module_name + '.log')
+  log_file = build_path(config.output_dir, options.module_name + '.log')
 
   
   if options.input_file == '-': # Ensure a module name was provided
@@ -2628,15 +2676,15 @@ def main():
     if not os.path.exists(options.input_file):
       asm_error(_('Input file not found'), exit=1)
     
-  mode = _('Running in PicoBlaze-{} mode').format(6 if options.use_pb6 else 3)
+  mode = _('Running in PicoBlaze-{} mode').format(6 if config.target_arch == 'pb6' else 3)
   m = re.match('(^.*)(PicoBlaze-[0-9])(.*$)', mode)
   printq(note(m.group(1)) + success(m.group(2)) + note(m.group(3)))
 
   printq(_('  Device configuration:\n    Memory size: {}, Scratchpad size: {}\n').format(\
-    options.mem_size, options.scratch_size))
+    config.mem_size, config.scratch_size))
 
   # Assemble the code
-  asm = Assembler(options.input_file, options)
+  asm = Assembler(options.input_file, config)
   asm.command_line_mode = True
 
   if options.report_dead_code or options.remove_dead_code:
@@ -2673,8 +2721,8 @@ def main():
 
   field_size = 19
 
-  if options.debug_preproc:
-    printq('{:>{}}'.format(_('preprocessor:'), field_size), options.debug_preproc)
+  if config.debug_preproc:
+    printq('{:>{}}'.format(_('preprocessor:'), field_size), config.debug_preproc)
 
   if options.hex_output:
     asm.write_hex_file(hex_mem_file)
@@ -2695,7 +2743,7 @@ def main():
   except FatalError, e:
     asm_error(str(e), exit=1)
 
-  asm.write_formatted_source(options.output_dir)
+  asm.write_formatted_source(config.output_dir)
 
   sys.exit(0 if asm.valid_asm else 1)
 
