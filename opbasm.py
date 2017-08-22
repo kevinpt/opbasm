@@ -137,15 +137,21 @@ class StatementError(FatalError):
       return '{}'.format(self.args)
 
 
+class DeviceArch(object):
+  def __init__(self):
+    self.name = ''
+    self.short_name = ''
 
-def get_op_info(use_pb6):
-  '''Generate a dict of opcode info for each PicoBlaze target'''
-  op_info = {}
+class DevicePb3(DeviceArch):
+  def __init__(self):
+    self.name = 'PicoBlaze-3'
+    self.short_name = 'pb3'
 
-  if not use_pb6:
-    op_info['has_string_table_support'] = False
+    self.has_string_table_support = False
 
-    op_info['opcodes'] = { \
+    self.zero_instr = 'LOAD s0, 00'
+
+    self.opcodes = { \
       'add': 0x18000, 'addcy': 0x1a000, 'and': 0x0a000, 'call': 0x30000, \
       'compare': 0x14000, 'disable': 0x3c000, 'enable': 0x3c001,
       'fetch': 0x06000, 'input': 0x04000, 'jump': 0x34000, \
@@ -158,30 +164,36 @@ def get_op_info(use_pb6):
       'inst': 0x00000 \
     }
 
-    op_info['flag_opcodes'] = set(('call', 'jump', 'return'))
-    op_info['flag_codes'] = {
+    self.flag_opcodes = set(('call', 'jump', 'return'))
+    self.flag_codes = {
       'c' : 0x1800,
       'nc': 0x1c00,
       'z' : 0x1000,
       'nz': 0x1400
     }
-    op_info['return_flag_codes'] = op_info['flag_codes']
+    self.return_flag_codes = self.flag_codes
 
-    op_info['addr_opcodes'] = set(('call', 'jump'))
+    self.addr_opcodes = set(('call', 'jump'))
 
-    op_info['one_reg_opcodes'] = set(('rl', 'rr', 'sl0', 'sl1', 'sla', 'slx', 'sr0', 'sr1', 'sra', 'srx'))
+    self.one_reg_opcodes = set(('rl', 'rr', 'sl0', 'sl1', 'sla', 'slx', 'sr0', 'sr1', 'sra', 'srx'))
 
-    op_info['two_reg_opcodes'] = set(('add', 'addcy', 'and', 'compare', 'fetch', 'input', \
+    self.two_reg_opcodes = set(('add', 'addcy', 'and', 'compare', 'fetch', 'input', \
       'load', 'or', 'output', 'store', 'sub', 'subcy', 'test', 'xor'))
-    op_info['two_reg_op_offset'] = 0x1000
+    self.two_reg_op_offset = 0x1000
 
-    op_info['directives'] = set(('address', 'constant', 'namereg', \
+    self.directives = set(('address', 'constant', 'namereg', \
         'include', 'default_jump'))
 
-  else: # PicoBlaze-6
-    op_info['has_string_table_support'] = True
+class DevicePb6(DeviceArch):
+  def __init__(self):
+    self.name = 'PicoBlaze-6'
+    self.short_name = 'pb6'
 
-    op_info['opcodes'] = { \
+    self.has_string_table_support = True
+
+    self.zero_instr = 'LOAD s0, s0'
+
+    self.opcodes = { \
       'add': 0x11000, 'addcy': 0x13000, 'and': 0x03000, 'call': 0x20000, \
       'compare': 0x1d000, 'disable': 0x28000, 'enable': 0x28001,
       'fetch': 0x0b000, 'input': 0x09000, 'jump': 0x22000, \
@@ -198,8 +210,8 @@ def get_op_info(use_pb6):
       'testcy': 0x0f000, 'inst': 0x00000 \
     }
 
-    op_info['flag_opcodes'] = set(('call', 'jump', 'return'))
-    op_info['flag_codes'] = {
+    self.flag_opcodes = set(('call', 'jump', 'return'))
+    self.flag_codes = {
       'c' : 0x18000,
       'nc': 0x1c000,
       'z' : 0x10000,
@@ -207,28 +219,25 @@ def get_op_info(use_pb6):
     }
 
     # PicoBlaze-6 uses inconsistent offsets for the conditional return instructions
-    op_info['return_flag_codes'] = {
+    self.return_flag_codes = {
       'c' : 0x14000,
       'nc': 0x18000,
       'z' : 0x0c000,
       'nz': 0x10000
     }
 
-    op_info['addr_opcodes'] = set(('call', 'jump'))
+    self.addr_opcodes = set(('call', 'jump'))
 
-    op_info['one_reg_opcodes'] = set(('rl', 'rr', 'sl0', 'sl1', 'sla', 'slx', 'sr0', 'sr1', 'sra', 'srx', \
+    self.one_reg_opcodes = set(('rl', 'rr', 'sl0', 'sl1', 'sla', 'slx', 'sr0', 'sr1', 'sra', 'srx', \
       'hwbuild'))
 
-    op_info['two_reg_opcodes'] = set(('add', 'addcy', 'and', 'compare', 'fetch', 'input', \
+    self.two_reg_opcodes = set(('add', 'addcy', 'and', 'compare', 'fetch', 'input', \
       'load', 'or', 'output', 'store', 'sub', 'subcy', 'test', 'xor', \
       'comparecy', 'testcy'))
-    op_info['two_reg_op_offset'] = -0x1000
+    self.two_reg_op_offset = -0x1000
 
-    op_info['directives'] = set(('address', 'constant', 'namereg', \
+    self.directives = set(('address', 'constant', 'namereg', \
         'include', 'default_jump', 'string', 'table'))
-
-  return op_info
-
 
 
 def fail(s, loc, tokens):
@@ -503,8 +512,7 @@ class Symbol(object):
       return self._val_text
 
 
-
-def parse_lines(lines, op_info, source_file, index):
+def parse_lines(lines, source_file, index):
   '''Parse a list of text lines into Statement objects'''
 
   statements = []
@@ -605,7 +613,7 @@ class StaticAnalyzer(Optimizer):
   def keep_instructions(self, asm, assembled_code):
     '''Mark instructions we want to automatically keep'''
     # Find continuous blocks of labeled load&return instructions
-    if asm.config.target_arch == 'pb6':
+    if asm.config.target_arch.has_string_table_support: # PB6 load&return depends on string/table
       cur_label = None
       prev_jump = None
       for s in assembled_code:
@@ -778,7 +786,7 @@ class AssemblerConfig(object):
     # Set defaults
     self.mem_size = 1024
     self.scratch_size = 0
-    self.target_arch = 'pb6'
+    self.target_arch = DevicePb6()
     self.use_m4 = False
     self.m4_defines = {}
     self.debug_preproc = None
@@ -829,7 +837,6 @@ class Assembler(object):
     self.sources = {}
     self.default_jump = None
 
-    self.op_info = get_op_info(self.config.target_arch == 'pb6') # FIXME: Make more general
     self.upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
     
     self.line_index = {}
@@ -931,8 +938,8 @@ class Assembler(object):
 
     # Look for common picoblaze.m4 macro definitions
     macro_defs = find_standard_m4_macros()
-    #FIXME: Make more general
-    proc_mode = 'PB6' if self.config.target_arch == 'pb6' else 'PB3' # Definition for active processor type
+
+    proc_mode = self.config.target_arch.short_name.upper() # Definition for active processor type
 
     # Preprocess C-style syntax
     pure_m4 = self.preprocess_c_style(source_file)
@@ -1132,7 +1139,7 @@ class Assembler(object):
 
 
     index = self.line_index[source_file] if source_file in self.line_index else None
-    slist = parse_lines(source, self.op_info, source_file, index)
+    slist = parse_lines(source, source_file, index)
     self.sources[source_file] = slist
 
     # Scan for include directives
@@ -1452,26 +1459,26 @@ class Assembler(object):
 
       if s.is_instruction():
         # Verify instruction is valid
-        if s.command not in self.op_info['opcodes']:
-          raise StatementError(s, _('Invalid PicoBlaze-{} instruction:').format( \
-            6 if self.config.target_arch == 'pb6' else 3), s.command)
+        if s.command not in self.config.target_arch.opcodes:
+          raise StatementError(s, _('Invalid {} instruction:').format( \
+            self.config.target_arch.name), s.command)
 
-        s.opcode = self.op_info['opcodes'][s.command] # Set base opcode
+        s.opcode = self.config.target_arch.opcodes[s.command] # Set base opcode
 
-        if s.command in self.op_info['flag_opcodes']:
+        if s.command in self.config.target_arch.flag_opcodes:
           # Check if first argument is a flag
           addr_label = s.arg1
           if s.arg1 is not None:
             if s.command == 'return':
-              flag_codes = self.op_info['return_flag_codes']
+              flag_codes = self.config.target_arch.return_flag_codes
             else:
-              flag_codes = self.op_info['flag_codes']
+              flag_codes = self.config.target_arch.flag_codes
 
             if s.arg1.lower() in flag_codes:
               s.opcode += flag_codes[s.arg1.lower()]
               addr_label = s.arg2
 
-          if s.command in self.op_info['addr_opcodes']: # Include address for call and jump
+          if s.command in self.config.target_arch.addr_opcodes: # Include address for call and jump
             if addr_label is None:
               raise StatementError(s, _('Missing address'))
 
@@ -1481,7 +1488,7 @@ class Assembler(object):
             if bounds_check and s.immediate >= self.config.mem_size:
               raise StatementError(s, _('Out of range address'))
 
-        elif s.command in self.op_info['one_reg_opcodes']:
+        elif s.command in self.config.target_arch.one_reg_opcodes:
           if s.arg1 is None:
             raise StatementError(s, _('Missing operand'))
           if s.arg2 is not None:
@@ -1491,7 +1498,7 @@ class Assembler(object):
           if s.regx is None:
             raise StatementError(s, _('Invalid register:'), s.arg1)
 
-        elif s.command in self.op_info['two_reg_opcodes']:
+        elif s.command in self.config.target_arch.two_reg_opcodes:
           if s.arg1 is None or s.arg2 is None:
             raise StatementError(s, _('Missing operand'))
 
@@ -1501,7 +1508,7 @@ class Assembler(object):
 
           s.regy = self.get_register(s.arg2)
           if s.regy is not None: # Using y register opcode
-            s.opcode += self.op_info['two_reg_op_offset'] # Adjust opcode
+            s.opcode += self.config.target_arch.two_reg_op_offset # Adjust opcode
 
           else: # The second arg was not a register
             s.regy = 0
@@ -1653,7 +1660,7 @@ class Assembler(object):
 
           s.regy = self.get_register(s.arg2)
           if s.regy is not None: # Using y register opcode
-            s.opcode += self.op_info['two_reg_op_offset'] # Adjust opcode
+            s.opcode += self.config.target_arch.two_reg_op_offset # Adjust opcode
 
           else: # The second arg was not a register
             s.regy = 0
@@ -1706,7 +1713,7 @@ class Assembler(object):
     if self.default_jump is None: # Fill with 0's by default
       self.default_jump = 0
     else: # Fill with jump instructions
-      self.default_jump = self.op_info['opcodes']['jump'] + self.default_jump
+      self.default_jump = self.config.target_arch.opcodes['jump'] + self.default_jump
 
 
     # Run optimizers
@@ -1797,7 +1804,7 @@ class Assembler(object):
 
   def instruction_usage(self):
     '''Analyze assembled code to determine instruction histogram'''
-    usage = dict((k, 0) for k in self.op_info['opcodes'].iterkeys())
+    usage = dict((k, 0) for k in self.config.target_arch.opcodes.iterkeys())
     del usage['inst'] # Not a real opcode
 
     for s in self.assembled_code:
@@ -1881,7 +1888,7 @@ class Assembler(object):
       printf(_('Open PicoBlaze Assembler log for program "{}"').format(self.top_source_file))
       printf(_('Generated by opbasm v{}').format(__version__))
       printf(_('  Assembled on {}').format(self.timestamp.isoformat()))
-      printf(_('  PicoBlaze-{} mode\n').format(6 if self.config.target_arch == 'pb6' else 3))
+      printf(_('  {} mode\n').format(self.config.target_arch.name))
 
       printf(_('  Last occupied address: {:03X} hex').format(self.stats['last_addr']))
       printf(_('  Nominal program memory size: {}K ({})  address({}:0)').format( \
@@ -1904,8 +1911,8 @@ class Assembler(object):
 
       if self.default_jump is None or self.default_jump == 0:
         # Decoding of "all zeros" instruction varies between processors
-        zero_instr = 'LOAD s0, s0' if self.config.target_arch == 'pb6' else 'LOAD s0, 00'
-        printf(_('\nAll unused memory locations contain zero (equivalent to "{}")'.format(zero_instr)))
+        printf(_('\nAll unused memory locations contain zero (equivalent to "{}")'.format(\
+        self.config.target_arch.zero_instr)))
       else:
         printf(_('\nAll unused memory locations contain a DEFAULT_JUMP to {:03X}').format(self.default_jump & 0xFFF))
 
@@ -2607,7 +2614,7 @@ def main():
   config = AssemblerConfig()
   config.mem_size = options.mem_size
   config.scratch_size = options.scratch_size
-  config.target_arch = 'pb6' if options.use_pb6 else 'pb3'
+  config.target_arch = DevicePb6() if options.use_pb6 else DevicePb3()
   config.use_m4 = options.use_m4
   config.m4_defines = options.m4_defines
   config.debug_preproc = options.debug_preproc
@@ -2676,7 +2683,7 @@ def main():
     if not os.path.exists(options.input_file):
       asm_error(_('Input file not found'), exit=1)
     
-  mode = _('Running in PicoBlaze-{} mode').format(6 if config.target_arch == 'pb6' else 3)
+  mode = _('Running in {} mode').format(config.target_arch.name)
   m = re.match('(^.*)(PicoBlaze-[0-9])(.*$)', mode)
   printq(note(m.group(1)) + success(m.group(2)) + note(m.group(3)))
 
