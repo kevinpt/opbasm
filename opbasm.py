@@ -371,7 +371,8 @@ class Statement(object):
     self.immediate = 0
 
     # Dead code analysis flags
-    self.reachable = False
+    self.reachable = False  # FIXME: Make more general
+    self.refline = None
 
     self.tags = {}
 
@@ -417,7 +418,7 @@ class Statement(object):
 
   re_ansi_strip = re.compile(r'\x1b[^m]*m')
 
-  def format(self, upper=True, show_addr=False, show_dead=False, colorize=False):
+  def format(self, upper=True, show_addr=False, show_dead=False, show_reflines=False, colorize=False):
     '''Generate a formatted string for the statement
     upper : Upper case instructions and directives
     show_addr : Include assembled memory address and machine word
@@ -466,6 +467,8 @@ class Statement(object):
     else:
       addr = ''
 
+    refline = self.refline if show_reflines else ''
+
     if colorize:
       if len(comment) > 0:
         comment = success(comment) # green text
@@ -477,9 +480,9 @@ class Statement(object):
     label_width = 20 + len(label) - len(self.re_ansi_strip.sub('', label))
 
     if len(inst) > 0:
-      return '{} {:>{}} {:30} {}'.format(addr, label, label_width, inst, comment).rstrip()
+      return '{} {}{:>{}} {:30} {}'.format(addr, refline, label, label_width, inst, comment).rstrip()
     else:
-      return '{} {:>{}} {}'.format(addr, label, label_width, comment).rstrip()
+      return '{} {}{:>{}} {}'.format(addr, refline, label, label_width, comment).rstrip()
 
   @property
   def error_line(self):
@@ -1289,12 +1292,12 @@ class Assembler(object):
       return addr_label
 
 
-  def get_address(self, addr_label):
+  def get_address(self, addr_label, track_usage=True):
     '''Lookup the address assigned to addr_label'''
 
     xlabel = self.expand_label(addr_label)
 
-    if xlabel in self.labels:
+    if xlabel in self.labels and track_usage:
       self.labels[xlabel].in_use = True
       return self.labels[xlabel].value
     else:
@@ -1876,7 +1879,7 @@ class Assembler(object):
       print('END;', file=fh)
 
 
-  def write_log_file(self, log_file, colorize):
+  def write_log_file(self, log_file, colorize, show_reflines=True, use_unicode=True):
     '''Write a log file with details of assembled code'''
     with io.open(log_file, 'w', encoding='utf-8') as fh:
 
@@ -1906,8 +1909,14 @@ class Assembler(object):
 
       printf('\n\n' + underline(_('Assembly listing')))
       use_static_analysis = 'static' in self.optimizers
+
+      if show_reflines:
+        # Generate call/jump graph
+        self.generate_refline_graph(use_unicode=use_unicode)
+
       for s in self.assembled_code:
-        printf(s.format(show_addr=True, show_dead=use_static_analysis, colorize=colorize))
+        printf(s.format(show_addr=True, show_dead=use_static_analysis, \
+          show_reflines=show_reflines, colorize=colorize))
 
       if self.default_jump is None or self.default_jump == 0:
         # Decoding of "all zeros" instruction varies between processors
@@ -2036,6 +2045,146 @@ class Assembler(object):
     self._print('')
 
 
+  def generate_refline_graph(self, min_cols=8, max_cols=8, use_unicode=True):
+    '''Draw a radare2 style refline graph for code listings'''
+
+    class ReflineArc(object):
+      def __init__(self, statement, index):
+        self.statement = statement
+        self.start = index
+        self.target = -1
+        self.column = -1
+
+      @property
+      def min(self):
+        return min(self.start, self.target)
+
+      @property
+      def max(self):
+        return max(self.start, self.target)
+
+      def __repr__(self):
+        return '{} -> {} ({}) col: {}  {}'.format(self.start, self.target, \
+          abs(self.start - self.target), self.column, self.statement.format())
+
+      def overlaps(self, j):
+        return not((self.max < j.min) or (j.max < self.min))
+
+    # Find all jump/call instructions
+    jumps = []
+    for ix, s in enumerate(self.assembled_code):
+      if s.command in ('jump', 'call'):
+        jumps.append((s, ix))
+
+    jumps = [ReflineArc(s, ix) for s, ix in jumps]
+
+    # Build index to map target addresses into output lines
+    target_index = {}
+    for ix, s in enumerate(self.assembled_code):
+      target_index[s.address] = ix
+
+    # Assign target indices for arcs
+    for p in jumps:
+      p.target = target_index[p.statement.immediate]
+
+    # Sort by span length and lowest address
+    # We want to prioritize the shortest spans by putting them in the rightmost column
+    # possible. This doesn't necessarily achieve the optimum packing but it is more visually
+    # pleasing and minimizes line crossings.
+    jumps = sorted(jumps, key=lambda j: (abs(j.start - j.target), j.min))
+
+    # Build map of occupied columns
+    columns = [[]]
+
+    # Assign each jump to a column
+    for j in jumps:
+      # Search for empty space for this jump
+      assigned = False
+      for col in columns:
+        clear = len(col) == 0 or (not any(j.overlaps(k) for k in col))
+        if clear: # Add this jump to the column
+          col.append(j)
+          assigned = True
+          break
+        # No space. Check next column...
+      if not assigned: # No space found. Make a new column
+        columns.append([j])
+
+    # Assign column numbers to each jump
+    for i, col in enumerate(columns):
+      for j in col:
+        # Merge leftmost columns if we have exceed the limit
+        j.column = i if i < max_cols-1 else max_cols-2
+
+
+    # Drawing characters to use
+    u_chars = {
+      'top_corner': '\u256d', # ╭
+      'bot_corner': '\u2570', # ╰
+      'hline': '\u2500',      # ─
+      'vline': '\u2502',      # │
+      'sarrow': '\u2919',     # ⤙
+      'earrow': '\u25b6',     # ▶
+      'top_tee': '\u252c',    # ┬
+      'bot_tee': '\u2534'     # ┴
+    }
+
+    a_chars = {
+      'top_corner': '.',
+      'bot_corner': '`',
+      'hline': '-',
+      'vline': '|',
+      'sarrow': '<',
+      'earrow': '>',
+      'top_tee': '+',
+      'bot_tee': '+'
+    }
+
+    chars = u_chars if use_unicode else a_chars
+
+    # Build char matrix for ASCII arcs
+    total_cols = min(max(min_cols, len(columns)), max_cols)
+
+    graph = [[' ']*total_cols for x in xrange(len(self.assembled_code))]
+    for j in jumps:
+      # Draw corners
+      graph[j.min][total_cols - 2 - j.column] = chars['top_corner']
+      graph[j.max][total_cols - 2 - j.column] = chars['bot_corner']
+
+      # Draw horizontal lines
+      for c in xrange(total_cols - 1 - j.column, total_cols):
+        min_cell = graph[j.min][c]
+        if min_cell == chars['top_corner']:
+          graph[j.min][c] = chars['top_tee'] # Add tee to merge with existing arc
+        elif min_cell == chars['bot_corner']:
+          graph[j.min][c] = chars['bot_tee'] # Add tee to merge with existing arc
+        elif min_cell == ' ':
+          graph[j.min][c] = chars['hline']
+
+        max_cell = graph[j.max][c]
+        if max_cell == chars['bot_corner']:
+          graph[j.max][c] = chars['bot_tee'] # Add tee to merge with existing arc
+        elif max_cell == chars['top_corner']:
+          graph[j.max][c] = chars['top_tee'] # Add tee to merge with existing arc
+        elif max_cell == ' ':
+          graph[j.max][c] = chars['hline']
+
+      # Draw direction arrows on right side
+      graph[j.start][total_cols-1] = chars['sarrow']
+      graph[j.target][total_cols-1] = chars['earrow']
+
+      # Draw vertical connections within a column
+      for v in xrange(j.min+1, j.max):
+        if graph[v][total_cols - 2 - j.column] == ' ':
+          graph[v][total_cols - 2 - j.column] = chars['vline']
+
+    # Collapse rows into single strings
+    graph = [''.join(l) for l in graph]
+
+    # Add refline strings into statement objects
+    for s, r in zip(self.assembled_code, graph):
+      s.refline = r
+
 
 ##############################################
 
@@ -2116,6 +2265,10 @@ def parse_command_line():
 
   parser.add_option('-c', '--color-log', dest='color_log', action='store_true', default=False, \
         help=_('Colorize log file'))
+  parser.add_option('--no-reflines', dest='no_reflines', action='store_true', default=False, \
+        help=_('Remove reflines from log file'))
+  parser.add_option('--ascii', dest='ascii', action='store_true', default=False, \
+        help=_('Render reflines with ASCII-only characters'))
   parser.add_option('-g', '--get-templates', dest='get_templates', action='store_true', default=False, \
         help=_('Get default template files'))
   parser.add_option('-v', '--version', dest='version', action='store_true', default=False, \
@@ -2740,7 +2893,7 @@ def main():
   
   printq('{:>{}}'.format(_('mem map:'), field_size), hex_mem_file)
   
-  asm.write_log_file(log_file, options.color_log)
+  asm.write_log_file(log_file, options.color_log, not options.no_reflines, not options.ascii)
   printq('{:>{}}'.format(_('log file:'), field_size), log_file)
 
   try:
