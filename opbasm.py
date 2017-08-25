@@ -400,6 +400,10 @@ class Statement(object):
         else:
           self.arg2 = ifields[2]
 
+  @staticmethod
+  def from_line(line):
+    return parse_lines([line], '-', )[0]
+
   def machine_word(self):
     '''Returns the numeric value of the assembled instruction'''
     return self.opcode + (self.regx << 8) + (self.regy << 4) + self.immediate
@@ -515,7 +519,7 @@ class Symbol(object):
       return self._val_text
 
 
-def parse_lines(lines, source_file, index):
+def parse_lines(lines, source_file, index=None):
   '''Parse a list of text lines into Statement objects'''
 
   statements = []
@@ -819,10 +823,10 @@ class AssemblerConfig(object):
 class Assembler(object):
   '''Main object for running assembler and tracking symbol information'''
 
-  def __init__(self, top_source_file, options=None, timestamp=None):
+  def __init__(self, options=None, timestamp=None):
     self.config = AssemblerConfig(options)
     self.command_line_mode = False
-    self.top_source_file = top_source_file
+    self.top_source_file = None
     self.m4_file_num = 0
     self.timestamp = timestamp if timestamp is not None else get_timestamp()
 
@@ -935,6 +939,8 @@ class Assembler(object):
     '''
     if (not self.config.use_m4) and os.path.splitext(source_file)[1] not in ('.psm4', '.m4'): # No change
       return source_file
+
+    self.create_output_dir() # Make sure directory exists for generated source
 
     pp_source_file = os.path.splitext(source_file)[0] + '.gen.psm'
     pp_source_file = build_path(self.config.output_dir, pp_source_file)
@@ -1108,12 +1114,12 @@ class Assembler(object):
       
     self.line_index[source_file] = index
 
-  def process_includes(self, source_file=None):
+  def process_includes(self, source_file):
     '''Scan a list of statements for INCLUDE directives and recursively
     read each included source file. Constant, string, and table definitions
     are also processed to keep track of where they are defined.
     This is a generator function that yields the name of each included file'''
-    if source_file is None: source_file = self.top_source_file
+
     if source_file in self.sources: return
 
     pp_source_file = self.preprocess_with_m4(source_file)
@@ -1387,19 +1393,6 @@ class Assembler(object):
       return num_words
     else:
       return 0
-
-
-  def assemble(self, bounds_check=True):
-    '''Generate assembled instructions
-    Returns a list of Statement objects with filled in instruction fields
-    '''
-    # Pass 1: Flatten includes
-    slist = list(self.flatten_includes(self.sources[self.top_source_file]))
-
-    # Scan for pragma meta-comments
-    annotate_pragmas(slist)
-
-    return self.raw_assemble(slist, 0, bounds_check)
 
 
   def raw_assemble(self, slist, start_address=0, bounds_check=True, optimize=True):
@@ -1739,17 +1732,19 @@ class Assembler(object):
       if flush:
         sys.stdout.flush()
 
-  def assemble_all(self):
-    # FIXME: defer til later
-    # Create output directory(ies) if it doesn't exist
+  def create_output_dir(self):
+    '''Create output directory(ies) if it doesn't exist'''
     try:
       os.makedirs(self.config.output_dir)
     except OSError as e:
       if e.errno != errno.EEXIST:
         raise  # Some other OS error
 
+  def assemble_file(self, top_source_file):
+    self.top_source_file = top_source_file
+
     # Read input source
-    for fname in self.process_includes():
+    for fname in self.process_includes(top_source_file):
       self._print(_('  Reading source:'), fname)
 
     # Assemble program
@@ -1757,7 +1752,16 @@ class Assembler(object):
 
     remove_dead_code = 'dead_code' in self.optimizers
     # Skip bounds check on first assemble if dead code removal is in use
-    assembled_code = self.assemble(bounds_check=not remove_dead_code)
+    #assembled_code = self.assemble(bounds_check=not remove_dead_code)
+
+    # Pass 1: Flatten includes
+    slist = list(self.flatten_includes(self.sources[self.top_source_file]))
+
+    # Scan for pragma meta-comments
+    annotate_pragmas(slist)
+
+    assembled_code = self.raw_assemble(slist, 0, bounds_check=not remove_dead_code)
+
 
     # Verify that no instructions have been assigned to the same address
     instructions = [s for s in assembled_code if s.is_instruction()]
@@ -1847,12 +1851,14 @@ class Assembler(object):
 
   def write_hex_file(self, fname):
     '''Write a memory map as a hex format file'''
+    self.create_output_dir()
     with open(fname, 'w') as fh:
       for m in self.mmap:
         print('{:05X}'.format(m), file=fh)
 
   def write_mem_file(self, fname):
     '''Write a memory map as a mem format file'''
+    self.create_output_dir()
     with open(fname, 'w') as fh:
       # Write MEM file header (one start address)
       print('@00000000', file=fh)
@@ -1862,6 +1868,7 @@ class Assembler(object):
 
   def write_mif_file(self, fname):
     '''Write a memory map in Altera's MIF format.'''
+    self.create_output_dir()
     with open(fname, 'w') as fh:
       # Write MIF file header
       print('DEPTH = {};         -- memory words'.format(len(self.mmap)), file=fh)
@@ -1879,8 +1886,9 @@ class Assembler(object):
       print('END;', file=fh)
 
 
-  def write_log_file(self, log_file, colorize, show_reflines=True, use_unicode=True):
+  def write_log_file(self, log_file, colorize, refline_cols=8, use_unicode=True):
     '''Write a log file with details of assembled code'''
+    self.create_output_dir()
     with io.open(log_file, 'w', encoding='utf-8') as fh:
 
       def printf(*args):
@@ -1910,9 +1918,14 @@ class Assembler(object):
       printf('\n\n' + underline(_('Assembly listing')))
       use_static_analysis = 'static' in self.optimizers
 
-      if show_reflines:
+      show_reflines = False
+      if refline_cols > 0:
         # Generate call/jump graph
-        self.generate_refline_graph(use_unicode=use_unicode)
+        # Restrict columns to range 2-50
+        max_cols = max(min(refline_cols, 50), 2)
+        min_cols = max_cols if max_cols >= 8 else 8
+        show_reflines = True
+        self.generate_refline_graph(min_cols, max_cols, use_unicode)
 
       for s in self.assembled_code:
         printf(s.format(show_addr=True, show_dead=use_static_analysis, \
@@ -2024,6 +2037,7 @@ class Assembler(object):
         raise FatalError(_('Unknown template data format'))
 
       file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
+      self.create_output_dir()
       all_inits_replaced = write_hdl_file(self.top_source_file, target_file, template_file, minit, self.timestamp.isoformat(), self.default_jump)
 
       field_size = 19
@@ -2033,6 +2047,7 @@ class Assembler(object):
 
   def write_formatted_source(self, output_dir):
     self._print(_('\n  Formatted source:'))
+    self.create_output_dir()
     for fname, source in self.sources.iteritems():
       if fname == '-': fname = 'stdin'
       fname = os.path.splitext(os.path.basename(fname))[0] + '.fmt'
@@ -2052,31 +2067,35 @@ class Assembler(object):
       def __init__(self, statement, index):
         self.statement = statement
         self.start = index
-        self.target = -1
+        self._target = -1
+        self.min = 0
+        self.max = 0
         self.column = -1
 
       @property
-      def min(self):
-        return min(self.start, self.target)
+      def target(self):
+        return self._target
 
-      @property
-      def max(self):
-        return max(self.start, self.target)
+      @target.setter
+      def target(self, t):
+        self._target = t
+        # Update min and max attributes
+        self.min = min(self.start, self._target)
+        self.max = max(self.start, self._target)
 
       def __repr__(self):
         return '{} -> {} ({}) col: {}  {}'.format(self.start, self.target, \
           abs(self.start - self.target), self.column, self.statement.format())
 
       def overlaps(self, j):
+        '''Check if another arc overlaps with this one'''
         return not((self.max < j.min) or (j.max < self.min))
 
     # Find all jump/call instructions
     jumps = []
     for ix, s in enumerate(self.assembled_code):
       if s.command in ('jump', 'call'):
-        jumps.append((s, ix))
-
-    jumps = [ReflineArc(s, ix) for s, ix in jumps]
+        jumps.append(ReflineArc(s, ix))
 
     # Build index to map target addresses into output lines
     target_index = {}
@@ -2084,8 +2103,15 @@ class Assembler(object):
       target_index[s.address] = ix
 
     # Assign target indices for arcs
-    for p in jumps:
-      p.target = target_index[p.statement.immediate]
+    for j in jumps:
+      try:
+        j.target = target_index[j.statement.immediate]
+      except KeyError: # Address isn't in index
+        j.column = -100 # Mark this as a bad arc
+
+    # Remove bad arcs
+    jumps = [j for j in jumps if j.column != -100]
+
 
     # Sort by span length and lowest address
     # We want to prioritize the shortest spans by putting them in the rightmost column
@@ -2098,23 +2124,38 @@ class Assembler(object):
 
     # Assign each jump to a column
     for j in jumps:
+      j_max = j.max
       # Search for empty space for this jump
       assigned = False
-      for col in columns:
-        clear = len(col) == 0 or (not any(j.overlaps(k) for k in col))
+      for i, col in enumerate(columns):
+        clear = True
+        # Check for any overlaps with existing arcs in this column
+        for arc in col:
+          if j_max < arc.min: # No possibility of more overlaps
+            break
+          if j.overlaps(arc):
+            clear = False
+            break
+
         if clear: # Add this jump to the column
-          col.append(j)
+          j.column = i
+          col.insert(0, j)
+          col.sort(key=lambda r: r.min)
           assigned = True
           break
         # No space. Check next column...
       if not assigned: # No space found. Make a new column
-        columns.append([j])
-
-    # Assign column numbers to each jump
-    for i, col in enumerate(columns):
-      for j in col:
-        # Merge leftmost columns if we have exceed the limit
-        j.column = i if i < max_cols-1 else max_cols-2
+        # If we have exceeded max_cols then there is no need to continue searching.
+        # All remaining arcs will be packed into the leftmost column anyway
+        if len(columns) >= max_cols-1:
+          # Stick remaining unassigned arcs into last column
+          columns[-1].extend([q for q in jumps if q.column == -1])
+          for q in columns[-1]: # Set their column numbers
+            q.column = max_cols - 2
+          break
+        else: # New column
+          columns.append([j])
+          j.column = len(columns) - 1
 
 
     # Drawing characters to use
@@ -2147,34 +2188,36 @@ class Assembler(object):
 
     graph = [[' ']*total_cols for x in xrange(len(self.assembled_code))]
     for j in jumps:
+      j_min = j.min
+      j_max = j.max
       # Draw corners
-      graph[j.min][total_cols - 2 - j.column] = chars['top_corner']
-      graph[j.max][total_cols - 2 - j.column] = chars['bot_corner']
+      graph[j_min][total_cols - 2 - j.column] = chars['top_corner']
+      graph[j_max][total_cols - 2 - j.column] = chars['bot_corner']
 
       # Draw horizontal lines
       for c in xrange(total_cols - 1 - j.column, total_cols):
-        min_cell = graph[j.min][c]
+        min_cell = graph[j_min][c]
         if min_cell == chars['top_corner']:
-          graph[j.min][c] = chars['top_tee'] # Add tee to merge with existing arc
+          graph[j_min][c] = chars['top_tee'] # Add tee to merge with existing arc
         elif min_cell == chars['bot_corner']:
-          graph[j.min][c] = chars['bot_tee'] # Add tee to merge with existing arc
-        elif min_cell == ' ':
-          graph[j.min][c] = chars['hline']
+          graph[j_min][c] = chars['bot_tee'] # Add tee to merge with existing arc
+        elif min_cell in (' ', chars['vline']):
+          graph[j_min][c] = chars['hline']
 
-        max_cell = graph[j.max][c]
+        max_cell = graph[j_max][c]
         if max_cell == chars['bot_corner']:
-          graph[j.max][c] = chars['bot_tee'] # Add tee to merge with existing arc
+          graph[j_max][c] = chars['bot_tee'] # Add tee to merge with existing arc
         elif max_cell == chars['top_corner']:
-          graph[j.max][c] = chars['top_tee'] # Add tee to merge with existing arc
-        elif max_cell == ' ':
-          graph[j.max][c] = chars['hline']
+          graph[j_max][c] = chars['top_tee'] # Add tee to merge with existing arc
+        elif max_cell in (' ', chars['vline']):
+          graph[j_max][c] = chars['hline']
 
       # Draw direction arrows on right side
       graph[j.start][total_cols-1] = chars['sarrow']
       graph[j.target][total_cols-1] = chars['earrow']
 
       # Draw vertical connections within a column
-      for v in xrange(j.min+1, j.max):
+      for v in xrange(j_min+1, j_max):
         if graph[v][total_cols - 2 - j.column] == ' ':
           graph[v][total_cols - 2 - j.column] = chars['vline']
 
@@ -2265,8 +2308,8 @@ def parse_command_line():
 
   parser.add_option('-c', '--color-log', dest='color_log', action='store_true', default=False, \
         help=_('Colorize log file'))
-  parser.add_option('--no-reflines', dest='no_reflines', action='store_true', default=False, \
-        help=_('Remove reflines from log file'))
+  parser.add_option('-R', '--reflines', dest='refline_cols', action='store', default=8, type=int, \
+        help=_('Set number of columns for reflines in log'))
   parser.add_option('--ascii', dest='ascii', action='store_true', default=False, \
         help=_('Render reflines with ASCII-only characters'))
   parser.add_option('-g', '--get-templates', dest='get_templates', action='store_true', default=False, \
@@ -2844,7 +2887,7 @@ def main():
     config.mem_size, config.scratch_size))
 
   # Assemble the code
-  asm = Assembler(options.input_file, config)
+  asm = Assembler(config)
   asm.command_line_mode = True
 
   if options.report_dead_code or options.remove_dead_code:
@@ -2855,7 +2898,7 @@ def main():
 
 
   try:
-    assembled_code = asm.assemble_all()
+    assembled_code = asm.assemble_file(options.input_file)
   except StatementError, e:
     asm_error(*e.args, exit=1, statement=e.statement)
   except FatalError, e:
@@ -2893,7 +2936,7 @@ def main():
   
   printq('{:>{}}'.format(_('mem map:'), field_size), hex_mem_file)
   
-  asm.write_log_file(log_file, options.color_log, not options.no_reflines, not options.ascii)
+  asm.write_log_file(log_file, options.color_log, options.refline_cols, not options.ascii)
   printq('{:>{}}'.format(_('log file:'), field_size), log_file)
 
   try:
