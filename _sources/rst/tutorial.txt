@@ -72,11 +72,11 @@ A typical PicoBlaze assembly program will follow a pattern like that shown below
 Program storage
 ---------------
 
-The PicoBlaze is a Harvard architecture machine with an instruction memory separate from data storage and the I/O address space. Your program is typically stored in a Xilinx Block RAM (BRAM) that has predefined initial values to make it act like a ROM. The PicoBlaze has no built in mechanisms to write to this memory but it is possible to do so with additional logic for more advanced applications. It is also possible to store non-instruction data in the in left over free space of a Block RAM which can be accessed through a second address port connected to the PicoBlaze I/O.
+The PicoBlaze is a `Harvard architecture <https://en.wikipedia.org/wiki/Harvard_architecture>`_ machine with an instruction memory separate from data storage and the I/O address space. Your program is typically stored in a Xilinx Block RAM (BRAM) that has predefined initial values to make it act like a ROM. The PicoBlaze has no built in mechanisms to write to this memory but it is possible to do so with additional logic for more advanced applications. It is also possible to store non-instruction data in the in left over free space of a Block RAM which can be accessed through a second address port connected to the PicoBlaze I/O.
 
 Each instruction is a fixed 18-bit word that naturally fills a Xilinx BRAM utilizing all of its extra parity bits. The PicoBlaze-3 supports up to 1k instruction words and the PB6 can use up to 4k. It is possible to put smaller programs into the other type of memory available on Xilinx parts, distributed RAM, which is synthesized from the programmable logic LUTs configured for a special SRAM mode. Another option is to use the dual-ported capability to split a BRAM between two PicoBlaze devices.
 
-The assembler converts your program into a list of instruction words that are used to initialize a BRAM. This becomes part of your FPGA project in one of two ways. The traditional way is to use an HDL template file that instantiates the proper BRAM for your device. The template BRAM has the the program words filled in to create a synthesizable ROM that is instantiated in your FPGA project. The alternative is to the Opbasm :ref:`synthesizable ROM template <generic_rom>` which currently only works with the Xilinx ISE toolset and not Vivado. Either way, the synthesizer will translate the template into a memory with initial instruction values assigned on power up so that it behaves as a ROM.
+The assembler converts your program into a list of instruction words that are used to initialize a BRAM. This becomes part of your FPGA project in one of two ways. The traditional way is to use an HDL template file that instantiates the proper BRAM for your device. The template BRAM has the program words filled in through generic parameters to create a synthesizable ROM that is instantiated in your FPGA project. The alternative way is to use the Opbasm :ref:`synthesizable ROM template <generic_rom>` which currently only works with the Xilinx ISE toolset and not Vivado. Either way, the synthesizer will translate the template into a memory with initial instruction values assigned on power up so that it behaves as a ROM.
 
 Assembler syntax
 ----------------
@@ -96,6 +96,8 @@ There are three parts, all of which are optional. The instruction portion is the
   add s0, s1             ; An instruction and comment
   last_label: add s2, s3 ; Label, instruction, and comment
 
+Labels act as symbolic placeholders for an address in instruction memory. Bare labels without an instruction assume the address of the next statement with an instruction field. This means that multiple labels can refer to the same address. In the example above "my_label" and "another_label" both refer to the first ``add`` instruction.
+
 Assigning variables
 -------------------
 
@@ -109,6 +111,8 @@ The most basic instruction for assigning a value to a register is :ref:`inst-loa
 
   load s0, 5A  ; Load s0 with 0x5A (90 decimal)
   load s1, s0  ; Load s1 with value of s0
+
+Note that the assembler defaults to using hex for constant literals.
 
 Using ``fetch`` and ``store`` we can save variables in scratchpad RAM:
 
@@ -126,7 +130,7 @@ Using ``fetch`` and ``store`` we can save variables in scratchpad RAM:
   
 Using a constant for scratchpad variable addresses makes it easy to modify their location in the future. You should avoid hardcoding numeric addresses directly into ``fetch`` and ``store`` instructions.
 
-The ``load`` and ``store`` instructions have an indirect variant where the second operand is a register containing a scratchpad address rather than a fixed literal value. This register acts as a pointer variable to a piece of memory. Because PicoBlaze doesn't have any relative indexed addressing modes you have to directly modify this register to access different parts of the scratchpad. This allows you to store and retrieve arrays of data:
+The ``fetch`` and ``store`` instructions have an indirect variant where the second operand is a register containing a scratchpad address rather than a fixed literal value. This register acts as a pointer variable to a piece of memory. Because PicoBlaze doesn't have any relative indexed addressing modes you have to directly modify this register to access different parts of the scratchpad. This allows you to store and retrieve arrays of data:
 
 .. code-block:: picoblaze
 
@@ -139,7 +143,7 @@ The ``load`` and ``store`` instructions have an indirect variant where the secon
     output s9, COM_PORT
     add    sA, 01           ; Advance to next byte
     compare sA, M_ARRAY_END
-    jump   NZ, loop
+    jump   NZ, loop         ; Continue if we haven't reached the end
   
 
 Register allocation
@@ -155,9 +159,9 @@ There are five common classes of data that registers can be used for:
   4. Temporary values (never preserved)
   5. Special purpose values (globals)
 
-By default all registers are general purpose and can be used interchangeably. The PicoBlaze assembly syntax includes a :ref:`inst-namereg` directive that can rename a register. This can give more meaningful names to commonly used registers. It is also useful to protect registers you've reserved for a special purpose from being accidentally overwritten by other code.
+By default all registers are general purpose and can be used interchangeably. The PicoBlaze assembly syntax includes a :ref:`inst-namereg` directive that can rename a register. With this you can give more meaningful names to commonly used registers. It is also useful to protect registers you've reserved for a special purpose from being accidentally overwritten by other code.
 
-One possible register usage convention:
+Here is one possible register usage convention:
 
 ======== ======= ======================================
 Register Renamed Purpose
@@ -257,32 +261,52 @@ At times it can be useful to perform operations on values using binary logic gat
 Bit shifting operations
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-=============== ===================
+=============== ============================
 Instruction     Description
-=============== ===================
-:ref:`inst-sl0` Shift left
-:ref:`inst-sl1` Shift left
-:ref:`inst-sla` Shift left
-:ref:`inst-slx` Shift left
-:ref:`inst-sr0` Shift right
-:ref:`inst-sr1` Shift right
-:ref:`inst-sra` Shift right
-:ref:`inst-srx` Shift right
+=============== ============================
+:ref:`inst-sl0` Shift left and '0' fill
+:ref:`inst-sl1` Shift left and '1' fill
+:ref:`inst-sla` Shift left through all bits
+:ref:`inst-slx` Shift left with extension
+:ref:`inst-sr0` Shift right and '0' fill
+:ref:`inst-sr1` Shift right and '1' fill
+:ref:`inst-sra` Shift right through all bits
+:ref:`inst-srx` Shift right with extension
 :ref:`inst-rl`  Rotate left
 :ref:`inst-rr`  Rotate right
-=============== ===================
+=============== ============================
 
-The third set of ALU operations is used to shift and rotate the position of bits in a register. 
+The third set of ALU operations is used to shift and rotate the position of bits in a register. Each instruction shifts or rotates one bit at a time. Multple bit shifts require repeated instructions. The shift instructions have a number of variants that differ in how they select the new bit being shifted in. In all cases the bit shifted out is stored in the carry flag. The "1" and "0" shifts fill in the respective constant bit. The "A" shift instructions perform all-bit shifts by inserting the carry flag into the new position. This is useful for extending shifts across multiple bytes. The "X" shift instructions perform bit extension by duplicating the leftmost or rightmost bit of rht shifted value. For :ref:`inst-srx` this is equivalent to a shift with sign-extension for signed values.
+
+.. code-block:: picoblaze
+
+  load sA, 01
+  sl0 sA
+  sl0 sA       ; Shift left by 2 bits and '0' fill. sA = 0x04
+
+  ; 16-bit shift left
+  load sA, FF
+  load sB, 01
+  sl0 sA       ; Shift low byte and store shifted bit in the carry flag
+  sla sB       ; Shift carry flag into the upper byte
+
+  ; Shift with sign extension
+  load sA, FE  ; -2 in 2's complement
+  srx sA       ; Shift right with sign extension. sA = 0xFF = -1
+
+  ; Rotate bits
+  load sA, 81
+  rr sA        ; sA = 0xC0
 
 Control structures
 ------------------
 
-If you are used to programming in high level languages the biggest change when using assembly is that there are no built in control structures. You have to implement them all yourself implicitly in assembly code. This can create some tedium in writing assembly and can make it hard to follow along when reading code. The Opbasm macro package has a system to let you write :ref:`control structures in a high-level style syntax <c-style-if-then>`. However, it is still useful to know the basics of how this is done as explained in the following.
+If you are used to programming in high level languages the biggest change when using assembly is that there are no built in control structures. You have to implement them all implicitly in assembly code. This may create some tedium in writing assembly and can make it hard to follow along when reading code because the control flow isn't readily apparent. The Opbasm macro package has a system to let you write :ref:`control structures in a high-level style syntax <c-style-if-then>`. However, it is still useful to know the basics of how this is done as explained in the next section.
 
 If-then-else
 ~~~~~~~~~~~~
 
-An if-then-else statement consists of a three parts. An expression to evaluate, a block of code to execute when the expression is true and an optional block for a false expression. A basic if-then-else is of the following form:
+An if-then-else statement consists of three parts: an expression to evaluate, a block of code to execute when the expression is true, and an optional block for a false expression. A basic if-then-else is of the following form:
 
 .. code-block:: c
 
@@ -292,7 +316,7 @@ An if-then-else statement consists of a three parts. An expression to evaluate, 
     TX_DATA = 'N';
   }
 
-In PicoBlaze assembly the expression is evaluated with instructions that will set or clear the C and Z flags. Subsequent conditional :ref:`inst-jump` and :ref:`inst-call` instructions will examine these flags to determine what to execute next. This allows us to follow the different execution paths of the if-then-else construct.
+In PicoBlaze assembly the expression is evaluated with instructions that will set or clear the ALU C and Z flags. Subsequent conditional :ref:`inst-jump` and :ref:`inst-call` instructions will examine these flags to determine what to execute next. This allows us to follow the different execution paths of the if-then-else construct.
 
 The main instruction for evaluating expressions is :ref:`inst-compare`. It subtracts its second argument from the first and changes the C and Z flags based on the result. Note that it only changes the flags. The subtraction result is thrown away and does not affect the registers. 
 
@@ -325,7 +349,7 @@ This gives us enough tools to replicate the pseudocode above:
   end_if:
          output sE, TX_DATA
 
-Here the ``jump Z, equal`` instruction branches to the "equal" label when the Z flag is set. Otherwise the next instruction is executed.
+Here the ``jump Z, equal`` instruction branches to the "equal" label when the Z flag is set. Otherwise the next instruction is executed. Notice that the false block appears before the true block.
 
 When you have no else condition, the true block can be placed immediately after the expression evaluation code:
 
@@ -361,6 +385,50 @@ Consider you are incementing a register and want to detect when it overflows pas
   jump    C, overflow  ; Branch when add overflowed
 
 Recognizing these opportunities to reduce the number of instructions used is important for fitting complex programs into the limited space available for PicoBlaze program storage.
+
+Complex expressions
+~~~~~~~~~~~~~~~~~~~
+
+If your high level logic needs to evaluate multiple terms you need to decompose it into multiple comparisons with appropriate jumps to replicate the effect of a short-circuited AND or OR.
+
+Boolean AND means both comparisons have to be a success:
+
+.. code-block:: c
+
+  if(a >= 42 && a < 90) {
+    count = count + 1;
+  }
+
+.. code-block:: picoblaze
+
+      compare sA, 42'd
+      jump C, end_if     ; sA ≥ 42 → C = 0
+      ; First term is true. Check second term for AND
+      compare sA, 90'd
+      jump NC, end_if    ; sA < 90 → C = 1
+      ; Both tests passed so we do the true block:
+      add sC, 01
+  end_if:
+
+Boolean OR means there are two ways to enter into the true block if either comparison is a success:
+
+.. code-block:: c
+
+  if(a >= 90 || a < 42) {
+    count = count + 1;
+  }
+
+.. code-block:: picoblaze
+
+      compare sA, 90'd
+      jump NC, true_block ; sA ≥ 90 → C = 0 : Short circuit OR
+      ; First term is false. Try again on second term
+      compare sA, 42'd
+      jump NC, end_if     ; sA < 42 → C = 1
+  true_block: ; One of the tests have passed
+      add sC, 01
+  end_if:
+
 
 Loops
 ~~~~~
@@ -404,12 +472,12 @@ We can implement these in PicoBlaze assembly as follows:
     compare s6, 20'd
     jump    C, do_while_loop ; Continue loop when s6 < 20
 
-Note that the do-while loop requires one less instruction and is the more efficient form if you can arrange your program to work with that variant.
+Notice that the do-while loop requires one less instruction and is the more efficient form if you can arrange your program to work with that variant.
 
 Subroutines
 -----------
 
-It is useful to have reusable code that can be executed from different locations in a program. This is done by creating a subroutine. These begin with a label like those used for :ref:`inst-jump` targets. The :ref:`inst-call` instruction will branch to the the label just like ``jump`` but it also saves the next address on to the hardware call stack. When the subroutine is finished the :ref:`inst-return` instruction pops the most recent address from the stack and resumes execution after the ``call`` instruction.
+It is useful to have reusable code that can be executed from different locations in a program. This is done by creating a subroutine. These are blocks of code that begin with a label like those used for :ref:`inst-jump` targets. You enter into the subroutine with a :ref:`inst-call` instruction. This will branch to the the label just like ``jump`` but it also saves the next address on to the hardware call stack. When the subroutine is finished the :ref:`inst-return` instruction pops the most recent address from the stack and resumes execution after the ``call`` instruction that initiated the jump into the subroutine.
 
 .. code-block:: picoblaze
 
@@ -425,7 +493,7 @@ It is useful to have reusable code that can be executed from different locations
   ...
   call compute_something ; Call it again
 
-Nothing truly isolates subroutines from executing as normal code other than convention. You must make certain that the processor can't accidentally begin executing a subroutine outside of the ``call``/``return`` mechanism. If you ``jump`` into a subroutine and then execute ``return`` you will pop the wrong address from the call stack and have a malfunction. Likewise, you must not allow the processor to enter into a subroutine by normal sequential execution without a ``call`` to prepare the hardware stack.
+Nothing truly isolates subroutines from executing as normal code other than convention. You must make certain that the processor can't accidentally begin executing a subroutine outside of the ``call``/``return`` mechanism. If you ``jump`` into a subroutine and then execute ``return`` you will pop the wrong address from the call stack and have a malfunction. Likewise, you must not allow the processor to enter into a subroutine by normal sequential execution without a ``call`` to prepare the hardware stack. Any subroutines placed before the main program must be skipped over with a ``jump`` instruction.
 
 .. code-block:: picoblaze
 
@@ -444,7 +512,7 @@ Nothing truly isolates subroutines from executing as normal code other than conv
     ...
     call compute_something
 
-Subroutines can call other subroutines up to the limit of the hardware stack which is 31 levels on PB3 and 30 levels on PB6.
+Subroutines can call other subroutines up to the limit of the hardware stack which is 31 levels on PB3 and 30 levels on PB6. Be extremely careful when writing recursive subroutines that call themselves. Don't assume you can use the entire stack at any time.
 
 The ``call`` instruction has a conditional form that works the same as a conditional ``jump``. This allows you to use a subroutine as the body of a control structure.
 
@@ -474,7 +542,7 @@ Initially you might start using registers in an ad hoc way. Inevitably you will 
 
 Higher level languages employ a calling convention where they save registers not deemed as temporaries onto a stack at the beginning of a subroutine and restore these saved values before returning. This allows you to reuse the same register for different purposes in your program. The stack is a region of memory that expands as more data is pushed onto it and shrinks as data is popped off. Most processors have special instructions to assist in managing such a stack in RAM but not the PicoBlaze. The hardware call stack is dedicated to storing only return addresses and is unavailable for general purpose use. It is possible, however, to create a stack in the scratchpad memory and emulate the behavior of push and pop operations.
 
-We reserve a register to function as a stack pointer. It will hold an index into scratchpad memory that always points to the next free location on the stack. Pushes and pops will manipulate this pointer and move data to and from the scratchpad memory.
+To accomplish this we reserve a register to function as a stack pointer. It will hold an index into scratchpad memory that always points to the next free location on the stack. Pushes and pops will manipulate this pointer and move data to and from the scratchpad memory.
 
 .. code-block:: picoblaze
 
@@ -510,11 +578,13 @@ We reserve a register to function as a stack pointer. It will hold an index into
 
 Each push operation is implemented as a pair of ``store`` and ``sub`` instructions and each pop is an ``add`` ``fetch``. You must pop registers in the reverse of the order they were pushed to restore them to their original state.
 
+It would be disastrous if the stack register were mistakenly changed by another part of your code while the stack is in use. To diminish this problem we use the `namereg`` directive to rename our stack register "sF" to "SP". After this point sF is no longer accessible by its default name. Any code trying to use it by the old name will fail to assemble.
+
 In most cases the stack is designed to grow down from higher addresses to lower addresses. This lets you place the stack at the upper end of the scratchpad and use the lower end for other purposes. You don't have to follow this convention and can have a stack grow from low to high if you wish. It is important that the stack never grows large enough to overwrite other data stored in scratchpad. 
 
-The Opbasm macro library has :pb:macro:`push` and :pb:macro:`pop` macros as well as :ref:`other stack handling macros <stack-operations>` to simplify stack management when writing your programs.
+While simple in concept, this can all get a bit tedious and clutter your code. The Opbasm macro library has :pb:macro:`push` and :pb:macro:`pop` macros as well as :ref:`other stack handling macros <stack-operations>` to simplify stack management when writing your programs.
 
-With a stack in place you can use it to enforce a calling convention for your subroutines. Within a subroutine all modified registers must be saved to the stack before modification unless they are designated as temporaries that are never saved or a return value. When this convention is followed a subroutine caller never sees registers change before and after a :ref:`inst-call` except the return value register.
+With a stack in place you can use it to enforce a calling convention for your subroutines. Within a subroutine, all modified registers must be saved to the stack before modification unless they are designated as temporaries that are never saved or a return value. When this convention is followed a subroutine caller never sees registers change before and after a :ref:`inst-call` except the return value register.
 
 .. code-block:: picoblaze
 
@@ -548,30 +618,34 @@ With a stack in place you can use it to enforce a calling convention for your su
   call    rotate
   ; s5 is unchanged, s0 has result, sE is altered
 
+Remember that a push/pop pair consumes four instructions for every register saved on the stack. That can grow to a significant portion of the total program memory if the stack is used extensively across many subroutines.
+
 
 External I/O
 ------------
 
-With the basic foundations of writing assembly it comes time to actually do something useful with the PicoBlaze. Since it is implemented as a soft-core within an FPGA there will usually be additional logic outside of the PicoBlaze that you need to interact with. This is accomplished through the I/O ports. There are 256 input and output ports which are multiplexed together onto an 8-bit address bus.These ports are accessed with the :ref:`inst-input` and :ref:`inst-output` instructions.
+With the basic foundations of writing assembly in place, it comes time to actually do something useful with the PicoBlaze. Since it is implemented as a soft-core within an FPGA there will usually be additional logic outside of the PicoBlaze that you need to interact with. This is accomplished through the I/O ports. There are 256 input and output ports which are multiplexed together onto an 8-bit address bus.These ports are accessed with the :ref:`inst-input` and :ref:`inst-output` instructions.
 
 .. code-block:: picoblaze
 
   input  s5, 01  ; Input from port 0x01
-  add    s5, 01
+  add    s5, 02
   output s5, 01  ; Write back to port 0x01
   
-To use the port interface you will have to implement decode logic to handle port operations based on their addresses. Refer to the official PicoBlaze documentation for examples of how this can be done. If you want to completely decode the ports and save their state in registers, one general purpose solution would be to instantiate the `generic register file component <http://kevinpt.github.io/vhdl-extras/rst/packages.html#reg-file>`_ from the VHDL-extras library.
+To use the port interface you will have to implement decode logic to handle port operations based on their addresses. Refer to the official PicoBlaze documentation for examples of how this can be done. If you want to completely decode the ports and save their state in registers, one general purpose solution would be to instantiate the `generic register file component <http://kevinpt.github.io/vhdl-extras/rst/modules/reg_file.html>`_ from the VHDL-extras library.
+
+It will be up to you to decide how the ports are applied to control your external logic. Some may be used to transfer data values in and out of the picoblaze. Others can be used to set control flags or initiate actions in external state machines.
 
 External events
 ---------------
 
-The final topic to explore in developing for the PicoBlaze are interrupts. This is a mechanism where external hardware can interrupt normal program execution to cause special code to run known as an interrupt service routine (ISR). The PicoBlaze has a single interrupt input and supports a single ISR.
+The final topic to explore in developing for the PicoBlaze are interrupts. This is a mechanism where external hardware can interrupt normal program execution to cause special code known as an interrupt service routine (ISR) to run. The PicoBlaze has a single interrupt input and supports a single ISR.
 
 Interrupts are optional. You do not have to use them in your designs. Their main benefit is that they let you avoid polling for changes in the hardware state through the I/O ports and you can respond to external events with the lowest, most deterministic delay possible.
 
-Interrupt handling is controled by an internal flag. Interrupts are off by default. You can use the :ref:`inst-enable` instruction to enable the the ISR. The :ref:`inst-disable` instruction disables interrupts.
+Interrupt handling is controlled by an internal flag. Interrupts are off by default. The :ref:`inst-enable` instruction will enable the interrupts. The :ref:`inst-disable` instruction disables them.
 
-When the interrupt input to the PicoBlaze goes high it saves the current instruction address on the hardware stack like a normal subroutine call. It also saves the values of the Z, C flags, and on PB6, saves the active register bank. The processor then executes the instruction located at the interrupt vector address. This address is fixed at 0x3FF for PB3 and can be modified for PB6 in its generic block. This instruction is usually a :ref:`inst-jump` into the body of the ISR:
+When the interrupt input goes high the PicoBlaze saves the current instruction address on the hardware stack like a normal subroutine call. It also saves the values of the Z, C flags, and on PB6, saves the active register bank. The processor then executes the instruction located at the interrupt vector address. This address is fixed at 0x3FF for PB3 and can be modified for PB6 in its generic block. This instruction is usually a :ref:`inst-jump` into the body of the ISR:
 
 .. code-block:: picoblaze
 
@@ -590,7 +664,7 @@ When the interrupt input to the PicoBlaze goes high it saves the current instruc
   address 3FF
   jump my_ISR
   
-The ISR is created like a special subroutine starting with a label as usual. You must exit from the ISR using the :ref:`inst-returni` instruction instead of :ref:`inst-return`. Interrupts must remain disabled during the entire ISR. You can choose whether to re-enable them with the ``returni`` instruction or later on with the :ref:`inst-enable` instruction. The ``returni`` resumes execution at the address saved upon the start of the interrupt. The saved Z, C and register bank are restored to their previous values. Execution can then proceed as normal.
+The ISR is created like a special subroutine starting with a label as usual. You must exit from the ISR using the :ref:`inst-returni` instruction instead of :ref:`inst-return`. Interrupts are disabled after entry into the ISR and they must remain disabled during the entire ISR. You can choose whether to re-enable them with the ``returni`` instruction or later on with an :ref:`inst-enable` instruction outside the ISR. The ``returni`` resumes execution at the address saved upon the start of the interrupt. The saved Z, C, and register bank are restored to their previous values. Execution can then proceed as normal.
 
 You must be careful not to let the ISR disrupt processor state such that execution fails after resuming normal execution. This means that you can't change any registers needed by the main program. An easy but inconvenient solution is to reserve some registers for exclusive use by the ISR. On PB6, you can employ the second register bank for the ISR if it isn't already in use. Otherwise you must implement a stack as described above and push all registers that will be modified before changing them. Similarly, the ISR should only modify scratchpad locations it has exclusive write access to so as to avoid corrupting the normal program in progress.
 
@@ -602,5 +676,5 @@ The ISR can execute at any time and it could potentially interrupt a timing crit
   <Critical code here>
   enable interrupt
 
-With only a single interrupt input, you have to take extra steps to handle multiple external events. External logic can be added that captures multiple interrupt sources and that can be checked through an I/O port to determine which interupt launched the ISR.
+With only a single interrupt input, you have to take extra steps to handle multiple external events. External logic can be added that captures multiple interrupt sources and that can be checked through an I/O port to determine which interupt launched the ISR. The VHDL-extras library includes a general purpose `interrupt controller <https://github.com/kevinpt/vhdl-extras/blob/master/rtl/extras/interrupt_ctl.vhdl>`_ that can help with servicing multiple interrupts.
 
