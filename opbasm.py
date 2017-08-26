@@ -115,7 +115,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.3.4'
+__version__ = '1.3.5'
 
 
 class FatalError(Exception):
@@ -1450,8 +1450,9 @@ class Assembler(object):
       if s.label is not None:
         if s.label.startswith('.'): # Local label
           xlabel = s.xlabel
+        elif s.label.startswith('__'): # Macro label
+          xlabel = s.label
         else: # Global label
-          #print('### GLOBAL:', s.label)
           self.cur_context = s.label
           xlabel = s.label
 
@@ -1495,7 +1496,7 @@ class Assembler(object):
     for s in slist:
       addr_label = None
 
-      if s.label is not None and not s.label.startswith('.'):
+      if s.label is not None and not s.label.startswith('.') and not s.label.startswith('__'):
         self.cur_context = s.label
 
       if s.is_instruction():
