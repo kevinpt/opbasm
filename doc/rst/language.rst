@@ -238,7 +238,7 @@ Format                                Example           Result
 ``address <label>``                   address MyISR     The instruction offset is addr. of MyISR
 ===================================== ================= ========================================
 
-This allows you to place code at the interrupt vector location or implement complex memory layouts such as bank switched pages. The second veriant with a label as an operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a `jump`_ for the entry point.
+This allows you to place code at the interrupt vector location or implement complex memory layouts such as bank switched pages. The second variant with a label as an operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a `jump`_ for the entry point.
 
 .. _inst-constant:
 
