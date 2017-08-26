@@ -79,6 +79,7 @@ import string
 import io
 import re
 import gettext
+import hashlib
 
 
 # Fix broken UTF-8 support on Windows console
@@ -399,6 +400,31 @@ class Statement(object):
           self.indirect_reg = True
         else:
           self.arg2 = ifields[2]
+
+  def __str__(self):
+    label = self.label + ':' if self.label is not None else ''
+    inst = ''
+    if self.command is not None:
+      inst = self.command
+
+      if self.indirect_addr:
+        inst += ' ({}, {})'.format(self.arg1, self.arg2)
+      else:
+        if self.arg1 is not None:
+          inst += ' ' + self.arg1
+        if self.arg2 is not None:
+          if self.indirect_reg:
+            inst += ', (' + self.arg2 + ')'
+          elif self.table_def or not isinstance(self.arg2, basestring):
+            inst += ', [' + ', '.join(self.arg2[:-1]) + self.arg2[-1]
+          else:
+            inst += ', ' + str(self.arg2)
+    if len(label) > 0:
+      code = '{} {}'.format(label, inst)
+    else:
+      code = inst
+
+    return code
 
   @staticmethod
   def from_line(line):
@@ -757,7 +783,7 @@ class DeadCodeRemover(Optimizer):
 
       asm._print(_('  Dead code removal: '), end='')
       # Reassemble code with dead code removed
-      assembled_code = asm.raw_assemble(assembled_code, optimize = False)
+      assembled_code = asm.raw_assemble(assembled_code)
 
       asm._print(success(_('COMPLETE')))
 
@@ -933,7 +959,7 @@ class Assembler(object):
   def add_optimizer(self, opt):
     opt.register(self)
 
-  def preprocess_with_m4(self, source_file):
+  def _preprocess_with_m4(self, source_file):
     '''Determine if file should be preprocessed for m4 macros and generate
     expanded file with ".gen.psm" extension
     '''
@@ -1114,41 +1140,60 @@ class Assembler(object):
       
     self.line_index[source_file] = index
 
-  def process_includes(self, source_file):
+  def process_includes(self, source_file, statements=None):
     '''Scan a list of statements for INCLUDE directives and recursively
     read each included source file. Constant, string, and table definitions
     are also processed to keep track of where they are defined.
     This is a generator function that yields the name of each included file'''
 
-    if source_file in self.sources: return
+    # FIXME: Make this work with a list of statements
+    if statements is not None:
+      print('## HASHING...')
+      # Build hash to identify this code
+      hash_data = hashlib.md5()
+      for s in statements:
+        hash_data.update(str(s))
 
-    pp_source_file = self.preprocess_with_m4(source_file)
-    
-    source_file_display = source_file if source_file != '-' else '<stdin>'
+      source_file = 'CODE_' + hash_data.hexdigest()
+
+    if source_file in self.sources: return # Already processed
+
+    if statements is None:
+      pp_source_file = self._preprocess_with_m4(source_file) # FIXME: No stdin support
+
+      source_file_display = self.top_source_name()
+    else:
+      pp_source_file = source_file_display = source_file
+
 
     if pp_source_file != source_file: # Preprocessor was run on source
       yield source_file_display + ' (m4)'
     else:
+      print('## YIELDING', source_file_display)
       yield source_file_display
 
+    if statements is None:
+      try:
+        if pp_source_file == '-':
+          source = [s.decode('utf-8').rstrip() for s in sys.stdin.readlines()]
+        else:
+          with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
+            source = [s.rstrip() for s in fh.readlines()]
+      except UnicodeDecodeError:
+        # Fall back to Latin-1 if UTF-8 fails
+        if pp_source_file == '-':
+          source = [s.decode('latin-1').rstrip() for s in sys.stdin.readlines()]
+        else:
+          with io.open(pp_source_file, 'r', encoding='latin-1') as fh:
+            source = [s.rstrip() for s in fh.readlines()]
 
-    try:
-      if pp_source_file == '-':
-        source = [s.decode('utf-8').rstrip() for s in sys.stdin.readlines()]
-      else:
-        with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
-          source = [s.rstrip() for s in fh.readlines()]
-    except UnicodeDecodeError:
-      # Fall back to Latin-1 if UTF-8 fails
-      if pp_source_file == '-':
-        source = [s.decode('latin-1').rstrip() for s in sys.stdin.readlines()]
-      else:
-        with io.open(pp_source_file, 'r', encoding='latin-1') as fh:
-          source = [s.rstrip() for s in fh.readlines()]
 
+      index = self.line_index[source_file] if source_file in self.line_index else None
+      slist = parse_lines(source, source_file, index)
+      self.sources[source_file] = slist
+    else:
+      slist = statements
 
-    index = self.line_index[source_file] if source_file in self.line_index else None
-    slist = parse_lines(source, source_file, index)
     self.sources[source_file] = slist
 
     # Scan for include directives
@@ -1158,7 +1203,7 @@ class Assembler(object):
         if s.label.startswith('.'): # Local label
           xlabel = self.expand_label(s.label)
           s.xlabel = xlabel
-        elif s.label.startswith('__'): # Macro label
+        elif s.label.startswith('__'): # Macro label # FIXME: Change sigil
           # "__" prefix is ignored for context changes so that macro generated
           # labels won't interfere with user expectations for local label references.
           xlabel = s.label
@@ -1263,14 +1308,14 @@ class Assembler(object):
           source_file=source_file, source_line=s.line)
 
 
-  def flatten_includes(self, slist, include_stack=None):
+  def _flatten_includes(self, slist, include_stack):
     '''Generator function that produces a flattened list of statements
     after evaluating INCLUDE directives.
 
-    slist         : List of statements from top-level source file
+    slist         : List of statements from source file
     include_stack : Stack of parent source files used to detect recursive includes
     '''
-    if include_stack is None: include_stack = [self.top_source_file]
+    #if include_stack is None: include_stack = [self.top_source_file]
 
     for s in slist:
       if s.command == 'include':
@@ -1284,7 +1329,7 @@ class Assembler(object):
           raise StatementError(s, _('Recursive include:'), s.arg1)
         else:
           include_stack.append(include_file)
-          islist = list(self.flatten_includes(self.sources[include_file], include_stack))
+          islist = list(self._flatten_includes(self.sources[include_file], include_stack))
           include_stack.pop()
           for i in islist:
             yield copy.copy(i)
@@ -1395,7 +1440,7 @@ class Assembler(object):
       return 0
 
 
-  def raw_assemble(self, slist, start_address=0, bounds_check=True, optimize=True):
+  def raw_assemble(self, slist, start_address=0, bounds_check=True):
     '''Generate assembled instructions from a raw statement list'''
     cur_addr = start_address
     self.default_jump = None
@@ -1711,13 +1756,6 @@ class Assembler(object):
     else: # Fill with jump instructions
       self.default_jump = self.config.target_arch.opcodes['jump'] + self.default_jump
 
-
-    # Run optimizers
-    if optimize and len(self.optimizers) > 0:
-      self._print(_('\n  Beginning optimizations...\n'))
-      for opt in self.optimizer_sequence:
-        instructions = opt.apply(self, instructions)
-
     return instructions
 
 
@@ -1742,25 +1780,44 @@ class Assembler(object):
 
   def assemble_file(self, top_source_file):
     self.top_source_file = top_source_file
+    print('## TOP SOURCE:', top_source_file)
 
-    # Read input source
+    # Read input sources
     for fname in self.process_includes(top_source_file):
       self._print(_('  Reading source:'), fname)
 
     # Assemble program
     self._print(_('\n  Assembling code... '), flush=True)
 
-    remove_dead_code = 'dead_code' in self.optimizers
-    # Skip bounds check on first assemble if dead code removal is in use
-    #assembled_code = self.assemble(bounds_check=not remove_dead_code)
+    self._assemble(top_source_file)
+
+  def assemble_statements(self, statements):
+    fnames = list(self.process_includes('', statements))
+
+    for fname in fnames:
+      print('## READING', fname)
+      self._print(_('  Reading source:'), fname)
+
+    print('## ASSEMBLING')
+    self._assemble(fnames[0])
+
+  def _assemble(self, top_source_file):
 
     # Pass 1: Flatten includes
-    slist = list(self.flatten_includes(self.sources[self.top_source_file]))
+    slist = list(self._flatten_includes(self.sources[top_source_file], [top_source_file]))
 
     # Scan for pragma meta-comments
-    annotate_pragmas(slist)
+    _annotate_pragmas(slist)
 
+    remove_dead_code = 'dead_code' in self.optimizers # FIXME: Make more general
+    # Skip bounds check on first assemble if dead code removal is in use
     assembled_code = self.raw_assemble(slist, 0, bounds_check=not remove_dead_code)
+
+    # Run optimizers
+    if len(self.optimizers) > 0:
+      self._print(_('\n  Beginning optimizations...\n'))
+      for opt in self.optimizer_sequence:
+        assembled_code = opt.apply(self, assembled_code)
 
 
     # Verify that no instructions have been assigned to the same address
@@ -1885,6 +1942,13 @@ class Assembler(object):
       # Write MIF footer
       print('END;', file=fh)
 
+  def top_source_name(self):
+    if self.top_source_file is None:
+      return '<unknown>'
+    elif self.top_source_file == '-':
+      return '<stdin>'
+    else:
+      return self.top_source_file
 
   def write_log_file(self, log_file, colorize, refline_cols=8, use_unicode=True):
     '''Write a log file with details of assembled code'''
@@ -1896,10 +1960,10 @@ class Assembler(object):
         # before passing them to print().
         return print(*[unicode(a) for a in args], file=fh)
 
-      printf(_('Open PicoBlaze Assembler log for program "{}"').format(self.top_source_file))
+      printf(_('Open PicoBlaze Assembler log for program "{}"').format(self.top_source_name()))
       printf(_('Generated by opbasm v{}').format(__version__))
       printf(_('  Assembled on {}').format(self.timestamp.isoformat()))
-      printf(_('  {} mode\n').format(self.config.target_arch.name))
+      printf(_('  Target architecture: {}\n').format(self.config.target_arch.name))
 
       printf(_('  Last occupied address: {:03X} hex').format(self.stats['last_addr']))
       printf(_('  Nominal program memory size: {}K ({})  address({}:0)').format( \
@@ -2379,7 +2443,7 @@ def parse_command_line():
   return options
 
 
-def parse_pragma(comment):
+def _parse_pragma(comment):
   '''Extract fields from pragma meta-comments'''
   if comment is not None and comment.lower().lstrip().startswith('pragma '):
     args = comment.split()[1:]
@@ -2390,12 +2454,12 @@ def parse_pragma(comment):
     return (None, None)
 
 
-def annotate_pragmas(slist):
+def _annotate_pragmas(slist):
   '''Look for pragmas marking blocks of code and add annotations to the
      affected instructions'''
   active_tags = {}
   for s in slist:
-    pragma, args = parse_pragma(s.comment)
+    pragma, args = _parse_pragma(s.comment)
     del_pragma = False
     if pragma is not None:
       op = args[-1]
@@ -2879,9 +2943,7 @@ def main():
     if not os.path.exists(options.input_file):
       asm_error(_('Input file not found'), exit=1)
     
-  mode = _('Running in {} mode').format(config.target_arch.name)
-  m = re.match('(^.*)(PicoBlaze-[0-9])(.*$)', mode)
-  printq(note(m.group(1)) + success(m.group(2)) + note(m.group(3)))
+  printq(note(_('Target architecture: ')) + success(config.target_arch.name))
 
   printq(_('  Device configuration:\n    Memory size: {}, Scratchpad size: {}\n').format(\
     config.mem_size, config.scratch_size))
