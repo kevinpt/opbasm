@@ -2,10 +2,10 @@ recursive-include templates *
 recursive-include example *.vhdl *.psm4 *.txt *.do
 prune example/vsim/build
 
-include opbasm_lib/*.m4
-recursive-include opbasm_lib/lang *
-recursive-include opbasm_lib/m4 *
-prune opbasm_lib/lang/tools
+include opbasm/*.m4
+recursive-include opbasm/lang *
+recursive-include opbasm/m4 *
+prune opbasm/lang/tools
 
 include test/asm/*.psm4
 include test/asm/*.m4

@@ -7,8 +7,8 @@ from setuptools import setup
 with open('README.rst') as fh:
     long_description = fh.read()
     
-# scan the script for the version string
-version_file = 'opbasm.py'
+# Scan the main package for the version string
+version_file = 'opbasm/opbasm.py'
 version = None
 with open(version_file) as fh:
     try:
@@ -31,10 +31,10 @@ setup(name='opbasm',
     long_description=long_description,
     platforms = ['Any'],
     install_requires = [],
-    packages = ['opbasm_lib', 'templates', 'test'],
-    py_modules = ['opbasm', 'pb_update', 'ez_setup'],
+    packages = ['opbasm', 'templates', 'test'],
+    py_modules = ['pb_update'],
     entry_points = {
-        'console_scripts': ['opbasm = opbasm:main', 'pb_update = pb_update:main']
+        'console_scripts': ['new_opbasm = opbasm.__main__:main', 'pb_update = pb_update:main']
     },
     include_package_data = True,
 
