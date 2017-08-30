@@ -308,8 +308,8 @@ xor $1, $2')
 ; Args:
 ;   Arg1: Optional prefix to name
 ; Example:
-;   randlabel(PREFIX_) ; Expands to "__PREFIX_?????"
-define(`randlabel', `esyscmd(`python -c "import sys; import random; import string; sys.stdout.write(\"__$1\" + \"\".join([random.choice(string.ascii_letters) for _ in xrange(5)]))"')')
+;   randlabel(PREFIX_) ; Expands to "&&PREFIX_?????"
+define(`randlabel', `esyscmd(`python -c "import sys; import random; import string; sys.stdout.write(\"&&$1\" + \"\".join([random.choice(string.ascii_letters) for _ in xrange(5)]))"')')
 
 ;---------------------------------
 ; Generate a unique name for a label.
@@ -317,12 +317,12 @@ define(`randlabel', `esyscmd(`python -c "import sys; import random; import strin
 ; Args:
 ;   Arg1: Optional prefix to name
 ; Example:
-;   uniqlabel(PREFIX_) ; Expands to "__PREFIX_f0_0001"
+;   uniqlabel(PREFIX_) ; Expands to "&&PREFIX_f0_0001"
 ifdef(`M4_FILE_NUM',,`define(`M4_FILE_NUM', 0)')
 define(`_uniq_ix', 0)
 
 define(`uniqlabel', `define(`_uniq_ix', incr(_uniq_ix))dnl
-__$1f`'eval(M4_FILE_NUM)_`'eval(_uniq_ix, 10, 4)')
+&&$1f`'eval(M4_FILE_NUM)_`'eval(_uniq_ix, 10, 4)')
 
 
 ;---------------------------------

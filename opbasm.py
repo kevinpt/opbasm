@@ -115,7 +115,7 @@ except ImportError:
   def warn(t): return t
   def error(t): return t
 
-__version__ = '1.3.5'
+__version__ = '1.3.6'
 
 
 class FatalError(Exception):
@@ -246,15 +246,15 @@ def fail(s, loc, tokens):
 
 regex_parser = re.compile(r'''
   (?:
-    (?P<label>[.\w]+):\s*
+    (?P<label>[.&\w]+):\s*
   )?
   (?:
     (?P<cmd>[\w&@]+)\s*
     (?:
         (?:(?P<arg1>[.\w~'#$]+)\s*|(?P<arg1s>".+")\s*)
-        (?:,\s*(?P<arg2>[.\w~'%#$]+)|,\s*\(\s*(?P<arg2b>\w+)\s*\)
+        (?:,\s*(?P<arg2>[.&\w~'%#$]+)|,\s*\(\s*(?P<arg2b>\w+)\s*\)
         |,\s*\[(?P<arg2t>[^\]]+\]('[db])?)|,\s*(?P<arg2s>".+"))?
-        |\(\s*(?P<addr1>[.\w~']+)\s*,\s*(?P<addr2>[.\w~']+)\s*\)
+        |\(\s*(?P<addr1>[.&\w~']+)\s*,\s*(?P<addr2>[.&\w~']+)\s*\)
     )?\s*
   )?
   (?P<cmnt>;.*)?$
@@ -959,13 +959,11 @@ class Assembler(object):
   def add_optimizer(self, opt):
     opt.register(self)
 
-  def _preprocess_with_m4(self, source_file):
-    '''Determine if file should be preprocessed for m4 macros and generate
-    expanded file with ".gen.psm" extension
-    '''
-    if (not self.config.use_m4) and os.path.splitext(source_file)[1] not in ('.psm4', '.m4'): # No change
-      return source_file
 
+  def _preprocess_with_m4(self, source_file, source_code):
+    '''Preproces source for m4 macros and generate expanded file
+    with ".gen.psm" extension
+    '''
     self.create_output_dir() # Make sure directory exists for generated source
 
     pp_source_file = os.path.splitext(source_file)[0] + '.gen.psm'
@@ -977,12 +975,12 @@ class Assembler(object):
     proc_mode = self.config.target_arch.short_name.upper() # Definition for active processor type
 
     # Preprocess C-style syntax
-    pure_m4 = self.preprocess_c_style(source_file)
+    pure_m4 = self._preprocess_c_style(source_file, source_code)
     if self.config.debug_preproc:
       with io.open(self.config.debug_preproc, 'w', encoding='utf-8') as fh:
         print(pure_m4, file=fh)
 
-    self.m4_file_num += 1
+    self.m4_file_num += 1 # Increment counter for unique macro labels
 
     m4_options = ['-s'] # Activate synclines so we can track original line numbers
 
@@ -1013,7 +1011,7 @@ class Assembler(object):
     p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     m4_result, m4_err = p.communicate(input=pure_m4.encode('utf-8'))
     if p.returncode:
-      asm_error(_('m4 failure on file'), source_file, exit=1)
+      raise FatalError(_('m4 failure on file {}').format(source_file))
       
     # On Windows the pipe output is raw bytes containing '\r\n' for line terminators.
     # We need to manually convert these back to \n to prevent the \r from being preserved
@@ -1030,14 +1028,18 @@ class Assembler(object):
     return pp_source_file
 
 
-  def preprocess_c_style(self, source_file):
+  def _preprocess_c_style(self, source_file, source_code=None):
     '''Perform an initial transformation to convert C-style syntax into valid m4 macros'''
-    lines = []
-    if source_file == '-':
-      lines = [l.decode('utf-8') for l in sys.stdin.readlines()]
-    else:
-      with io.open(source_file, 'r', encoding='utf-8') as fh:
-        lines = fh.readlines()
+
+    if source_code is None:
+      lines = []
+      if source_file == '-':
+        lines = [l.decode('utf-8') for l in sys.stdin.readlines()]
+      else:
+        with io.open(source_file, 'r', encoding='utf-8') as fh:
+          lines = fh.readlines()
+    else: # Contents are in a string
+      lines = source_code
       
     # Add a trailing empty line so that m4 doesn't complain about files without them
     # or ending with a comment
@@ -1079,7 +1081,7 @@ class Assembler(object):
       elines.append(l)
 
     # Now we can run pattern substitutions to convert the C-style syntax into m4
-    ecode = ''.join(elines)
+    ecode = '\n'.join(elines)
     # else-if clause
     ecode = re.sub(r'}(?:\s*;.*\n)*\s*else(?:\s*;.*\n)*\s*if\s*\((.*?)\)(?:\s*;.*\n)*\s*{', r"', \1,`", ecode)
     ecode = re.sub(r'if\s*\((.*?)\)(?:\s*;.*\n)*\s*{', r'if(\1, `', ecode) # if statement
@@ -1140,60 +1142,62 @@ class Assembler(object):
       
     self.line_index[source_file] = index
 
-  def process_includes(self, source_file, statements=None):
+  def process_includes(self, source_file=None, source_code=None):
     '''Scan a list of statements for INCLUDE directives and recursively
     read each included source file. Constant, string, and table definitions
     are also processed to keep track of where they are defined.
     This is a generator function that yields the name of each included file'''
 
-    # FIXME: Make this work with a list of statements
-    if statements is not None:
-      print('## HASHING...')
-      # Build hash to identify this code
-      hash_data = hashlib.md5()
-      for s in statements:
-        hash_data.update(str(s))
+    from_stdin = source_file == '-'
 
-      source_file = 'CODE_' + hash_data.hexdigest()
+    if source_code is None: # Read file contents
+      if source_file in self.sources: return # Already processed
 
-    if source_file in self.sources: return # Already processed
-
-    if statements is None:
-      pp_source_file = self._preprocess_with_m4(source_file) # FIXME: No stdin support
-
-      source_file_display = self.top_source_name()
-    else:
-      pp_source_file = source_file_display = source_file
-
-
-    if pp_source_file != source_file: # Preprocessor was run on source
-      yield source_file_display + ' (m4)'
-    else:
-      print('## YIELDING', source_file_display)
-      yield source_file_display
-
-    if statements is None:
       try:
-        if pp_source_file == '-':
-          source = [s.decode('utf-8').rstrip() for s in sys.stdin.readlines()]
+        if from_stdin:
+          source_code = [s.decode('utf-8').rstrip() for s in sys.stdin.readlines()]
         else:
-          with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
-            source = [s.rstrip() for s in fh.readlines()]
+          with io.open(source_file, 'r', encoding='utf-8') as fh:
+            source_code = [s.rstrip() for s in fh.readlines()]
       except UnicodeDecodeError:
         # Fall back to Latin-1 if UTF-8 fails
-        if pp_source_file == '-':
-          source = [s.decode('latin-1').rstrip() for s in sys.stdin.readlines()]
+        if from_stdin:
+          source_code = [s.decode('latin-1').rstrip() for s in sys.stdin.readlines()]
         else:
-          with io.open(pp_source_file, 'r', encoding='latin-1') as fh:
-            source = [s.rstrip() for s in fh.readlines()]
+          with io.open(source_file, 'r', encoding='latin-1') as fh:
+            source_code = [s.rstrip() for s in fh.readlines()]
+    else: # Take code from string
+      source_code = source_code.split('\n')
 
+    if (source_file is None) or from_stdin: # Make temp name
+      prefix = 'STDIN' if from_stdin else 'CODE'
+      # Build hash to identify this code
+      hash_data = hashlib.md5()
+      for s in source_code:
+        hash_data.update(s)
 
-      index = self.line_index[source_file] if source_file in self.line_index else None
-      slist = parse_lines(source, source_file, index)
-      self.sources[source_file] = slist
-    else:
-      slist = statements
+      source_file = '{}_{}.psm'.format(prefix, hash_data.hexdigest()[-8:])
 
+      if from_stdin:
+        self.top_source_file = source_file
+
+    used_m4 = False
+    if (self.config.use_m4) or (os.path.splitext(source_file)[1] in ('.psm4', '.m4')):
+      pp_source_file = self._preprocess_with_m4(source_file, source_code)
+      used_m4 = True
+      # Get expanded source code
+      try:
+        with io.open(pp_source_file, 'r', encoding='utf-8') as fh:
+          source_code = [s.rstrip() for s in fh.readlines()]
+      except UnicodeDecodeError:
+        # Fall back to Latin-1 if UTF-8 fails
+        with io.open(pp_source_file, 'r', encoding='latin-1') as fh:
+          source_code = [s.rstrip() for s in fh.readlines()]
+
+    yield (source_file, used_m4)
+
+    index = self.line_index[source_file] if source_file in self.line_index else None
+    slist = parse_lines(source_code, source_file, index)
     self.sources[source_file] = slist
 
     # Scan for include directives
@@ -1203,8 +1207,8 @@ class Assembler(object):
         if s.label.startswith('.'): # Local label
           xlabel = self.expand_label(s.label)
           s.xlabel = xlabel
-        elif s.label.startswith('__'): # Macro label # FIXME: Change sigil
-          # "__" prefix is ignored for context changes so that macro generated
+        elif s.label.startswith('~~'): # Macro label
+          # "~~" prefix is ignored for context changes so that macro generated
           # labels won't interfere with user expectations for local label references.
           xlabel = s.label
         else: # Global label created by user
@@ -1781,26 +1785,28 @@ class Assembler(object):
 
   def assemble_file(self, top_source_file):
     self.top_source_file = top_source_file
-    print('## TOP SOURCE:', top_source_file)
 
     # Read input sources
-    for fname in self.process_includes(top_source_file):
-      self._print(_('  Reading source:'), fname)
+    for fname, used_m4 in self.process_includes(self.top_source_file):
+      self._print(_('  Reading source:'), fname, '(m4)' if used_m4 else '')
 
     # Assemble program
     self._print(_('\n  Assembling code... '), flush=True)
 
-    self._assemble(top_source_file)
+    self._assemble(self.top_source_file)
 
   def assemble_statements(self, statements):
-    fnames = list(self.process_includes('', statements))
+    source_code = [str(s) for s in statements].join('\n')
+    self.assemble_text(source_code)
 
-    for fname in fnames:
-      print('## READING', fname)
-      self._print(_('  Reading source:'), fname)
+  def assemble_text(self, source_code):
+    fnames = list(self.process_includes(source_code=source_code))
 
-    print('## ASSEMBLING')
-    self._assemble(fnames[0])
+    for fname, used_m4 in fnames:
+      self._print(_('  Reading source:'), fname, '(m4)' if used_m4 else '')
+
+    self._assemble(fnames[0][0])
+
 
   def _assemble(self, top_source_file):
 
@@ -2082,7 +2088,10 @@ class Assembler(object):
 
     # Find longest template file name so we can align the warning messages
     # about unmapped INIT fields.
-    longest_template_name = max(len(v[1]) for v in templates.itervalues())
+    if len(templates) > 0:
+      longest_template_name = max(len(v[1]) for v in templates.itervalues())
+    else:
+      longest_template_name = 0
 
     for hdl_name in templates.iterkeys():
       template_file, target_file = templates[hdl_name]
@@ -2936,7 +2945,7 @@ def main():
 
   log_file = build_path(config.output_dir, options.module_name + '.log')
 
-  
+
   if options.input_file == '-': # Ensure a module name was provided
     if options.module_name == '-':
       asm_error(_('Module name must be provided when reading from stdin (use -n <name>)'), exit=1)
@@ -2979,7 +2988,7 @@ def main():
     if len(templates) > 0:
       print(_('\n  Found {}:').format(_('templates') if len(templates) > 1 else _('template')))
       for f in templates.itervalues():
-        print('   ', f)
+        print('   ', f[0])
 
 
   # Write results
