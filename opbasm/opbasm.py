@@ -38,6 +38,11 @@ import re
 import gettext
 import hashlib
 
+import  opbasm.optimize as optimize
+
+from opbasm.color import *
+from opbasm.devices import *
+
 
 def find_lib_dir():
   # Look relative to installed library
@@ -55,16 +60,6 @@ else:
   gettext.install('opbasm', os.path.join(find_lib_dir(), 'lang'))
 
 
-# FIXME: Not needed anymore
-try:
-  from opbasm.color import *
-except ImportError:
-  # Provide dummy functions if the color module isn't found
-  def note(t): return t
-  def success(t): return t
-  def warn(t): return t
-  def error(t): return t
-
 __version__ = '1.3.7'
 
 
@@ -73,7 +68,6 @@ class FatalError(Exception):
 
 class ParseError(FatalError):
   pass
-
 
 class StatementError(FatalError):
   '''General error reporting exception'''
@@ -86,109 +80,6 @@ class StatementError(FatalError):
       return '{}\n{}'.format(self.statment, self.args)
     else:
       return '{}'.format(self.args)
-
-
-class DeviceArch(object):
-  def __init__(self):
-    self.name = ''
-    self.short_name = ''
-
-class DevicePb3(DeviceArch):
-  def __init__(self):
-    self.name = 'PicoBlaze-3'
-    self.short_name = 'pb3'
-
-    self.has_string_table_support = False
-
-    self.zero_instr = 'LOAD s0, 00'
-
-    self.opcodes = { \
-      'add': 0x18000, 'addcy': 0x1a000, 'and': 0x0a000, 'call': 0x30000, \
-      'compare': 0x14000, 'disable': 0x3c000, 'enable': 0x3c001,
-      'fetch': 0x06000, 'input': 0x04000, 'jump': 0x34000, \
-      'load': 0x00000, 'or': 0x0c000, 'output': 0x2c000, 'return': 0x2a000, \
-      'returni': 0x38000, \
-      'rl': 0x20002, 'rr': 0x2000c, 'sl0': 0x20006, 'sl1': 0x20007, \
-      'slx': 0x20004, 'sla': 0x20000, 'sr0': 0x2000e, 'sr1': 0x2000f, \
-      'sra': 0x20008, 'srx': 0x2000a, 'store': 0x2e000, 'sub': 0x1c000, \
-      'subcy': 0x1e000, 'test': 0x12000, 'xor': 0x0e000, \
-      'inst': 0x00000 \
-    }
-
-    self.flag_opcodes = set(('call', 'jump', 'return'))
-    self.flag_codes = {
-      'c' : 0x1800,
-      'nc': 0x1c00,
-      'z' : 0x1000,
-      'nz': 0x1400
-    }
-    self.return_flag_codes = self.flag_codes
-
-    self.addr_opcodes = set(('call', 'jump'))
-
-    self.one_reg_opcodes = set(('rl', 'rr', 'sl0', 'sl1', 'sla', 'slx', 'sr0', 'sr1', 'sra', 'srx'))
-
-    self.two_reg_opcodes = set(('add', 'addcy', 'and', 'compare', 'fetch', 'input', \
-      'load', 'or', 'output', 'store', 'sub', 'subcy', 'test', 'xor'))
-    self.two_reg_op_offset = 0x1000
-
-    self.directives = set(('address', 'constant', 'namereg', \
-        'include', 'default_jump'))
-
-class DevicePb6(DeviceArch):
-  def __init__(self):
-    self.name = 'PicoBlaze-6'
-    self.short_name = 'pb6'
-
-    self.has_string_table_support = True
-
-    self.zero_instr = 'LOAD s0, s0'
-
-    self.opcodes = { \
-      'add': 0x11000, 'addcy': 0x13000, 'and': 0x03000, 'call': 0x20000, \
-      'compare': 0x1d000, 'disable': 0x28000, 'enable': 0x28001,
-      'fetch': 0x0b000, 'input': 0x09000, 'jump': 0x22000, \
-      'load': 0x01000, 'or': 0x05000, 'output': 0x2d000, 'return': 0x25000, \
-      'returni': 0x29000, \
-      'rl': 0x14002, 'rr': 0x1400c, 'sl0': 0x14006, 'sl1': 0x14007, \
-      'slx': 0x14004, 'sla': 0x14000, 'sr0': 0x1400e, 'sr1': 0x1400f, \
-      'sra': 0x14008, 'srx': 0x1400a, 'store': 0x2f000, 'sub': 0x19000, \
-      'subcy': 0x1b000, 'test': 0x0d000, 'xor': 0x07000, \
-
-      # New PicoBlaze-6 instructions:
-      'call@': 0x24000, 'comparecy': 0x1f000, 'hwbuild': 0x14080, 'jump@': 0x26000, \
-      'load&return': 0x21000, 'outputk': 0x2b000, 'regbank': 0x37000, 'star': 0x17000, \
-      'testcy': 0x0f000, 'inst': 0x00000 \
-    }
-
-    self.flag_opcodes = set(('call', 'jump', 'return'))
-    self.flag_codes = {
-      'c' : 0x18000,
-      'nc': 0x1c000,
-      'z' : 0x10000,
-      'nz': 0x14000
-    }
-
-    # PicoBlaze-6 uses inconsistent offsets for the conditional return instructions
-    self.return_flag_codes = {
-      'c' : 0x14000,
-      'nc': 0x18000,
-      'z' : 0x0c000,
-      'nz': 0x10000
-    }
-
-    self.addr_opcodes = set(('call', 'jump'))
-
-    self.one_reg_opcodes = set(('rl', 'rr', 'sl0', 'sl1', 'sla', 'slx', 'sr0', 'sr1', 'sra', 'srx', \
-      'hwbuild'))
-
-    self.two_reg_opcodes = set(('add', 'addcy', 'and', 'compare', 'fetch', 'input', \
-      'load', 'or', 'output', 'store', 'sub', 'subcy', 'test', 'xor', \
-      'comparecy', 'testcy'))
-    self.two_reg_op_offset = -0x1000
-
-    self.directives = set(('address', 'constant', 'namereg', \
-        'include', 'default_jump', 'string', 'table'))
 
 
 def fail(s, loc, tokens):
@@ -290,6 +181,27 @@ def regex_parse_statement(l):
   return {'statement': ptree}
 
 
+def parse_lines(lines, source_file, index=None):
+  '''Parse a list of text lines into Statement objects'''
+
+  statements = []
+  for i, l in enumerate(lines):
+    try:
+      ptree = regex_parse_statement(l)
+    except ParseError:
+      if index is not None:
+        ix_line = index[i]
+        error_line = _('{} line {} (expanded line {})').format(ix_line[2], ix_line[1], i+1)
+      else:
+        error_line = _('{} line {}').format(source_file, i+1)
+
+      raise ParseError(_(' Bad statement in {}:\n  {}').format(error_line, l))
+
+    ix_line = index[i] if index is not None else None
+    statements.append(Statement(ptree['statement'], i+1, source_file, ix_line))
+    #print('### ptree:', i+1, ptree['statement'])
+
+  return statements
 
 
 class Statement(object):
@@ -495,28 +407,6 @@ class Symbol(object):
       return self._val_text
 
 
-def parse_lines(lines, source_file, index=None):
-  '''Parse a list of text lines into Statement objects'''
-
-  statements = []
-  for i, l in enumerate(lines):
-    try:
-      ptree = regex_parse_statement(l)
-    except ParseError:
-      if index is not None:
-        ix_line = index[i]
-        error_line = _('{} line {} (expanded line {})').format(ix_line[2], ix_line[1], i+1)
-      else:
-        error_line = _('{} line {}').format(source_file, i+1)
-
-      raise ParseError(_(' Bad statement in {}:\n  {}').format(error_line, l))
-
-    ix_line = index[i] if index is not None else None
-    statements.append(Statement(ptree['statement'], i+1, source_file, ix_line))
-    #print('### ptree:', i+1, ptree['statement'])
-
-  return statements
-
 
 def find_m4():
   m4_cmd = ''
@@ -536,235 +426,9 @@ def find_standard_m4_macros():
 
   return macro_file
 
-class Optimizer(object):
-  name = ''
-  requires = []
-
-  def __init__(self):
-    self.priority = 10
-
-  def apply(self, asm, assembled_code):
-    return []
-
-  def summary(self, printf):
-    pass
-
-  def register(self, asm):
-    # Register this optimizer
-    asm.optimizers[self.name] = self
-
-    # Register any other required optimizers recursively
-    for opt_class in self.requires:
-      opt = opt_class()
-      if opt.name not in asm.optimizers:
-        opt.register(asm)
-
-
-class StaticAnalyzer(Optimizer):
-  '''Analyzes code for reachability by statically tracing execution paths'''
-  name = 'static'
-
-  def __init__(self):
-    self.priority = 50
-    self.dead_instructions = None
-    self.entry_points = None
-
-  def apply(self, asm, assembled_code):
-
-    self.keep_instructions(asm, assembled_code)
-
-    self.dead_instructions = None
-    self.entry_points = None
-
-    # Run static analysis
-    asm._print(_('  Static analysis: searching for dead code... '), end='')
-    self.entry_points = set((asm.default_jump & 0xFFF, 0))
-    self.entry_points |= set(asm.config.entry_point)
-    self.find_dead_code(assembled_code, self.entry_points)
-    asm._print(success(_('COMPLETE')))
-
-    if asm.command_line_mode:
-      # Summarize analysis
-      asm._print(_('    Entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
-        sorted(self.entry_points)]))
-      self.dead_instructions = len([s for s in assembled_code if s.removable()])
-      asm._print(_('    {} dead instructions found').format(self.dead_instructions))
-
-    return assembled_code
-
-
-  def keep_instructions(self, asm, assembled_code):
-    '''Mark instructions we want to automatically keep'''
-    # Find continuous blocks of labeled load&return instructions
-    if asm.config.target_arch.has_string_table_support: # PB6 load&return depends on string/table
-      cur_label = None
-      prev_jump = None
-      for s in assembled_code:
-        if s.label is not None:
-          cur_label = s.xlabel
-          prev_jump = None
-
-        unconditional_jump = s.command == 'jump' and s.arg2 is None
-
-        # Mark l&r for preservation if its associated label is referenced by other code
-        # Mark two or more consecutive unconditional jumps for preservation as part of a jump table
-        if s.command == 'load&return' or (unconditional_jump and prev_jump):
-          if cur_label is not None and asm.labels[cur_label].in_use:
-            if 'keep' not in s.tags:
-              s.tags['keep_auto'] = (True,)
-
-              # Mark this as the (possible) end of a jump table and flag it for preservation
-              if unconditional_jump: # and s.arg1 in self.labels:
-                s.tags['jump_table_end'] = (True,)
-                s.tags['keep'] = (True,) # For jump table instructions we need to tag with 'keep'
-                del s.tags['keep_auto']
-
-                # Mark previous jump as part of a jump table and flag it for preservation
-                if 'jump_table_end' in prev_jump.tags: del prev_jump.tags['jump_table_end']
-                prev_jump.tags['jump_table'] = (True,)
-                prev_jump.tags['keep'] = (True,) # For jump table instructions we need to tag with 'keep'
-
-        elif s.is_instruction() and not unconditional_jump: cur_label = None
-
-        # Remember previous jump instruction to identify jump tables
-        if unconditional_jump:
-          prev_jump = s
-        elif s.is_instruction():
-          prev_jump = None
-
-    # Apply keep_auto to INST directives
-    for s in assembled_code:
-      if s.command == 'inst' and 'keep' not in s.tags:
-        s.tags['keep_auto'] = (True,)
-
-
-  def find_dead_code(self, assembled_code, entry_points):
-    '''Perform dead code analysis'''
-    itable = self.build_instruction_table(assembled_code)
-    self.analyze_code_reachability(assembled_code, itable, entry_points)
-    self.analyze_recursive_keeps(assembled_code, itable)
-
-
-  def build_instruction_table(self, slist):
-    '''Build index of all instruction statements by address'''
-    itable = {}
-    for s in slist:
-      if s.is_instruction():
-        itable[s.address] = s
-
-    return itable
-
-
-  def analyze_code_reachability(self, slist, itable, entry_points):
-    '''Scan assembled statements for reachability'''
-
-    addresses = set(entry_points)
-    addresses.add(0)
-
-    self.find_reachability(addresses, itable)
-
-
-  def analyze_recursive_keeps(self, slist, itable):
-    '''Scan assembled statements for reachability'''
-
-    for s in slist:
-      if s.is_instruction() and 'keep' in s.tags:
-        self.find_reachability((s.address,), itable, follow_keeps=True)
-
-
-  def find_reachability(self, addresses, itable, follow_keeps=False):
-    '''Recursive function that follows graph of executable statements to determine
-       reachability'''
-
-    for a in addresses:
-      while a in itable:
-        s = itable[a]
-        if s.reachable: break # Skip statements already visited
-        if follow_keeps and 'keep_auto' in s.tags: break
-
-        if s.is_instruction():
-          if not follow_keeps:
-            s.reachable = True
-          elif 'keep' not in s.tags:
-            s.tags['keep_auto'] = (True,)
-
-          # Stop on unconditional return, returni, load&return, and jump@ instructions
-          if s.command in ('returni', 'load&return', 'jump@') or \
-             (s.command == 'return' and s.arg1 is None):
-            break
-
-          # Follow branch address for jump and call
-          if s.command in ('jump', 'call'):
-            if not follow_keeps or (s.immediate in itable and 'keep' not in itable[s.immediate].tags):
-              self.find_reachability((s.immediate,), itable, follow_keeps)
-
-            # Stop on unconditional jump
-            # Only 1 argument -> unconditional
-            if s.command == 'jump' and s.arg2 is None and 'jump_table' not in s.tags:
-              break
-
-        # Continue with next instruction if it exists
-        a += 1
-
-
-  def summary(self, printf):
-    printf(_('  Static analysis:\n    Dead instructions {}: {}').format( \
-      _('found'), self.dead_instructions))
-    printf(_('    Analyzed entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
-      sorted(self.entry_points)]))
-
-
-class DeadCodeRemover(Optimizer):
-  '''Removes instructions marked as dead'''
-  name = 'dead_code'
-  requires = [StaticAnalyzer]
-
-  def __init__(self):
-    self.priority = 60
-    self.removed = 0
-
-  def apply(self, asm, assembled_code):
-    self.removed = 0
-    self.remove_dead_code(asm, assembled_code)
-
-    if self.removed > 0:
-      # Reinitialize registers to default names
-      asm.init_registers()
-
-      asm._print(_('  Dead code removal: '), end='')
-      # Reassemble code with dead code removed
-      assembled_code = asm.raw_assemble(assembled_code)
-
-      asm._print(success(_('COMPLETE')))
-
-    return assembled_code
-
-
-  def remove_dead_code(self, asm, assembled_code):
-    '''Mark unreachable code for removal'''
-    for s in assembled_code:
-      if s.removable():
-        # Convert the old instruction into a comment
-        s.comment = _('REMOVED: ') + s.format().lstrip()
-        s.command = None
-        self.removed += 1
-
-        # Track any removed labels
-        if s.label is not None:
-          if s.xlabel in self.labels:
-            del asm.labels[s.xlabel]
-            asm.removed_labels.add(s.xlabel)
-          s.label = None
-          s.xlabel = None
-
-  def summary(self, printf):
-    printf(_('  Dead code removal: {}'.format(_('Applied') if self.removed > 0 else _('None'))))
-
-
-_all_optimizers = set([StaticAnalyzer, DeadCodeRemover])
-
 
 class AssemblerConfig(object):
+  '''Configuration settings for the Assembler class'''
   def __init__(self, options=None):
     # Set defaults
     self.mem_size = 1024
@@ -801,7 +465,6 @@ class Assembler(object):
 
   def __init__(self, options=None, timestamp=None):
     self.config = AssemblerConfig(options)
-    self.command_line_mode = False
     self.top_source_file = None
     self.m4_file_num = 0
     self.timestamp = timestamp if timestamp is not None else get_timestamp()
@@ -812,7 +475,7 @@ class Assembler(object):
     self.cur_context = ''
 
     self.registers = None
-    self.init_registers()
+    self._init_registers()
 
     self.strings = self._init_strings()
     self.tables = {}
@@ -832,7 +495,7 @@ class Assembler(object):
     self._stats = None
 
     # Configure optimizers implied by optimization level
-    for opt_class in _all_optimizers:
+    for opt_class in optimize._all_optimizers:
       opt = opt_class()
       if opt.priority < self.config.optimize_level * 100:
         self.add_optimizer(opt)
@@ -853,7 +516,33 @@ class Assembler(object):
   def optimizer_sequence(self):
     return sorted(self.optimizers.itervalues(), key=lambda o: o.priority)
 
-  def init_registers(self):
+  def reset(self):
+    '''Initialize state to default values'''
+    self.top_source_file = None
+    self.m4_file_num = 0
+
+    self.constants = self._init_constants()
+    self.labels = {}
+    self.removed_labels = set() # Labels eliminated by an optimizer
+    self.cur_context = ''
+
+    self._init_registers()
+    self.strings = self._init_strings()
+    self.tables = {}
+    self.sources = {}
+    self.default_jump = None
+
+    self.line_index = {}
+    self.optimizers = {}
+
+    self.assembled_code = None
+    self.valid_asm = False
+    self._mmap = None
+    self._stats = None
+
+
+
+  def _init_registers(self):
     '''Initialize table of register names'''
     hex_digits = [hex(d)[-1] for d in xrange(16)]
     self.registers = dict(('s' + h, i) for i, h in enumerate(hex_digits))
@@ -1908,7 +1597,7 @@ class Assembler(object):
     else:
       return self.top_source_file
 
-  def write_log_file(self, log_file, colorize, refline_cols=8, use_unicode=True):
+  def write_log_file(self, log_file, colorize=False, refline_cols=8, use_unicode=True):
     '''Write a log file with details of assembled code'''
     self.create_output_dir()
     with io.open(log_file, 'w', encoding='utf-8') as fh:

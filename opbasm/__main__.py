@@ -71,6 +71,7 @@ import os, sys
 from argparse import ArgumentParser
 
 import opbasm.opbasm as opbasm
+import opbasm.optimize as optimize
 from .opbasm import *
 
 
@@ -323,13 +324,12 @@ def main():
 
   # Assemble the code
   asm = Assembler(config)
-  asm.command_line_mode = True
 
   if options.report_dead_code or options.remove_dead_code:
-    asm.add_optimizer(StaticAnalyzer())
+    asm.add_optimizer(optimize.StaticAnalyzer())
 
   if options.remove_dead_code:
-    asm.add_optimizer(DeadCodeRemover())
+    asm.add_optimizer(optimize.DeadCodeRemover())
 
 
   try:
