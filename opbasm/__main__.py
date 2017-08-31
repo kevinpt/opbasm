@@ -68,7 +68,7 @@ explanation of the new PicoBlaze-6 syntax.
 from __future__ import print_function, division, unicode_literals, absolute_import
 
 import os, sys
-from optparse import OptionParser
+from argparse import ArgumentParser
 
 import opbasm.opbasm as opbasm
 from .opbasm import *
@@ -85,71 +85,72 @@ if sys.platform == 'win32' and sys.stdout.encoding == 'cp65001':
 
 def parse_command_line(argv):
   '''Process command line arguments'''
-  progname = 'opbasm'
-  usage = _('''{} [-i] <input file> [-n <name>] [-t <template>] [-6|-3] [-m <mem size>] [-s <scratch size>]
-              [-d] [-r] [-e <address>]
-              [-o <output dir>] [-q] [--m4]
-              [-v] [-V] [--debug-preproc <file>]
-       {} -g''').format(progname, progname)
-  parser = OptionParser(usage=usage)
+  usage = '''opbasm [-h] [-i INPUT_FILE] [-n MODULE_NAME] [-t TEMPLATE_FILE]
+              [-6] [-3] [-m MEM_SIZE] [-s SCRATCH_SIZE] [-x] [--mif]
+              [-o OUTPUT_DIR] [-O OPTIMIZE_LEVEL] [-d] [-r] [-e ADDRESS]
+              [-c] [-R REFLINE_COLS] [--ascii] [-g] [-v] [-q] [-V] [--m4]
+              [-D NAME[=VALUE]] [--debug-preproc FILE]'''
 
-  parser.add_option('-i', '--input', dest='input_file', help=_('Input file'))
-  parser.add_option('-n', '--name', dest='module_name', help=_('Module or entity name (defaults to input file name)'))
-  parser.add_option('-t', '--template', dest='template_file', help=_('Template file'))
-  parser.add_option('-6', '--pb6', dest='use_pb6', action='store_true', default=False, \
+  desc = '''Assemble input file into a PicoBlaze ROM image.'''
+  parser = ArgumentParser(usage=usage, description=desc)
+
+  parser.add_argument('-i', '--input', dest='input_file', help=_('Input file'))
+  parser.add_argument('-n', '--name', dest='module_name', help=_('Module or entity name (defaults to input file name)'))
+  parser.add_argument('-t', '--template', dest='template_file', help=_('Template file'))
+  parser.add_argument('-6', '--pb6', dest='use_pb6', action='store_true', default=False, \
         help=_('Assemble PicoBlaze-6 code'))
-  parser.add_option('-3', '--pb3', dest='use_pb3', action='store_true', default=False, \
+  parser.add_argument('-3', '--pb3', dest='use_pb3', action='store_true', default=False, \
         help=_('Assemble PicoBlaze-3 code'))
-  parser.add_option('-m', '--mem-size', dest='mem_size', \
+  parser.add_argument('-m', '--mem-size', dest='mem_size', \
                     default=0, type=int, help=_('Program memory size'))
-  parser.add_option('-s', '--scratch-size', dest='scratch_size', \
+  parser.add_argument('-s', '--scratch-size', dest='scratch_size', \
                     default=0, type=int, help=_('Scratchpad memory size'))
-  parser.add_option('-x', '--hex', dest='hex_output', action='store_true', default=False, \
+  parser.add_argument('-x', '--hex', dest='hex_output', action='store_true', default=False, \
         help=_('Write HEX in place of MEM file'))
-  parser.add_option('--mif', dest='mif_output', action='store_true', default=False, \
+  parser.add_argument('--mif', dest='mif_output', action='store_true', default=False, \
         help=_('Write MIF in place of MEM file'))
-  parser.add_option('-o', '--outdir', dest='output_dir', default='.', help=_('Output directory'))
+  parser.add_argument('-o', '--outdir', dest='output_dir', default='.', help=_('Output directory'))
 
-  parser.add_option('-O', '--optimize', dest='optimize_level', action='store', \
+  parser.add_argument('-O', '--optimize', dest='optimize_level', action='store', \
         default=0, type=int, help=_('Optimization level'))
-  parser.add_option('-d', '--report-dead-code', dest='report_dead_code', action='store_true', \
+  parser.add_argument('-d', '--report-dead-code', dest='report_dead_code', action='store_true', \
         default=False, help=_('Perform dead code analysis shown in log file'))
-  parser.add_option('-r', '--remove-dead-code', dest='remove_dead_code', action='store_true', \
+  parser.add_argument('-r', '--remove-dead-code', dest='remove_dead_code', action='store_true', \
         default=False, help=_('Remove dead code from assembled source'))
-  parser.add_option('-e', '--entry-point', dest='entry_point', default=[], action='append', \
+  parser.add_argument('-e', '--entry-point', dest='entry_point', default=[], action='append', \
         metavar='ADDRESS', help=_('Set address of ISR (or other) entry point'))
 
-  parser.add_option('-c', '--color-log', dest='color_log', action='store_true', default=False, \
+  parser.add_argument('-c', '--color-log', dest='color_log', action='store_true', default=False, \
         help=_('Colorize log file'))
-  parser.add_option('-R', '--reflines', dest='refline_cols', action='store', default=8, type=int, \
+  parser.add_argument('-R', '--reflines', dest='refline_cols', action='store', default=8, type=int, \
         help=_('Set number of columns for reflines in log'))
-  parser.add_option('--ascii', dest='ascii', action='store_true', default=False, \
+  parser.add_argument('--ascii', dest='ascii', action='store_true', default=False, \
         help=_('Render reflines with ASCII-only characters'))
-  parser.add_option('-g', '--get-templates', dest='get_templates', action='store_true', default=False, \
-        help=_('Get default template files'))
-  parser.add_option('-v', '--version', dest='version', action='store_true', default=False, \
+  parser.add_argument('-g', '--get-templates', dest='get_templates', action='store_true', \
+        default=False, help=_('Get default template files'))
+  parser.add_argument('-v', '--version', dest='version', action='store_true', default=False, \
         help=_('Show OPBASM version'))
-  parser.add_option('-q', '--quiet', dest='quiet', action='store_true', default=False, \
+  parser.add_argument('-q', '--quiet', dest='quiet', action='store_true', default=False, \
         help=_('Quiet output'))
-  parser.add_option('-V', '--verbose', dest='verbose', action='store_true', default=False, \
+  parser.add_argument('-V', '--verbose', dest='verbose', action='store_true', default=False, \
         help=_('Verbose output'))
-  parser.add_option('--m4', dest='use_m4', action='store_true', default=False, \
+  parser.add_argument('--m4', dest='use_m4', action='store_true', default=False, \
         help=_('Use m4 preprocessor on all source files'))
-  parser.add_option('-D', '--define', dest='m4_defines', action='append', default=[], \
+  parser.add_argument('-D', '--define', dest='m4_defines', action='append', default=[], \
         metavar='NAME[=VALUE]', help=_('Define m4 macro NAME as having VALUE or empty'))
-  parser.add_option('--debug-preproc', dest='debug_preproc', metavar='FILE', \
+  parser.add_argument('--debug-preproc', dest='debug_preproc', metavar='FILE', \
         help=_('Transformed source file after initial preprocessing'))
   
-  options, args = parser.parse_args(argv)
+  options, unparsed = parser.parse_known_args(argv)
 
   if options.version:
-    print(_('OPBASM version'), __version__)
+    print(_('OPBASM version'), opbasm.__version__)
     sys.exit(0)
 
   if not options.get_templates:
     if not options.input_file:
-      if len(args) > 0:
-        options.input_file = args[0]
+      if len(unparsed) > 0:
+        options.input_file = unparsed[0]
 
     if not options.input_file: parser.error(_('Missing input file'))
 

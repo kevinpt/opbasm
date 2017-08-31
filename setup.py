@@ -4,13 +4,13 @@ use_setuptools()
 from setuptools import setup
 
 # use README.rst for the long description
-with open('README.rst') as fh:
+with open('README.rst', encoding='utf-8') as fh:
     long_description = fh.read()
     
 # Scan the main package for the version string
 version_file = 'opbasm/opbasm.py'
 version = None
-with open(version_file) as fh:
+with open(version_file, encoding='utf-8') as fh:
     try:
         version = [line.split('=')[1].strip().strip("'") for line in fh if \
             line.startswith('__version__')][0]

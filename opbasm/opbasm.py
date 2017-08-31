@@ -962,7 +962,7 @@ class Assembler(object):
     m4_result, m4_err = p.communicate(input=pure_m4.encode('utf-8'))
     if p.returncode:
       raise FatalError(_('m4 failure on file {}').format(source_file))
-      
+
     # On Windows the pipe output is raw bytes containing '\r\n' for line terminators.
     # We need to manually convert these back to \n to prevent the \r from being preserved
     # and ending up with files containing \r\r\n which then results in unwanted empty lines
@@ -974,7 +974,7 @@ class Assembler(object):
 
     # Use synclines to build index tracking how original source lines were expanded
     self.index_expanded_line_numbers(m4_result, pp_source_file, source_file)
-      
+
     return pp_source_file
 
 
@@ -990,7 +990,7 @@ class Assembler(object):
           lines = fh.readlines()
     else: # Contents are in a string
       lines = source_code
-      
+
     # Add a trailing empty line so that m4 doesn't complain about files without them
     # or ending with a comment
     lines.append('\n')
@@ -1002,7 +1002,7 @@ class Assembler(object):
 
     # Convert constant directives into const() macros
     const_def = re.compile(r'^([^;]*)constant\s+([^,]+)\s*,\s*("."|[^;]+)(;.*)?', re.IGNORECASE)
-    
+
     # Escape quoted strings to ensure no words in them are expanded by m4
     string_def = re.compile(r'string(.*)("[^"]*")', re.IGNORECASE)
 
@@ -2641,7 +2641,7 @@ def template_data_size(template_file):
       data_format = TemplateDataFormat.ROMECC
 
   if data_format is None:
-    asm_error(_('Cannot determine template data format'), exit=1)
+    raise FatalError(_('Cannot determine template data format'))
 
   return data_format
 
