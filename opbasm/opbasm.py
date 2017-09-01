@@ -410,7 +410,7 @@ class Symbol(object):
 
 def find_m4():
   m4_cmd = ''
-  if sys.platform == 'win32': # Use included m4 binary in opbasm_lib on Windows (except within Cygwin)
+  if sys.platform == 'win32': # Use included m4 binary in opbasm lib on Windows (except within Cygwin)
     m4_cmd = os.path.join(find_lib_dir(), 'm4', 'm4.exe')
   
   if not os.path.exists(m4_cmd): # Use system path to find m4
@@ -502,18 +502,21 @@ class Assembler(object):
 
   @property
   def mmap(self):
+    '''Memoize memory map'''
     if self._mmap is None:
       self.build_memmap()
     return self._mmap
 
   @property
   def stats(self):
+    '''Memoize code stats'''
     if self._stats is None:
       self.code_stats()
     return self._stats
 
   @property
   def optimizer_sequence(self):
+    '''Return list of active optimizers sorted by priority'''
     return sorted(self.optimizers.itervalues(), key=lambda o: o.priority)
 
   def reset(self):
@@ -540,6 +543,9 @@ class Assembler(object):
     self._mmap = None
     self._stats = None
 
+
+  def add_optimizer(self, opt):
+    opt.register(self)
 
 
   def _init_registers(self):
@@ -594,9 +600,6 @@ class Assembler(object):
       s.in_use = True
 
     return strings
-
-  def add_optimizer(self, opt):
-    opt.register(self)
 
 
   def _preprocess_with_m4(self, source_file, source_code):
@@ -662,7 +665,7 @@ class Assembler(object):
       m4_result = m4_result.decode('utf-8')
 
     # Use synclines to build index tracking how original source lines were expanded
-    self.index_expanded_line_numbers(m4_result, pp_source_file, source_file)
+    self._index_expanded_line_numbers(m4_result, pp_source_file, source_file)
 
     return pp_source_file
 
@@ -742,7 +745,7 @@ class Assembler(object):
     ecode = re.sub(r'}', r"')", ecode) # end of a block
     return ecode
 
-  def index_expanded_line_numbers(self, m4_result, pp_source_file, source_file):
+  def _index_expanded_line_numbers(self, m4_result, pp_source_file, source_file):
     '''Strip out inserted m4 synclines comments and build an index relating original source lines to the
        macro expanded code'''
     syncline = re.compile(r'^#line (\d+) *(".*")?')
@@ -781,7 +784,7 @@ class Assembler(object):
       
     self.line_index[source_file] = index
 
-  def process_includes(self, source_file=None, source_code=None):
+  def _process_includes(self, source_file=None, source_code=None):
     '''Scan a list of statements for INCLUDE directives and recursively
     read each included source file. Constant, string, and table definitions
     are also processed to keep track of where they are defined.
@@ -844,7 +847,7 @@ class Assembler(object):
       # Track label sources
       if s.label is not None:
         if s.label.startswith('.'): # Local label
-          xlabel = self.expand_label(s.label)
+          xlabel = self._expand_label(s.label)
           s.xlabel = xlabel
         elif s.label.startswith('~~'): # Macro label
           # "~~" prefix is ignored for context changes so that macro generated
@@ -873,7 +876,7 @@ class Assembler(object):
           if not os.path.exists(include_file):
             raise StatementError(s, _('Include file not found:'), include_file)
 
-          for inc_file in self.process_includes(include_file):
+          for inc_file in self._process_includes(include_file):
             yield inc_file
         else:
           raise StatementError(s, _('Invalid include parameter'), s.arg1)
@@ -979,17 +982,17 @@ class Assembler(object):
       else:
         yield s
 
-  def expand_label(self, addr_label):
+  def _expand_label(self, addr_label):
     if addr_label.startswith('.'):
       return self.cur_context + addr_label
     else:
       return addr_label
 
 
-  def get_address(self, addr_label, track_usage=True):
+  def label_address(self, addr_label, track_usage=True):
     '''Lookup the address assigned to addr_label'''
 
-    xlabel = self.expand_label(addr_label)
+    xlabel = self._expand_label(addr_label)
 
     if xlabel in self.labels and track_usage:
       self.labels[xlabel].in_use = True
@@ -1007,7 +1010,7 @@ class Assembler(object):
     if arg.endswith("'upper") or arg.endswith("'lower"):
       # Address constant
       label, portion = arg.split("'")
-      addr = self.get_address(label)
+      addr = self.label_address(label)
       if addr is None:
         return None
 
@@ -1027,7 +1030,7 @@ class Assembler(object):
 
     return value
 
-  def get_register(self, arg):
+  def register_index(self, arg):
     '''Lookup the register named in arg'''
     if arg in self.registers:
       return self.registers[arg]
@@ -1083,7 +1086,7 @@ class Assembler(object):
       return 0
 
 
-  def raw_assemble(self, slist, start_address=0, bounds_check=True):
+  def _raw_assemble(self, slist, start_address=0, bounds_check=True):
     '''Generate assembled instructions from a raw statement list'''
     cur_addr = start_address
     self.default_jump = None
@@ -1116,7 +1119,7 @@ class Assembler(object):
         cur_addr += self.statement_words(s)
 
       elif s.command == 'address':
-        cur_addr = self.get_address(s.arg1)
+        cur_addr = self.label_address(s.arg1)
         if cur_addr is None:
           raise StatementError(s, _('Invalid address:'), s.arg1)
 
@@ -1167,7 +1170,7 @@ class Assembler(object):
             if addr_label is None:
               raise StatementError(s, _('Missing address'))
 
-            s.immediate = self.get_address(addr_label)
+            s.immediate = self.label_address(addr_label)
             if s.immediate is None:
               raise StatementError(s, _('Invalid address:'), addr_label)
             if bounds_check and s.immediate >= self.config.mem_size:
@@ -1179,7 +1182,7 @@ class Assembler(object):
           if s.arg2 is not None:
             raise StatementError(s, _('Illegal operand:'), s.arg2)
 
-          s.regx = self.get_register(s.arg1)
+          s.regx = self.register_index(s.arg1)
           if s.regx is None:
             raise StatementError(s, _('Invalid register:'), s.arg1)
 
@@ -1187,11 +1190,11 @@ class Assembler(object):
           if s.arg1 is None or s.arg2 is None:
             raise StatementError(s, _('Missing operand'))
 
-          s.regx = self.get_register(s.arg1)
+          s.regx = self.register_index(s.arg1)
           if s.regx is None:
             raise StatementError(s, _('Invalid register:'), s.arg1)
 
-          s.regy = self.get_register(s.arg2)
+          s.regy = self.register_index(s.arg2)
           if s.regy is not None: # Using y register opcode
             s.opcode += self.config.target_arch.two_reg_op_offset # Adjust opcode
 
@@ -1201,7 +1204,7 @@ class Assembler(object):
 
             if s.immediate is None:
               if s.arg2.endswith("'upper") or s.arg2.endswith("'lower"):
-                xlabel = self.expand_label(s.arg2.split("'")[0])
+                xlabel = self._expand_label(s.arg2.split("'")[0])
                 if xlabel in self.removed_labels:
                   raise StatementError(s, _('Label has been removed: {}\n       Add ";PRAGMA keep [on,off]" to preserve this label').format(s.arg2))
                 else:
@@ -1234,11 +1237,11 @@ class Assembler(object):
         elif s.command in ('call@', 'jump@'):
           if s.arg1 is None or s.arg2 is None:
             raise StatementError(s, _('Missing operand'))
-          s.regx = self.get_register(s.arg1)
+          s.regx = self.register_index(s.arg1)
           if s.regx is None:
             raise StatementError(s, _('Invalid register:'), s.arg1)
 
-          s.regy = self.get_register(s.arg2)
+          s.regy = self.register_index(s.arg2)
           if s.regy is None:
             raise StatementError(s, _('Invalid register:'), s.arg2)
 
@@ -1246,7 +1249,7 @@ class Assembler(object):
           if s.arg1 is None or s.arg2 is None:
             raise StatementError(s, _('Missing operand'))
 
-          s.regx = self.get_register(s.arg1)
+          s.regx = self.register_index(s.arg1)
           if s.regx is None:
             raise StatementError(s, _('Invalid register:'), s.arg1)
 
@@ -1343,7 +1346,7 @@ class Assembler(object):
           # as the second argument as well as a register.
           # http://forums.xilinx.com/t5/PicoBlaze/obscure-undocumented-property-of-REGBANK-instruction/m-p/489774#M2375
 
-          s.regy = self.get_register(s.arg2)
+          s.regy = self.register_index(s.arg2)
           if s.regy is not None: # Using y register opcode
             s.opcode += self.config.target_arch.two_reg_op_offset # Adjust opcode
 
@@ -1378,7 +1381,7 @@ class Assembler(object):
           if s.arg1 not in self.registers:
             raise StatementError(s, _('Unknown register name:'), s.arg1)
 
-          self.registers[s.arg2] = self.get_register(s.arg1)
+          self.registers[s.arg2] = self.register_index(s.arg1)
           del self.registers[s.arg1]
 
 
@@ -1388,7 +1391,7 @@ class Assembler(object):
           if s.arg2 is not None:
             raise StatementError(s, _('Too many arguments to DEFAULT_JUMP'))
 
-          self.default_jump = self.get_address(s.arg1)
+          self.default_jump = self.label_address(s.arg1)
           if self.default_jump is None:
             raise StatementError(s, _('Invalid address:'), s.arg1)
 
@@ -1427,7 +1430,7 @@ class Assembler(object):
     self.top_source_file = top_source_file
 
     # Read input sources
-    for fname, used_m4 in self.process_includes(self.top_source_file):
+    for fname, used_m4 in self._process_includes(self.top_source_file):
       self._print(_('  Reading source:'), fname, '(m4)' if used_m4 else '')
 
     # Assemble program
@@ -1440,7 +1443,7 @@ class Assembler(object):
     self.assemble_text(source_code)
 
   def assemble_text(self, source_code):
-    fnames = list(self.process_includes(source_code=source_code))
+    fnames = list(self._process_includes(source_code=source_code))
 
     for fname, used_m4 in fnames:
       self._print(_('  Reading source:'), fname, '(m4)' if used_m4 else '')
@@ -1458,7 +1461,7 @@ class Assembler(object):
 
     remove_dead_code = 'dead_code' in self.optimizers # FIXME: Make more general
     # Skip bounds check on first assemble if dead code removal is in use
-    assembled_code = self.raw_assemble(slist, 0, bounds_check=not remove_dead_code)
+    assembled_code = self._raw_assemble(slist, 0, bounds_check=not remove_dead_code)
 
     # Run optimizers
     if len(self.optimizers) > 0:
@@ -2151,7 +2154,7 @@ def build_9_bit_mem_init(mmap, minit, bit_range):
 
 
 try:
-  from  opbasm_lib.hamming import secded_encode_num
+  from  opbasm.hamming import secded_encode_num
   
   def build_xilinx_ecc_mem_init(mmap):
     '''Create a dict of Xilinx BRAM INIT and INITP strings for the 7-series ECC template'''

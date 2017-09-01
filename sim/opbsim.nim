@@ -37,7 +37,7 @@ proc getVersion(fname: string): string {.compileTime.} =
       return ln.split('=')[1].strip().strip(chars={'\''})
   return "??"
 
-const buildVersion = getVersion("../opbasm.py")
+const buildVersion = getVersion("../opbasm/opbasm.py")
 
 
 proc readMemFile(fname: string): ref seq[int32] =
@@ -1087,7 +1087,7 @@ proc main() =
         
         jsonInput[offset] = i.getNum.uint8
         offset.inc
-    
+
 
   if not cmdOpts.quiet:
     echo "PicoBlaze simulator"

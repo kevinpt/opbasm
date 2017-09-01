@@ -223,7 +223,7 @@ class DeadCodeRemover(Optimizer):
 
       asm._print(_('  Dead code removal: '), end='')
       # Reassemble code with dead code removed
-      assembled_code = asm.raw_assemble(assembled_code)
+      assembled_code = asm._raw_assemble(assembled_code)
 
       asm._print(success(_('COMPLETE')))
 

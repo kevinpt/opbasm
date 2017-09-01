@@ -1,16 +1,19 @@
-from ez_setup import use_setuptools
-use_setuptools()
+import sys, io
 
-from setuptools import setup
+try:
+  from setuptools import setup
+except ImportError:
+	sys.exit('ERROR: setuptools is required.\nTry using "pip install setuptools".')
+
 
 # use README.rst for the long description
-with open('README.rst', encoding='utf-8') as fh:
+with io.open('README.rst', encoding='utf-8') as fh:
     long_description = fh.read()
     
 # Scan the main package for the version string
 version_file = 'opbasm/opbasm.py'
 version = None
-with open(version_file, encoding='utf-8') as fh:
+with io.open(version_file, encoding='utf-8') as fh:
     try:
         version = [line.split('=')[1].strip().strip("'") for line in fh if \
             line.startswith('__version__')][0]
