@@ -78,7 +78,7 @@ class StaticAnalyzer(Optimizer):
       # Summarize analysis
       asm._print(_('    Entry points:'), ', '.join(['0x{:03X}'.format(e) for e in \
         sorted(self.entry_points)]))
-      self.dead_instructions = len([s for s in assembled_code if s.removable()])
+      self.dead_instructions = len([s for s in assembled_code if s.is_removable()])
       asm._print(_('    {} dead instructions found').format(self.dead_instructions))
 
     return assembled_code
@@ -235,7 +235,7 @@ class DeadCodeRemover(Optimizer):
   def remove_dead_code(self, asm, assembled_code):
     '''Mark unreachable code for removal'''
     for s in assembled_code:
-      if s.removable():
+      if s.is_removable():
         # Convert the old instruction into a comment
         s.comment_out()
         self.removed += 1
