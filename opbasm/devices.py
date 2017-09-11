@@ -29,6 +29,18 @@ class DeviceArch(object):
     self.name = ''
     self.short_name = ''
 
+  def instruction_words(self, stmt):
+    '''Determine the number of words generated for each instruction
+
+    Normally this is 1 but the OUTPUTK and LOAD&RETURN instructions are
+    replicated if a string or table is passed as an operand.
+    s : Statement object
+    '''
+
+    return 1 if stmt.is_instruction() else 0
+
+
+
 class DevicePb3(DeviceArch):
   def __init__(self):
     self.name = 'PicoBlaze-3'
@@ -125,4 +137,39 @@ class DevicePb6(DeviceArch):
 
     self.directives = set(('address', 'constant', 'namereg', \
         'include', 'default_jump', 'string', 'table'))
+
+
+  def instruction_words(self, stmt):
+    '''Determine the number of words generated for each instruction
+
+    Normally this is 1 but the OUTPUTK and LOAD&RETURN instructions are
+    replicated if a string or table is passed as an operand.
+    s : Statement object
+    '''
+    if stmt.is_instruction():
+      num_words = 1
+
+      array_name = None
+      if stmt.command == 'outputk':
+        if stmt.arg1 is not None and stmt.arg1[-1] in ('$', '#'):
+          array_name = stmt.arg1
+
+      elif stmt.command == 'load&return':
+        if stmt.arg2 is not None and stmt.arg2[-1] in ('$', '#'):
+          array_name = stmt.arg2
+
+      if array_name is not None:
+        if array_name[-1] == '$':
+          if array_name not in self.strings:
+            raise StatementError(stmt, _('Unknown string:'), array_name)
+          num_words = len(self.strings[array_name].value)
+
+        else: # Table
+          if array_name not in self.tables:
+            raise StatementError(stmt, _('Unknown table:'), array_name)
+          num_words = len(self.tables[array_name].value)
+
+      return num_words
+    else:
+      return 0
 
