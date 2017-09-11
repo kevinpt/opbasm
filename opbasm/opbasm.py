@@ -42,9 +42,11 @@ import  opbasm.optimize as optimize
 
 from opbasm.color import *
 from opbasm.devices import *
+from opbasm.hamming import secded_encode_num
 
 
 def find_lib_dir():
+  '''Get the Opbasm library path'''
   # Look relative to installed library
   try:
     lib_dir = os.path.dirname(sys.modules['opbasm'].__file__)
@@ -54,6 +56,7 @@ def find_lib_dir():
 
   return lib_dir
 
+# Configure multilingual strings
 if sys.version_info[0] < 3:
   gettext.install('opbasm', os.path.join(find_lib_dir(), 'lang'), unicode=True)
 else:
@@ -82,9 +85,6 @@ class StatementError(FatalError):
       return '{}'.format(self.args)
 
 
-def fail(s, loc, tokens):
-  raise ParseFatalException(s, loc, 'Unknown token "{}", s:"{}", loc:"{}"'.format(tokens[0], s, loc))
-
 regex_parser = re.compile(r'''
   (?:
     (?P<label>[.&\w]+):\s*
@@ -104,10 +104,11 @@ regex_parser = re.compile(r'''
 regex_register = re.compile(r'^s[0-9A-F]$', re.IGNORECASE)
 
 
-def regex_parse_statement(l):
-  '''Regex based parser that performs significantly faster than the original pyparsing
-  based recursive descent parser
-  '''
+def parse_statement(l):
+  '''Parse a line of code'''
+
+  # Regex parser that performs significantly faster than the original pyparsing
+  # based recursive descent parser
 
   ptree = {}
 
@@ -178,7 +179,8 @@ def regex_parse_statement(l):
 
    
 
-  return {'statement': ptree}
+  #return {'statement': ptree}
+  return ptree
 
 
 def parse_lines(lines, source_file, index=None):
@@ -187,7 +189,7 @@ def parse_lines(lines, source_file, index=None):
   statements = []
   for i, l in enumerate(lines):
     try:
-      ptree = regex_parse_statement(l)
+      ptree = parse_statement(l)
     except ParseError:
       if index is not None:
         ix_line = index[i]
@@ -198,8 +200,8 @@ def parse_lines(lines, source_file, index=None):
       raise ParseError(_(' Bad statement in {}:\n  {}').format(error_line, l))
 
     ix_line = index[i] if index is not None else None
-    statements.append(Statement(ptree['statement'], i+1, source_file, ix_line))
-    #print('### ptree:', i+1, ptree['statement'])
+    statements.append(Statement(ptree, i+1, source_file, ix_line))
+    #print('### ptree:', i+1, ptree)
 
   return statements
 
@@ -208,8 +210,8 @@ class Statement(object):
   '''Low level representation of a statement (instructions, directives, comments)'''
   def __init__(self, ptree, line, source_file, ix_line):
     '''
-    ptree : pyparsing style parse tree object for a single statement
-    line : source line number
+    ptree : dict parse tree object for a single statement
+    line  : source line number
     '''
 
     self.source_file = source_file
@@ -219,6 +221,7 @@ class Statement(object):
     self.xlabel = self.label
     self.comment = ptree['comment'][0] if 'comment' in ptree else None
 
+    # Parsed statement fields
     self.command = None
     self.arg1 = None
     self.arg2 = None
@@ -235,9 +238,10 @@ class Statement(object):
 
     # Dead code analysis flags
     self.reachable = False  # FIXME: Make more general
-    self.refline = None
 
+    self.refline = None
     self.tags = {}
+    self._is_instruction = None
 
     if 'instruction' in ptree:
       ifields = ptree['instruction']
@@ -264,8 +268,17 @@ class Statement(object):
           self.arg2 = ifields[2]
 
   def __str__(self):
-    label = self.label + ':' if self.label is not None else ''
-    inst = ''
+    inst = self.format_inst()
+
+    if self.label is not None and len(self.label) > 0:
+      code = '{}: {}'.format(self.label, inst)
+    else:
+      code = inst
+
+    return code
+
+  def format_inst(self):
+    '''Convert instruction and arguments to a string'''
     if self.command is not None:
       inst = self.command
 
@@ -281,34 +294,11 @@ class Statement(object):
             inst += ', [' + ', '.join(self.arg2[:-1]) + self.arg2[-1]
           else:
             inst += ', ' + str(self.arg2)
-    if len(label) > 0:
-      code = '{} {}'.format(label, inst)
+      return inst
     else:
-      code = inst
+      return ''
 
-    return code
-
-  @staticmethod
-  def from_line(line):
-    return parse_lines([line], '-', )[0]
-
-  def machine_word(self):
-    '''Returns the numeric value of the assembled instruction'''
-    return self.opcode + (self.regx << 8) + (self.regy << 4) + self.immediate
-
-  def is_instruction(self):
-    '''Identify if this statement is an instruction (vs. directive)'''
-    if self.command is None: return False
-    if self.command in ('address', 'constant', 'namereg', 'include', 'default_jump', \
-        'string', 'table'): return False
-    return True
-
-  def removable(self):
-    '''Identify if this statement is eligible for dead code removal'''
-    return self.is_instruction() and self.reachable == False and 'keep' not in self.tags \
-      and 'keep_auto' not in self.tags
-
-  re_ansi_strip = re.compile(r'\x1b[^m]*m')
+  re_ansi_strip = re.compile(r'\x1b[^m]*m') # Match ANSI escape codes
 
   def format(self, upper=True, show_addr=False, show_dead=False, show_reflines=False, colorize=False):
     '''Generate a formatted string for the statement
@@ -317,23 +307,7 @@ class Statement(object):
     '''
     label = self.label + ':' if self.label is not None else ''
     comment = ';' + self.comment if self.comment is not None else ''
-    inst = ''
-    if self.command is not None:
-      inst = self.command
-      if upper: inst = inst.upper()
-
-      if self.indirect_addr:
-        inst += ' ({}, {})'.format(self.arg1, self.arg2)
-      else:
-        if self.arg1 is not None:
-          inst += ' ' + self.arg1
-        if self.arg2 is not None:
-          if self.indirect_reg:
-            inst += ', (' + self.arg2 + ')'
-          elif self.table_def or not isinstance(self.arg2, basestring):
-            inst += ', [' + ', '.join(self.arg2[:-1]) + self.arg2[-1]
-          else:
-            inst += ', ' + str(self.arg2)
+    inst = self.format_inst()
 
     if show_addr:
       if self.is_instruction():
@@ -376,6 +350,40 @@ class Statement(object):
     else:
       return '{} {}{:>{}} {}'.format(addr, refline, label, label_width, comment).rstrip()
 
+
+
+  @staticmethod
+  def from_line(line):
+    return parse_lines([line], '-', )[0]
+
+  def machine_word(self):
+    '''Returns the numeric value of the assembled instruction'''
+    return self.opcode + (self.regx << 8) + (self.regy << 4) + self.immediate
+
+  _directives = set(('address', 'constant', 'namereg', 'include', 'default_jump', \
+        'string', 'table'))
+
+  def is_instruction(self):
+    '''Identify if this statement is an instruction (vs. directive)'''
+
+    if self._is_instruction is None:
+      self._is_instruction = False if self.command is None or self.command in self._directives else True
+
+    return self._is_instruction
+
+
+  def removable(self): # FIXME: Move to optimizer?
+    '''Identify if this statement is eligible for dead code removal'''
+    return self.is_instruction() and self.reachable == False and 'keep' not in self.tags \
+      and 'keep_auto' not in self.tags
+
+
+  def comment_out(self, prefix=_('REMOVED')):
+    if self.command is not None:
+      self.comment = '{}: {}'.format(prefix, self.format().lstrip())
+      self.command = None
+      self._is_instruction = False
+
   @property
   def error_line(self):
     '''Generate line number summary for error messages'''
@@ -408,7 +416,8 @@ class Symbol(object):
 
 
 
-def find_m4():
+def get_m4_path():
+  '''Get the path to the m4 executable'''
   m4_cmd = ''
   if sys.platform == 'win32': # Use included m4 binary in opbasm lib on Windows (except within Cygwin)
     m4_cmd = os.path.join(find_lib_dir(), 'm4', 'm4.exe')
@@ -420,6 +429,7 @@ def find_m4():
 
 
 def find_standard_m4_macros():
+  '''Get the path to the Opbasm m4 macros'''
   macro_file = os.path.join(find_lib_dir(), 'picoblaze.m4')
   if not os.path.exists(macro_file):
     raise FatalError(_('  No m4 macro directory found') + ' ' + macro_file)
@@ -429,10 +439,10 @@ def find_standard_m4_macros():
 
 class AssemblerConfig(object):
   '''Configuration settings for the Assembler class'''
-  def __init__(self, options=None):
+  def __init__(self, config=None):
     # Set defaults
     self.mem_size = 1024
-    self.scratch_size = 0
+    self.scratch_size = 64
     self.target_arch = DevicePb6()
     self.use_m4 = False
     self.m4_defines = {}
@@ -443,28 +453,40 @@ class AssemblerConfig(object):
     self.verbose = False
     self.quiet = True
 
-    if options is not None:
-      self.config(options)
+    if config is not None:
+      self.apply_config(config)
   
-  def config(self, options):
-    self.mem_size = options.mem_size
-    self.scratch_size = options.scratch_size
-    self.target_arch = options.target_arch
-    self.use_m4 = options.use_m4
-    self.m4_defines = options.m4_defines
-    self.debug_preproc = options.debug_preproc
-    self.optimize_level = options.optimize_level
-    self.output_dir = options.output_dir
-    self.entry_point = options.entry_point
-    self.verbose = options.verbose
-    self.quiet = options.quiet
+  def apply_config(self, config):
+    '''Copy settings from a dict or other AssemblerConfig object'''
+    self.mem_size = config.mem_size
+    self.scratch_size = config.scratch_size
+    self.target_arch = config.target_arch
+    self.use_m4 = config.use_m4
+    self.m4_defines = config.m4_defines
+    self.debug_preproc = config.debug_preproc
+    self.optimize_level = config.optimize_level
+    self.output_dir = config.output_dir
+    self.entry_point = config.entry_point
+    self.verbose = config.verbose
+    self.quiet = config.quiet
 
 
 class Assembler(object):
   '''Main object for running assembler and tracking symbol information'''
 
-  def __init__(self, options=None, timestamp=None):
-    self.config = AssemblerConfig(options)
+  def __init__(self, config=None, timestamp=None):
+    # Force creation of config object
+    self.config = AssemblerConfig(config)
+
+    self.reset(None, timestamp)
+
+
+  def reset(self, config=None, timestamp=None):
+    '''Initialize state to default values'''
+
+    if config is not None: # Build new configuration options
+      self.config = AssemblerConfig(config)
+
     self.top_source_file = None
     self.m4_file_num = 0
     self.timestamp = timestamp if timestamp is not None else get_timestamp()
@@ -474,19 +496,15 @@ class Assembler(object):
     self.removed_labels = set() # Labels eliminated by an optimizer
     self.cur_context = ''
 
-    self.registers = None
-    self._init_registers()
-
+    self.registers = self._init_registers()
     self.strings = self._init_strings()
     self.tables = {}
-
     self.sources = {}
     self.default_jump = None
-
-    self.upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
     
+    self.upper_env_names = dict(((k.upper(), k) for k in os.environ.iterkeys()))
+
     self.line_index = {}
-    self.optimizers = {}
 
     # Results
     self.assembled_code = None
@@ -494,11 +512,15 @@ class Assembler(object):
     self._mmap = None
     self._stats = None
 
+
+    self.optimizers = {}
+
     # Configure optimizers implied by optimization level
     for opt_class in optimize._all_optimizers:
       opt = opt_class()
       if opt.priority < self.config.optimize_level * 100:
         self.add_optimizer(opt)
+
 
   @property
   def mmap(self):
@@ -511,7 +533,7 @@ class Assembler(object):
   def stats(self):
     '''Memoize code stats'''
     if self._stats is None:
-      self.code_stats()
+      self._stats = self.code_stats()
     return self._stats
 
   @property
@@ -519,39 +541,15 @@ class Assembler(object):
     '''Return list of active optimizers sorted by priority'''
     return sorted(self.optimizers.itervalues(), key=lambda o: o.priority)
 
-  def reset(self):
-    '''Initialize state to default values'''
-    self.top_source_file = None
-    self.m4_file_num = 0
-
-    self.constants = self._init_constants()
-    self.labels = {}
-    self.removed_labels = set() # Labels eliminated by an optimizer
-    self.cur_context = ''
-
-    self._init_registers()
-    self.strings = self._init_strings()
-    self.tables = {}
-    self.sources = {}
-    self.default_jump = None
-
-    self.line_index = {}
-    self.optimizers = {}
-
-    self.assembled_code = None
-    self.valid_asm = False
-    self._mmap = None
-    self._stats = None
-
-
   def add_optimizer(self, opt):
+    '''Register a new optimizer'''
     opt.register(self)
 
 
   def _init_registers(self):
     '''Initialize table of register names'''
     hex_digits = [hex(d)[-1] for d in xrange(16)]
-    self.registers = dict(('s' + h, i) for i, h in enumerate(hex_digits))
+    return dict(('s' + h, i) for i, h in enumerate(hex_digits))
 
   def _init_constants(self):
     '''Initialize the constant symbol table with the
@@ -595,7 +593,7 @@ class Assembler(object):
       'datestamp$' : Symbol('datestamp$', ds, '"{}"'.format(ds)),
       'Opbasm_version$' : Symbol('Opbasm_version$', ver, '"{}"'.format(ver)),
     }
-    
+
     for s in strings.itervalues():
       s.in_use = True
 
@@ -645,7 +643,7 @@ class Assembler(object):
     m4_def_args = \
       ' '.join('-D{}={}'.format(k,v) if v else '-D{}'.format(k) for k,v in m4_defines.iteritems())
 
-    m4_cmd = find_m4()
+    m4_cmd = get_m4_path()
     cmd = '"{}" {} {} "{}" -'.format(m4_cmd, m4_options, m4_def_args, macro_defs)
     if self.config.verbose:
       print('  Running m4 on file "{}":\n\t{}'.format(source_file, cmd))
@@ -784,11 +782,14 @@ class Assembler(object):
       
     self.line_index[source_file] = index
 
+
   def _process_includes(self, source_file=None, source_code=None):
     '''Scan a list of statements for INCLUDE directives and recursively
-    read each included source file. Constant, string, and table definitions
-    are also processed to keep track of where they are defined.
-    This is a generator function that yields the name of each included file'''
+    read each included source file.
+
+    Constant, string, and table definitions are also processed to keep
+    track of where they are defined. This is a generator function that
+    yields the name of each included file'''
 
     from_stdin = source_file == '-'
 
@@ -983,6 +984,7 @@ class Assembler(object):
         yield s
 
   def _expand_label(self, addr_label):
+    '''Expand local labels to their full name'''
     if addr_label.startswith('.'):
       return self.cur_context + addr_label
     else:
@@ -1016,7 +1018,7 @@ class Assembler(object):
 
       if portion == 'lower':
         value = addr & 0xFF
-      else:
+      else: # Upper 4-bits
         value = (addr >> 8) & 0xF
 
     elif arg in self.constants: # Normal constant
@@ -1051,45 +1053,12 @@ class Assembler(object):
     return None
 
 
-  def statement_words(self, s):
-    '''Determine the number of words generated for each instruction
-
-    Normally this is 1 but the OUTPUTK and LOAD&RETURN instructions are
-    replicated if a string or table is passed as an operand.
-    s : Statement object
-    '''
-    if s.is_instruction():
-      num_words = 1
-
-      array_name = None
-      if s.command == 'outputk':
-        if s.arg1 is not None and s.arg1[-1] in ('$', '#'):
-          array_name = s.arg1
-
-      elif s.command == 'load&return':
-        if s.arg2 is not None and s.arg2[-1] in ('$', '#'):
-          array_name = s.arg2
-
-      if array_name is not None:
-        if array_name[-1] == '$':
-          if array_name not in self.strings:
-            raise StatementError(s, _('Unknown string:'), array_name)
-          num_words = len(self.strings[array_name].value)
-    
-        else: # Table
-          if array_name not in self.tables:
-            raise StatementError(s, _('Unknown table:'), array_name)
-          num_words = len(self.tables[array_name].value)
-
-      return num_words
-    else:
-      return 0
-
-
   def _raw_assemble(self, slist, start_address=0, bounds_check=True):
     '''Generate assembled instructions from a raw statement list'''
     cur_addr = start_address
     self.default_jump = None
+
+    target_arch = self.config.target_arch
 
     # Pass 2: Set instruction and label addresses
     for s in slist:
@@ -1116,7 +1085,8 @@ class Assembler(object):
 
         s.address = cur_addr
         # Move to next address. Could be > 1 if a string or table operand
-        cur_addr += self.statement_words(s)
+        #cur_addr += self.statement_words(s)
+        cur_addr += target_arch.instruction_words(s)
 
       elif s.command == 'address':
         cur_addr = self.label_address(s.arg1)
@@ -1131,7 +1101,6 @@ class Assembler(object):
     for s in reversed(slist):
       if s.is_instruction():
         cur_addr = s.address
-        continue
       elif s.comment or s.command:
         s.address = cur_addr
 
@@ -1147,26 +1116,26 @@ class Assembler(object):
 
       if s.is_instruction():
         # Verify instruction is valid
-        if s.command not in self.config.target_arch.opcodes:
+        if s.command not in target_arch.opcodes:
           raise StatementError(s, _('Invalid {} instruction:').format( \
-            self.config.target_arch.name), s.command)
+            target_arch.name), s.command)
 
-        s.opcode = self.config.target_arch.opcodes[s.command] # Set base opcode
+        s.opcode = target_arch.opcodes[s.command] # Set base opcode
 
-        if s.command in self.config.target_arch.flag_opcodes:
+        if s.command in target_arch.flag_opcodes:
           # Check if first argument is a flag
           addr_label = s.arg1
           if s.arg1 is not None:
             if s.command == 'return':
-              flag_codes = self.config.target_arch.return_flag_codes
+              flag_codes = target_arch.return_flag_codes
             else:
-              flag_codes = self.config.target_arch.flag_codes
+              flag_codes = target_arch.flag_codes
 
             if s.arg1.lower() in flag_codes:
               s.opcode += flag_codes[s.arg1.lower()]
               addr_label = s.arg2
 
-          if s.command in self.config.target_arch.addr_opcodes: # Include address for call and jump
+          if s.command in target_arch.addr_opcodes: # Include address for call and jump
             if addr_label is None:
               raise StatementError(s, _('Missing address'))
 
@@ -1176,7 +1145,7 @@ class Assembler(object):
             if bounds_check and s.immediate >= self.config.mem_size:
               raise StatementError(s, _('Out of range address'))
 
-        elif s.command in self.config.target_arch.one_reg_opcodes:
+        elif s.command in target_arch.one_reg_opcodes:
           if s.arg1 is None:
             raise StatementError(s, _('Missing operand'))
           if s.arg2 is not None:
@@ -1186,7 +1155,7 @@ class Assembler(object):
           if s.regx is None:
             raise StatementError(s, _('Invalid register:'), s.arg1)
 
-        elif s.command in self.config.target_arch.two_reg_opcodes:
+        elif s.command in target_arch.two_reg_opcodes:
           if s.arg1 is None or s.arg2 is None:
             raise StatementError(s, _('Missing operand'))
 
@@ -1196,7 +1165,7 @@ class Assembler(object):
 
           s.regy = self.register_index(s.arg2)
           if s.regy is not None: # Using y register opcode
-            s.opcode += self.config.target_arch.two_reg_op_offset # Adjust opcode
+            s.opcode += target_arch.two_reg_op_offset # Adjust opcode
 
           else: # The second arg was not a register
             s.regy = 0
@@ -1348,7 +1317,7 @@ class Assembler(object):
 
           s.regy = self.register_index(s.arg2)
           if s.regy is not None: # Using y register opcode
-            s.opcode += self.config.target_arch.two_reg_op_offset # Adjust opcode
+            s.opcode += target_arch.two_reg_op_offset # Adjust opcode
 
           else: # The second arg was not a register
             s.regy = 0
@@ -1401,32 +1370,39 @@ class Assembler(object):
     if self.default_jump is None: # Fill with 0's by default
       self.default_jump = 0
     else: # Fill with jump instructions
-      self.default_jump = self.config.target_arch.opcodes['jump'] + self.default_jump
+      self.default_jump = target_arch.opcodes['jump'] + self.default_jump
 
     return instructions
 
 
   def _print(self, *args, **keys):
-    flush = False
-    if 'flush' in keys:
-      flush = keys['flush']
-      del keys['flush']
+    '''Print message to console'''
 
     if not self.config.quiet:
+      flush = False
+      if 'flush' in keys:
+        flush = keys['flush']
+        del keys['flush']
+
       utf_args = [a.encode('utf-8') for a in args]
       print(*utf_args, **keys)
       if flush:
         sys.stdout.flush()
 
-  def create_output_dir(self):
+  def create_output_dir(self, output_dir=None):
     '''Create output directory(ies) if it doesn't exist'''
+
+    if output_dir is None:
+      output_dir = self.config.output_dir
+
     try:
-      os.makedirs(self.config.output_dir)
+      os.makedirs(output_dir)
     except OSError as e:
       if e.errno != errno.EEXIST:
         raise  # Some other OS error
 
   def assemble_file(self, top_source_file):
+    '''Assemble source from a file'''
     self.top_source_file = top_source_file
 
     # Read input sources
@@ -1439,10 +1415,12 @@ class Assembler(object):
     self._assemble(self.top_source_file)
 
   def assemble_statements(self, statements):
-    source_code = [str(s) for s in statements].join('\n')
+    '''Assemble source from a list of statement objects'''
+    source_code = '\n'.join(str(s) for s in statements)
     self.assemble_text(source_code)
 
   def assemble_text(self, source_code):
+    '''Assemble source from a string'''
     fnames = list(self._process_includes(source_code=source_code))
 
     for fname, used_m4 in fnames:
@@ -1452,6 +1430,7 @@ class Assembler(object):
 
 
   def _assemble(self, top_source_file):
+    '''Common assembler routine'''
 
     # Pass 1: Flatten includes
     slist = list(self._flatten_includes(self.sources[top_source_file], [top_source_file]))
@@ -1459,9 +1438,9 @@ class Assembler(object):
     # Scan for pragma meta-comments
     _annotate_pragmas(slist)
 
-    remove_dead_code = 'dead_code' in self.optimizers # FIXME: Make more general
-    # Skip bounds check on first assemble if dead code removal is in use
-    assembled_code = self._raw_assemble(slist, 0, bounds_check=not remove_dead_code)
+    # If an optimizer might remove code we skip the initial bounds check
+    may_remove_code = any(o.removes_code for o in self.optimizer_sequence)
+    assembled_code = self._raw_assemble(slist, 0, bounds_check=not may_remove_code)
 
     # Run optimizers
     if len(self.optimizers) > 0:
@@ -1512,7 +1491,6 @@ class Assembler(object):
       'nom_size': nom_size
     }
 
-    self._stats = stats
     return stats
 
 
@@ -1725,7 +1703,7 @@ class Assembler(object):
 
 
   def write_template_file(self, templates):
-
+    # FIXME: Improve params
     minit_18 = build_xilinx_mem_init(self.mmap)
     minit_9 = build_xilinx_mem_init(self.mmap, split_data=True)
 
@@ -1763,8 +1741,9 @@ class Assembler(object):
 
 
   def write_formatted_source(self, output_dir):
+    '''Write source for all included files'''
     self._print(_('\n  Formatted source:'))
-    self.create_output_dir()
+    self.create_output_dir(output_dir)
     for fname, source in self.sources.iteritems():
       if fname == '-': fname = 'stdin'
       fname = os.path.splitext(os.path.basename(fname))[0] + '.fmt'
@@ -2010,7 +1989,7 @@ def _annotate_pragmas(slist):
     if del_pragma:
       del active_tags[pragma]
 
-class Block(object):
+class PragmaBlock(object):
   '''Track info for extracted pragma blocks'''
   def __init__(self, name, args, start, end=-1):
     self.name = name
@@ -2034,7 +2013,7 @@ def extract_pragma_blocks(slist):
           if s.tags[p] == open_blocks[p].args:
             open_blocks[p].end = s.address
         else: # New block
-          open_blocks[p] = Block(p, a, s.address)
+          open_blocks[p] = PragmaBlock(p, a, s.address)
 
         if s.is_instruction():
           open_blocks[p].has_inst = True
@@ -2050,7 +2029,7 @@ def extract_pragma_blocks(slist):
           #print('### restart:', p, s.tags[p], open_blocks[p].args)
           all_blocks.append(open_blocks[p])
           del open_blocks[p]
-          open_blocks[p] = Block(p, s.tags[p], s.address)
+          open_blocks[p] = PragmaBlock(p, s.tags[p], s.address)
           if s.is_instruction():
             open_blocks[p].has_inst = True
 
@@ -2153,9 +2132,7 @@ def build_9_bit_mem_init(mmap, minit, bit_range):
     minit['[{}]_INITP_{:02X}'.format(bit_range, a)] = init
 
 
-try:
-  from  opbasm.hamming import secded_encode_num
-  
+
   def build_xilinx_ecc_mem_init(mmap):
     '''Create a dict of Xilinx BRAM INIT and INITP strings for the 7-series ECC template'''
     minit = {}
@@ -2178,11 +2155,6 @@ try:
       minit['ECC_7S_1K5_INITP_{:02X}'.format(a)] = init
 
     return minit
-
-except ImportError:
-  def build_xilinx_ecc_mem_init(mmap):
-    return {}
-
 
 
 def build_default_jump_inits(default_jump):
@@ -2340,7 +2312,7 @@ def template_data_size(template_file):
 
 import shutil
 
-def get_standard_templates():
+def copy_standard_templates():
   '''Create copies of standard templates from the installed package'''
   print(_('Retrieving default templates...'))
 

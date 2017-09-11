@@ -29,6 +29,7 @@ from opbasm.color import *
 class Optimizer(object):
   name = ''
   requires = []
+  removes_code = False
 
   def __init__(self):
     self.priority = 10
@@ -208,6 +209,7 @@ class DeadCodeRemover(Optimizer):
   '''Removes instructions marked as dead'''
   name = 'dead_code'
   requires = [StaticAnalyzer]
+  removes_code = True
 
   def __init__(self):
     self.priority = 60
@@ -235,13 +237,12 @@ class DeadCodeRemover(Optimizer):
     for s in assembled_code:
       if s.removable():
         # Convert the old instruction into a comment
-        s.comment = _('REMOVED: ') + s.format().lstrip()
-        s.command = None
+        s.comment_out()
         self.removed += 1
 
         # Track any removed labels
         if s.label is not None:
-          if s.xlabel in self.labels:
+          if s.xlabel in asm.labels:
             del asm.labels[s.xlabel]
             asm.removed_labels.add(s.xlabel)
           s.label = None

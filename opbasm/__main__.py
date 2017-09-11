@@ -127,7 +127,7 @@ def parse_command_line(argv):
         help=_('Set number of columns for reflines in log'))
   parser.add_argument('--ascii', dest='ascii', action='store_true', default=False, \
         help=_('Render reflines with ASCII-only characters'))
-  parser.add_argument('-g', '--get-templates', dest='get_templates', action='store_true', \
+  parser.add_argument('-g', '--get-templates', dest='copy_templates', action='store_true', \
         default=False, help=_('Get default template files'))
   parser.add_argument('-v', '--version', dest='version', action='store_true', default=False, \
         help=_('Show OPBASM version'))
@@ -148,7 +148,7 @@ def parse_command_line(argv):
     print(_('OPBASM version'), opbasm.__version__)
     sys.exit(0)
 
-  if not options.get_templates:
+  if not options.copy_templates:
     if not options.input_file:
       if len(unparsed) > 0:
         options.input_file = unparsed[0]
@@ -194,7 +194,7 @@ def parse_command_line(argv):
   return options
 
 
-def find_templates(template_file):
+def find_templates(template_file=None):
   '''Search for HDL template files'''
   templates = {}
   if template_file is not None:
@@ -276,8 +276,8 @@ def main():
   Convert any PicoBlaze-3 projects to use the -3 option.''')))
 
 
-  if options.get_templates:
-    get_standard_templates()
+  if options.copy_templates:
+    copy_standard_templates()
     sys.exit(0)
 
   if options.hex_output:
