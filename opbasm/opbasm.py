@@ -1086,7 +1086,7 @@ class Assembler(object):
         s.address = cur_addr
         # Move to next address. Could be > 1 if a string or table operand
         #cur_addr += self.statement_words(s)
-        cur_addr += target_arch.instruction_words(s)
+        cur_addr += target_arch.instruction_words(self, s)
 
       elif s.command == 'address':
         cur_addr = self.label_address(s.arg1)

@@ -139,7 +139,7 @@ class DevicePb6(DeviceArch):
         'include', 'default_jump', 'string', 'table'))
 
 
-  def instruction_words(self, stmt):
+  def instruction_words(self, asm, stmt):
     '''Determine the number of words generated for each instruction
 
     Normally this is 1 but the OUTPUTK and LOAD&RETURN instructions are
@@ -160,14 +160,14 @@ class DevicePb6(DeviceArch):
 
       if array_name is not None:
         if array_name[-1] == '$':
-          if array_name not in self.strings:
+          if array_name not in asm.strings:
             raise StatementError(stmt, _('Unknown string:'), array_name)
-          num_words = len(self.strings[array_name].value)
+          num_words = len(asm.strings[array_name].value)
 
         else: # Table
-          if array_name not in self.tables:
+          if array_name not in asm.tables:
             raise StatementError(stmt, _('Unknown table:'), array_name)
-          num_words = len(self.tables[array_name].value)
+          num_words = len(asm.tables[array_name].value)
 
       return num_words
     else:
