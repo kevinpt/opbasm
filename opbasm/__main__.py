@@ -315,7 +315,6 @@ def main():
       asm_error(_('Module name must be provided when reading from stdin (use -n <name>)'), exit=1)
   else: # Check for existence of input file
     if not os.path.exists(options.input_file):
-      print('##', options.input_file)
       asm_error(_('Input file not found'), exit=1)
     
   printq(note(_('Target architecture: ')) + success(config.target_arch.name))
