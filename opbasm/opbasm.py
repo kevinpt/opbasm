@@ -372,10 +372,10 @@ class Statement(object):
     return self._is_instruction
 
 
-  def removable(self): # FIXME: Move to optimizer?
+  def is_removable(self): # FIXME: Move to optimizer?
     '''Identify if this statement is eligible for dead code removal'''
-    return self.is_instruction() and self.reachable == False and 'keep' not in self.tags \
-      and 'keep_auto' not in self.tags
+    return self.is_instruction() and self.reachable == False \
+      and not any(t in self.tags for t in ('keep', 'keep_auto'))
 
 
   def comment_out(self, prefix=_('REMOVED')):
@@ -1059,13 +1059,14 @@ class Assembler(object):
     self.default_jump = None
 
     target_arch = self.config.target_arch
+    macro_label_prefix = '&&'
 
     # Pass 2: Set instruction and label addresses
     for s in slist:
       if s.label is not None:
         if s.label.startswith('.'): # Local label
           xlabel = s.xlabel
-        elif s.label.startswith('__'): # Macro label
+        elif s.label.startswith(macro_label_prefix): # Macro label
           xlabel = s.label
         else: # Global label
           self.cur_context = s.label
@@ -1111,7 +1112,8 @@ class Assembler(object):
     for s in slist:
       addr_label = None
 
-      if s.label is not None and not s.label.startswith('.') and not s.label.startswith('__'):
+      if s.label is not None and not s.label.startswith('.') \
+        and not s.label.startswith(macro_label_prefix):
         self.cur_context = s.label
 
       if s.is_instruction():
