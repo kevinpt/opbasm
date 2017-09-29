@@ -33,7 +33,7 @@ import math
 import copy
 import itertools
 import gettext
-from optparse import OptionParser
+from argparse import ArgumentParser
 from subprocess import check_call, CalledProcessError
 
 
@@ -74,15 +74,16 @@ except ImportError:
 def parse_command_line():
     progname = os.path.basename(sys.argv[0])
     usage = _('{} -m <MEM file> -n <NCD file> [-l <Layout spec>] [-o <output BIT file>]').format(progname)
-    parser = OptionParser(usage=usage)
+    desc = '''Update PicoBlaze ROM in a bitstream.'''
+    parser = ArgumentParser(usage=usage, description=desc)
 
-    parser.add_option('-m', '--mem', dest='mem_file', help=_('MEM file'))
-    parser.add_option('-n', '--ncd', dest='ncd_file', help=_('NCD file'))
-    parser.add_option('-l', '--layout-spec', dest='layout_spec', \
+    parser.add_argument('-m', '--mem', dest='mem_file', help=_('MEM file'))
+    parser.add_argument('-n', '--ncd', dest='ncd_file', help=_('NCD file'))
+    parser.add_argument('-l', '--layout-spec', dest='layout_spec', \
       help=_('Memory layout specification "inst1,inst2,...instN[:next row...]"'))
-    parser.add_option('-o', '--output', dest='out_bit_file', help=_('Output BIT file'))
+    parser.add_argument('-o', '--output', dest='out_bit_file', help=_('Output BIT file'))
 
-    options, args = parser.parse_args()
+    options, unparsed = parser.parse_known_args()
 
     if not options.mem_file: parser.error(_('Missing MEM file'))
     if not options.ncd_file: parser.error(_('Missing NCD file'))
