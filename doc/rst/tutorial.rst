@@ -96,7 +96,7 @@ There are three parts, all of which are optional. The instruction portion is the
   add s0, s1             ; An instruction and comment
   last_label: add s2, s3 ; Label, instruction, and comment
 
-Labels act as symbolic placeholders for an address in instruction memory. Bare labels without an instruction assume the address of the next statement with an instruction field. This means that multiple labels can refer to the same address. In the example above "my_label" and "another_label" both refer to the first ``add`` instruction.
+Labels act as symbolic placeholders for an address in instruction memory. Bare labels without an instruction assume the address of the next statement with an instruction field. Which means that multiple labels can refer to the same address. In the example above "my_label" and "another_label" both refer to the first ``add`` instruction.
 
 Assigning variables
 -------------------
@@ -130,7 +130,7 @@ Using ``fetch`` and ``store`` we can save variables in scratchpad RAM:
   
 Using a constant for scratchpad variable addresses makes it easy to modify their location in the future. You should avoid hardcoding numeric addresses directly into ``fetch`` and ``store`` instructions.
 
-The ``fetch`` and ``store`` instructions have an indirect variant where the second operand is a register containing a scratchpad address rather than a fixed literal value. This register acts as a pointer variable to a piece of memory. Because PicoBlaze doesn't have any relative indexed addressing modes you have to directly modify this register to access different parts of the scratchpad. This allows you to store and retrieve arrays of data:
+The ``fetch`` and ``store`` instructions have an indirect variant where the second operand is a register containing a scratchpad address rather than a fixed literal value. This register acts as a pointer variable to a piece of memory. Because PicoBlaze doesn't have any relative indexed addressing modes you have to directly modify this register to access different parts of the scratchpad. You can store and retrieve arrays of data with indirect addressing:
 
 .. code-block:: picoblaze
 
@@ -159,7 +159,7 @@ There are five common classes of data that registers can be used for:
   4. Temporary values (never preserved)
   5. Special purpose values (globals)
 
-By default all registers are general purpose and can be used interchangeably. The PicoBlaze assembly syntax includes a :ref:`inst-namereg` directive that can rename a register. With this you can give more meaningful names to commonly used registers. It is also useful to protect registers you've reserved for a special purpose from being accidentally overwritten by other code.
+By default all registers are general purpose and can be used interchangeably. The PicoBlaze assembly syntax includes a :ref:`inst-namereg` directive that can rename a register. You can then give more meaningful names to commonly used registers. It is also useful to protect registers you've reserved for a special purpose from being accidentally overwritten by other code.
 
 Here is one possible register usage convention:
 
@@ -227,7 +227,7 @@ The ``addcy`` and ``subcy`` instructions are used to extend the addition and sub
   subcy s7, sC  ; Extend carry (borrow) into most significant byte
   ; Result in s7,s6,s5
 
-For multi-byte addition, the carry flag is set when the previous addition overflows beyond an 8-bit result. This overflow can never be more than 1 since the largest 8-bit sum is: ``255 + 255 = 510 = 0x1FE``. The overflow carries into the next most significant addition by the use of ``addcy``.
+For multi-byte addition, the carry flag is set when the previous addition overflows beyond an 8-bit result. An overflow can never be more than 1 since the largest 8-bit sum is: ``255 + 255 = 510 = 0x1FE``. The overflow carries into the next most significant addition by the use of ``addcy``.
 
 For multi-byte subtraction, the carry flag functions as a "borrow" bit. When it is set, the previous subtraction is considered to have borrowed from the current pair of bytes and so an additional -1 is taken from the result by ``subcy``.
 
@@ -333,7 +333,7 @@ Z    C    Meaning
 1    1    ≤ first is less or equal to second
 ==== ==== =====================================
 
-This gives us enough tools to replicate the pseudocode above:
+We now have enough tools to replicate the pseudocode above:
 
 .. code-block:: picoblaze
   :emphasize-lines: 3
@@ -477,7 +477,7 @@ Notice that the do-while loop requires one less instruction and is the more effi
 Subroutines
 -----------
 
-It is useful to have reusable code that can be executed from different locations in a program. This is done by creating a subroutine. These are blocks of code that begin with a label like those used for :ref:`inst-jump` targets. You enter into the subroutine with a :ref:`inst-call` instruction. This will branch to the the label just like ``jump`` but it also saves the next address on to the hardware call stack. When the subroutine is finished the :ref:`inst-return` instruction pops the most recent address from the stack and resumes execution after the ``call`` instruction that initiated the jump into the subroutine.
+It is useful to have reusable code that can be executed from different locations in a program. This is done by creating a subroutine. These are blocks of code that begin with a label like those used for :ref:`inst-jump` targets. You enter into the subroutine with a :ref:`inst-call` instruction. It will branch to the target label just like ``jump`` but it also saves the next address on to the hardware call stack. When the subroutine is finished the :ref:`inst-return` instruction pops the most recent address from the stack and resumes execution after the ``call`` instruction that initiated the jump into the subroutine.
 
 .. code-block:: picoblaze
 
@@ -514,7 +514,7 @@ Nothing truly isolates subroutines from executing as normal code other than conv
 
 Subroutines can call other subroutines up to the limit of the hardware stack which is 31 levels on PB3 and 30 levels on PB6. Be extremely careful when writing recursive subroutines that call themselves. Don't assume you can use the entire stack at any time.
 
-The ``call`` instruction has a conditional form that works the same as a conditional ``jump``. This allows you to use a subroutine as the body of a control structure.
+The ``call`` instruction has a conditional form that works the same as a conditional ``jump``. It allows you to use a subroutine as the body of a control structure.
 
 .. code-block:: picoblaze
 
@@ -540,9 +540,9 @@ stack variables
 
 Initially you might start using registers in an ad hoc way. Inevitably you will end up in a situation where you don't have any free registers left to do your next task. Worse yet, you may have subtle bugs caused by accidentally overwriting a register that wasn't expected to change.
 
-Higher level languages employ a calling convention where they save registers not deemed as temporaries onto a stack at the beginning of a subroutine and restore these saved values before returning. This allows you to reuse the same register for different purposes in your program. The stack is a region of memory that expands as more data is pushed onto it and shrinks as data is popped off. Most processors have special instructions to assist in managing such a stack in RAM but not the PicoBlaze. The hardware call stack is dedicated to storing only return addresses and is unavailable for general purpose use. It is possible, however, to create a stack in the scratchpad memory and emulate the behavior of push and pop operations.
+Higher level languages employ a calling convention where they save registers not deemed as temporaries onto a stack at the beginning of a subroutine and restore these saved values before returning. With this approach you can reuse the same register for different purposes in a program. The stack is a region of memory that expands as more data is pushed onto it and shrinks as data is popped off. Most processors have special instructions to assist in managing such a stack in RAM but not the PicoBlaze. The hardware call stack is dedicated to storing only return addresses and is unavailable for general purpose use. It is possible, however, to create a stack in the scratchpad memory and emulate the behavior of push and pop operations.
 
-To accomplish this we reserve a register to function as a stack pointer. It will hold an index into scratchpad memory that always points to the next free location on the stack. Pushes and pops will manipulate this pointer and move data to and from the scratchpad memory.
+To accomplish this we reserve a register to function as a stack pointer. It will hold an index into scratchpad memory that always points to the next free location on the stack. Pushes and pops will manipulate the pointer and move data to and from the scratchpad memory.
 
 .. code-block:: picoblaze
 
@@ -578,9 +578,9 @@ To accomplish this we reserve a register to function as a stack pointer. It will
 
 Each push operation is implemented as a pair of ``store`` and ``sub`` instructions and each pop is an ``add`` ``fetch``. You must pop registers in the reverse of the order they were pushed to restore them to their original state.
 
-It would be disastrous if the stack register were mistakenly changed by another part of your code while the stack is in use. To diminish this problem we use the `namereg`` directive to rename our stack register "sF" to "SP". After this point sF is no longer accessible by its default name. Any code trying to use it by the old name will fail to assemble.
+It would be disastrous if the stack register were mistakenly changed by another part of your code while the stack is in use. To diminish this problem we use the `namereg`` directive to rename our stack register "sF" to "SP". After which, register sF is no longer accessible by its default name. Any code trying to use it by the old name will fail to assemble.
 
-In most cases the stack is designed to grow down from higher addresses to lower addresses. This lets you place the stack at the upper end of the scratchpad and use the lower end for other purposes. You don't have to follow this convention and can have a stack grow from low to high if you wish. It is important that the stack never grows large enough to overwrite other data stored in scratchpad. 
+In most cases the stack is designed to grow down from higher addresses to lower addresses. Typically you would place the stack at the upper end of the scratchpad and use the lower end for other purposes. You don't have to follow this convention and can have a stack grow from low to high if you wish. It is important that the stack never grows large enough to overwrite other data stored in scratchpad. 
 
 While simple in concept, this can all get a bit tedious and clutter your code. The Opbasm macro library has :pb:macro:`push` and :pb:macro:`pop` macros as well as :ref:`other stack handling macros <stack-operations>` to simplify stack management when writing your programs.
 
@@ -624,7 +624,7 @@ Remember that a push/pop pair consumes four instructions for every register save
 External I/O
 ------------
 
-With the basic foundations of writing assembly in place, it comes time to actually do something useful with the PicoBlaze. Since it is implemented as a soft-core within an FPGA there will usually be additional logic outside of the PicoBlaze that you need to interact with. This is accomplished through the I/O ports. There are 256 input and output ports which are multiplexed together onto an 8-bit address bus.These ports are accessed with the :ref:`inst-input` and :ref:`inst-output` instructions.
+With the basic foundations of writing assembly in place, it comes time to actually do something useful with the PicoBlaze. Since it is implemented as a soft-core within an FPGA there will usually be additional logic outside of the PicoBlaze that you need to interact with. You do this by reading and writing to the I/O ports. There are 256 input and output ports which are multiplexed together onto an 8-bit address bus.These ports are accessed with the :ref:`inst-input` and :ref:`inst-output` instructions.
 
 .. code-block:: picoblaze
 
@@ -645,7 +645,7 @@ Interrupts are optional. You do not have to use them in your designs. Their main
 
 Interrupt handling is controlled by an internal flag. Interrupts are off by default. The :ref:`inst-enable` instruction will enable the interrupts. The :ref:`inst-disable` instruction disables them.
 
-When the interrupt input goes high the PicoBlaze saves the current instruction address on the hardware stack like a normal subroutine call. It also saves the values of the Z, C flags, and on PB6, saves the active register bank. The processor then executes the instruction located at the interrupt vector address. This address is fixed at 0x3FF for PB3 and can be modified for PB6 in its generic block. This instruction is usually a :ref:`inst-jump` into the body of the ISR:
+When the interrupt input goes high the PicoBlaze saves the current instruction address on the hardware stack like a normal subroutine call. It also saves the values of the Z, C flags, and on PB6, saves the active register bank. The processor then executes the instruction located at the interrupt vector address. This address is fixed at 0x3FF for PB3 and can be modified for PB6 in its generic block. The instruction placed at the vector address is usually a :ref:`inst-jump` into the body of the ISR:
 
 .. code-block:: picoblaze
 
@@ -666,7 +666,7 @@ When the interrupt input goes high the PicoBlaze saves the current instruction a
   
 The ISR is created like a special subroutine starting with a label as usual. You must exit from the ISR using the :ref:`inst-returni` instruction instead of :ref:`inst-return`. Interrupts are disabled after entry into the ISR and they must remain disabled during the entire ISR. You can choose whether to re-enable them with the ``returni`` instruction or later on with an :ref:`inst-enable` instruction outside the ISR. The ``returni`` resumes execution at the address saved upon the start of the interrupt. The saved Z, C, and register bank are restored to their previous values. Execution can then proceed as normal.
 
-You must be careful not to let the ISR disrupt processor state such that execution fails after resuming normal execution. This means that you can't change any registers needed by the main program. An easy but inconvenient solution is to reserve some registers for exclusive use by the ISR. On PB6, you can employ the second register bank for the ISR if it isn't already in use. Otherwise you must implement a stack as described above and push all registers that will be modified before changing them. Similarly, the ISR should only modify scratchpad locations it has exclusive write access to so as to avoid corrupting the normal program in progress.
+You must be careful not to let the ISR disrupt processor state such that execution fails after resuming normal execution. In particular, you can't change any registers needed by the main program. An easy but inconvenient solution is to reserve some registers for exclusive use by the ISR. On PB6, you can employ the second register bank for the ISR if it isn't already in use. Otherwise you must implement a stack as described above and push all registers that will be modified before changing them. Similarly, the ISR should only modify scratchpad locations it has exclusive write access to so as to avoid corrupting the normal program in progress.
 
 The ISR can execute at any time and it could potentially interrupt a timing critical task that can't afford long delays. For this reason it is best to minimize the amount of code in the ISR to minimize its execution time. The most critical sections of code that can't tolerate an interrupt should be guarded by turning interrupts off around them using the :ref:`inst-disable` and :ref:`inst-enable` instructions.
 

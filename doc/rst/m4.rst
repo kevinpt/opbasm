@@ -879,7 +879,7 @@ On PicoBlaze-6 you can apply the output of these macros directly in a :ref:`inst
 
 For PicoBlaze-3 you can pass the output of :pb:macro:`estr` and :pb:macro:`cstr` to the :pb:macro:`calltable`, :pb:macro:`storetable`, and :pb:macro:`outputtable` macros or use the portable string macros described next.
 
-If you need know the length of a string constant you can use :pb:macro:`strlenc` to generate that value. It takes a single string argument that can contain escaped characters. It is passed through :pb:macro:`estr` to remove escapes before characters are counted. :pb:macro:`strlenc` only works at compile time when passed a string literal or a named portable/packed string. It does not work at runtime on dynamic string buffers.
+If you need to know the length of a string constant you can use :pb:macro:`strlenc` to generate that value. It takes a single string argument that can contain escaped characters. It is passed through :pb:macro:`estr` to remove escapes before characters are counted. :pb:macro:`strlenc` only works at compile time when passed a string literal or a named portable/packed string. It does not work at runtime on dynamic string buffers.
 
 .. code-block:: picoblaze
 
@@ -1180,7 +1180,7 @@ This performs an output to port 0xFE for each of the bytes from 0x20 to 0x24.
 hexwrite
 ~~~~~~~~
 
-Similar to :pb:macro:`use_memwrite` is the :pb:macro:`use_hexwrite` macro. It writes an array of bytes converted to ASCII hex values. This macro destructively modifies the global _tempreg register.
+Similar to :pb:macro:`use_memwrite` is the :pb:macro:`use_hexwrite` macro. It writes an array of bytes converted to ASCII hex values. This macro destructively modifies the global ``_tempreg`` register.
 
 .. code-block:: picoblaze
 
