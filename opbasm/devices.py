@@ -29,7 +29,7 @@ class DeviceArch(object):
     self.name = ''
     self.short_name = ''
 
-  def instruction_words(self, stmt):
+  def instruction_words(self, asm, stmt):
     '''Determine the number of words generated for each instruction
 
     Normally this is 1 but the OUTPUTK and LOAD&RETURN instructions are
