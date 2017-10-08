@@ -166,7 +166,7 @@ Another small extension to the syntax is that the :ref:`inst-address` directive 
 .. code-block:: picoblaze
 
   my_isr:
-    address 3FF
+    address 3FF     ; Switch to interrupt vector address
     jump my_isr     ; Assemble instruction at interrupt vector location
     address my_isr  ; Resume assembly at address previously captured in "my_isr"
     <ISR code>

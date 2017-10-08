@@ -738,11 +738,13 @@ Delays by microseconds and milliseconds are implemented with the :pb:macro:`dela
   delay_ms(10, s4, s5)               ; Inline delay by 10 ms
   ; Exactly 10 ms have passed here
 
-The ``delay_*()`` macros take a delay value, a pair of registers and an optional instruction adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that can't be easily expressed. You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:
+The ``delay_*()`` macros take a delay value, a pair of registers and an optional instruction adjustment as arguments. The delay value is the amount of delay in the associated units. The upper delay limit depends on the clock frequency. It has a complex relationship that is approximated by the equation ``max_delay = 22.05e6 * clock_freq ^ -1.0016`` . You will get a macro error if a delay is too large for the currently selected frequency. The following table shows the maximum delays for representative clock frequencies:
 
 =======  =======
 50 MHz   429 ms
+75 MHz   286 ms
 100 MHz  214 ms
+125 MHz  171 ms
 150 MHz  143 ms
 =======  =======
 

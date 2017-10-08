@@ -238,7 +238,16 @@ Format                                Example           Result
 ``address <label>``                   address MyISR     The instruction offset is addr. of MyISR
 ===================================== ================= ========================================
 
-This allows you to place code at the interrupt vector location or implement complex memory layouts such as bank switched pages. The second variant with a label as an operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a `jump`_ for the entry point.
+This allows you to place code at the interrupt vector location or implement complex memory layouts such as bank switched pages. The second variant with a label as an operand is a non-standard Opbasm extension. It is most useful for implementing an ISR with a `jump`_ for the entry point:
+
+.. code-block:: picoblaze
+
+  my_isr:
+    address 3FF     ; Switch to interrupt vector address
+    jump my_isr     ; Assemble instruction at interrupt vector location
+    address my_isr  ; Resume assembly at address previously captured in "my_isr"
+    <ISR code>
+    returni
 
 .. _inst-constant:
 
@@ -261,7 +270,7 @@ Format                                Example                  Result
 default_jump
 ~~~~~~~~~~~~
 
-By default, unused memory is filled with zeros. On PB3 this equates to "LOAD s0, 00". On PB6 it is "LOAD s0, s0" (a NOP). This can be problematic in high reliability code that needs to recover from accidentally falling into these unused areas of memory. To protect against this the ``default_jump`` directive lets you fill unused memory with a jump to a specified label or address.
+By default, unused memory is filled with zeros. The PicoBlaze doesn't know about which areas of memory are unused and will continue executing whatever instruction data is located there. On PB3 a zero instruction equates to "LOAD s0, 00". On PB6 it is "LOAD s0, s0" (a NOP). These instructions can be problematic in high reliability code that needs to recover from accidentally falling into these unused areas of memory. To protect against this the ``default_jump`` directive lets you fill unused memory with a jump to a specified label or address.
 
 ===================================== ======================== ========================================
 Format                                Example                  Result
@@ -291,7 +300,7 @@ Format                                Example                  Result
 inst
 ~~~~
 
-The ``inst`` directive is used to manually construct an instruction from its hex encoding. This is primarily of value for encoding non-instruction data into the instruction memory. Note that the instruction size is 18-bits so the fifth nibble of the hex value is truncated down to 2-bits.
+The ``inst`` directive is used to manually construct an instruction from its hex encoding. This is primarily of value for encoding non-instruction data into the instruction memory. Note that the instruction size is 18-bits so the fifth, leftmost, nibble of the hex value is truncated down to 2-bits.
 
 ===================================== ======================== ========================================
 Format                                Example                  Result
@@ -306,7 +315,7 @@ Format                                Example                  Result
 namereg
 ~~~~~~~
 
-The ``namereg`` directive lets you rename a register mnemonic. This allows you to create more descriptive register names rather the default s0-sF. Once namereg has been applied, the affected register can only be referenced by its new name. Another call to ``namereg`` is needed to change its name again. The new name is case sensitive unlike the default where both "sn" "Sn" are accepted.
+The ``namereg`` directive lets you rename a register mnemonic. It allows you to create more descriptive register names rather the default s0-sF. Once namereg has been applied, the affected register can only be referenced by its new name. Another call to ``namereg`` is needed to change its name again. The new name is case sensitive unlike the default where both "sn" "Sn" are accepted.
 
 The new name takes effect after this directive. Previous references to the old register name remain valid. You can rename the register again at any point.
 
@@ -324,7 +333,7 @@ As an alternative, the m4 macro processor used with Opbasm has a :ref:`define() 
 string
 ~~~~~~
 
-Available on PicoBlaze-6 only. This directive creates a text string. It must be used in conjunction with the `load&return`_ or `outputk`_ instructions. When a string name is an argument to these instructions they are expanded into multiple instructions with each character as their literal operand.
+Available on PicoBlaze-6 only. The ``string`` directive creates a text string. It must be used in conjunction with the `load&return`_ or `outputk`_ instructions. When a string name is an argument to these instructions they are expanded into multiple instructions with each character as their literal operand.
 
 ===================================== ============================ ========================================
 Format                                Example                      Result
@@ -347,7 +356,7 @@ Opbasm_version$ Opbasm assembler version
 table
 ~~~~~
 
-Available on PicoBlaze-6 only. This directive creates a data array. It must be used in conjunction with the `load&return`_ or `outputk`_ instructions. When a table name is an argument to these instructions they are expanded into multiple instructions with each byte as their literal operand.
+Available on PicoBlaze-6 only. The ``table`` directive creates a data array. It must be used in conjunction with the `load&return`_ or `outputk`_ instructions. When a table name is an argument to these instructions they are expanded into multiple instructions with each byte as their literal operand.
 
 ======================================= ==================================== ================================
 Format                                  Example                              Result
@@ -553,7 +562,7 @@ The comparison instructions are used to compare values without modifying registe
 compare
 ~~~~~~~
 
-Compare two 8-bit values. This is the same as subtraction without modifying the first operand.
+Compare two 8-bit values. This is the same as subtraction but without modifying the first operand.
 
 ===================================== ====================== ===============================
 Format                                Example                Result
@@ -579,7 +588,7 @@ Z    C    Meaning
 1    1    ≤ first is less or equal to second
 ==== ==== =====================================
 
-Note that you cannot determine > "greater than" or ≤ "less than or equal" without inspecting both flags. It is best to structure your code to avoid these comparisons. If both operands are registers you can always swap them and use the complementary comparison operator. If the second operand is a literal you can implement ">" or "≤" by incrementing the literal and using "≥" or "<" instead. This will fail, however, when the literal is 0xFF. For this case you have to rearrange your logic to avoid these comparisons.
+Note that you cannot determine > "greater than" or ≤ "less than or equal" without inspecting both flags. It is best to structure your code to avoid these comparisons. If both operands are registers you can always swap them and use the complementary comparison operator. If the second operand is a literal you can implement ">" or "≤" by incrementing the literal and using "≥" or "<" instead. This strategy will fail, however, when the literal is 0xFF. For that case you have to rearrange your logic to avoid such comparisons.
 
   .. code-block:: picoblaze
 
@@ -612,7 +621,7 @@ Note that you cannot determine > "greater than" or ≤ "less than or equal" with
 comparecy
 ~~~~~~~~~
 
-Compare two 8-bit values with carry. Available on PicoBlaze-6 only. This is the same as subtraction with carry without modifying the first operand. It extends comparison to support values larger than 8-bits.
+Compare two 8-bit values with carry. Available on PicoBlaze-6 only. This is the same as subtraction with carry but without modifying the first operand. It extends comparison to support values larger than 8-bits.
 
 ===================================== ====================== ===============================
 Format                                Example                Result
@@ -674,7 +683,7 @@ The C flag is set to the odd parity of the bits in the result and the previous C
 Shift/rotate instructions
 -------------------------
 
-Owing to space constraints, the PicoBlaze does not have a barrel shifter. This means that shifts and rotations can only be performed one bit at a time. Multiple shifts and rotates must be performed with repeated instructions. The Opbasm m4 package :ref:`has macros <Shift and rotate by multiple bits>` to do this for you.
+Owing to space constraints, the PicoBlaze does not have a barrel shifter. This means that shifts and rotations can only be performed one bit at a time. Multiple shifts and rotates must be performed with repeated instructions. The Opbasm m4 package :ref:`has macros <Shift and rotate by multiple bits>` to handle multi-bit shifts for you.
 
 .. _inst-rl:
 
@@ -865,7 +874,7 @@ Format                                Example                Result
 ``call <flag code>, <address>``       call Z, my_label       Conditional call to my_label if Z flag is set
 ===================================== ====================== =============================================
 
-This is similar to `jump`_ but the program counter (PC) is saved on the hardware stack. This allows execution to resume at the next instruction when the subroutine completes with a `return`_ instruction.
+The ``call`` instruction is similar to `jump`_ but the current program counter (PC) value is saved on the hardware stack. This allows execution to resume at the next instruction when the subroutine completes with a `return`_ instruction.
 
 The address of the subroutine is typically provided through a label but a hardcoded 12-bit address can also be used. A conditional call can be implemented by using one of the flag codes (Z, NZ, C, NC) as the first operand. The conditional call is only made if the flag matches the state in the instruction. Otherwise execution continues with the next instruction.
 
@@ -882,7 +891,7 @@ Format                                      Example                Result
 ``call@ (<high register>, <low register>)`` call@ (s0, s1)         PC is saved and jump to address in s0, s1
 =========================================== ====================== =============================================
 
-This is a variation of an unconditional `call`_ that takes the address from a pair of registers. This is used to compute the target dynamically. Addresses are typically generated by initializing with the ``'upper`` and ``'lower`` modifiers on a label and then adding an offset:
+This is a variation of an unconditional `call`_ that takes the address from a pair of registers. It is used when you want to compute a call target address dynamically. Addresses are typically generated by initializing with the ``'upper`` and ``'lower`` modifiers on a known label and then adding an offset:
 
 .. code-block:: picoblaze
 
@@ -926,7 +935,7 @@ Format                                      Example                Result
 ``jump@ (<high register>, <low register>)`` jump@ (s0, s1)         Jump to address in s0, s1
 =========================================== ====================== =============================================
 
-This is a variation of an unconditional `jump`_ that takes the address from a pair of registers. This is used to compute the target dynamically. Addresses are typically generated by initializing with the ``'upper`` and ``'lower`` modifiers on a label and then adding an offset.
+This is a variation of an unconditional `jump`_ that takes the address from a pair of registers. It is used to compute a jump target address dynamically. Addresses are typically generated by initializing with the ``'upper`` and ``'lower`` modifiers on a label and then adding an offset.
 
 .. _inst-return:
 
@@ -1032,9 +1041,9 @@ Format                                     Example                  Result
 ``outputk <literal>, <address>``           outputk 5A, B            out_port[B] ⇐ 0x5A
 ========================================== ======================== ==============================
 
-This writes a constant value to the dedicated outputk ports. This avoids the `load`_, `output`_ instruction pair required to write a constant to a normal output port. Useful if you want to write static data as fast as possible. There are only 16 outputk ports 0-F.
+This writes a constant value to the dedicated outputk ports. It avoids the `load`_, `output`_ instruction pair required to write a constant to a normal output port which is useful if you want to write static data as fast as possible. There are only 16 outputk ports: 0-F.
 
-When the literal is a string or table name this instruction is expanded into multiple copies for each character or byte.
+When the literal is a string or table name, the ``outputk`` instruction is expanded into multiple copies for each character or byte.
 
 Miscellaneous instructions
 --------------------------
