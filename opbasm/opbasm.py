@@ -63,7 +63,7 @@ else:
   gettext.install('opbasm', os.path.join(find_lib_dir(), 'lang'))
 
 
-__version__ = '1.3.7'
+__version__ = '1.3.8'
 
 
 class FatalError(Exception):
@@ -630,9 +630,19 @@ class Assembler(object):
     macro_defs = find_standard_m4_macros()
 
     proc_mode = self.config.target_arch.short_name.upper() # Definition for active processor type
+    
+    # Convert comments with single quotes to avoid m4 errors
+    requoted = []
+    for l in source_code:
+      stmt_parts = l.split(';', 1)
+      if len(stmt_parts) > 1:
+        # Replace ASCII single quote with Unicode right quote
+        requoted.append(';'.join([stmt_parts[0], stmt_parts[1].replace("'", '\u2019')]))
+      else:
+        requoted.append(l)
 
     # Preprocess C-style syntax
-    pure_m4 = self._preprocess_c_style(source_file, source_code)
+    pure_m4 = self._preprocess_c_style(source_file, requoted)
     if self.config.debug_preproc:
       with io.open(self.config.debug_preproc, 'w', encoding='utf-8') as fh:
         print(pure_m4, file=fh)
