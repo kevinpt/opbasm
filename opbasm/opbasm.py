@@ -631,13 +631,14 @@ class Assembler(object):
 
     proc_mode = self.config.target_arch.short_name.upper() # Definition for active processor type
     
-    # Convert comments with single quotes to avoid m4 errors
+    # Convert comments with backticks and single quotes to avoid m4 errors
     requoted = []
     for l in source_code:
       stmt_parts = l.split(';', 1)
       if len(stmt_parts) > 1:
-        # Replace ASCII single quote with Unicode right quote
-        requoted.append(';'.join([stmt_parts[0], stmt_parts[1].replace("'", '\u2019')]))
+        # Replace ASCII backtick and single quote with Unicode equivalents
+        rq = stmt_parts[1].replace('`', '\u2018').replace("'", '\u2019')
+        requoted.append(';'.join([stmt_parts[0], rq]))
       else:
         requoted.append(l)
 
