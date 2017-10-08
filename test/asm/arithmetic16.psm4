@@ -1,0 +1,71 @@
+include(`setup.m4')
+
+;VALIDATES: load16, add16, sub16, and16, xor16, or16, not16, negate16, abs16
+;VALIDATES: xxx
+
+; fetch16, store16, output16, input16, load16, test16
+; reg16, mem16 reglower, regupper
+
+;:::::::::: 16-bit Arithmetic ::::::::::
+
+reg16(rx, s1,s0)
+reg16(ry, s3,s2)
+reg16(rz, s5,s4)
+
+; Carry into the upper byte
+load16(rx, 0)
+load16(ry, 1)
+do {
+  add16(rx, ry)
+} while(reglower(rx) != 0)
+assert_true(regupper(rx) == 1)
+
+load16(ry, 0x3FF)
+and16(rx, ry)
+assert_true(regupper(rx) == 1)
+assert_true(reglower(rx) == 0)
+
+xor16(rx, ry)
+assert_true(regupper(rx) == 0x02)
+assert_true(reglower(rx) == 0xFF)
+
+load16(ry, 0x8000)
+or16(rx, ry)
+assert_true(regupper(rx) == 0x82)
+assert_true(reglower(rx) == 0xFF)
+
+not16(rx)
+assert_true(regupper(rx) == 0x7D)
+assert_true(reglower(rx) == 0x00)
+
+abs16(rx) 
+assert_true(regupper(rx) == 0x7D)
+assert_true(reglower(rx) == 0x00)
+
+load16(rx, -100)
+abs16(rx)
+assert_true(regupper(rx) == 0)
+assert_true(reglower(rx) == 100)
+
+negate16(rx)
+assert_true(regupper(rx) == 0xFF)
+assert_true(reglower(rx) == -100)
+
+
+load16(rx, 0x02FF)
+load16(ry, 1)
+do {
+  sub16(rx, ry)
+} while(reglower(rx) != 0)
+assert_true(regupper(rx) == 2)
+
+sub16(rx, ry)
+assert_true(regupper(rx) == 1)
+assert_true(reglower(rx) == 0xFF)
+
+
+
+
+
+;:::::::::: Finish testcase ::::::::::
+jump terminate
