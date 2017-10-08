@@ -37,7 +37,7 @@ setup(name='opbasm',
     packages = ['opbasm', 'templates', 'test'],
     py_modules = ['pb_update'],
     entry_points = {
-        'console_scripts': ['new_opbasm = opbasm.__main__:main', 'pb_update = pb_update:main']
+        'console_scripts': ['opbasm = opbasm.__main__:main', 'pb_update = pb_update:main']
     },
     include_package_data = True,
 
