@@ -511,6 +511,8 @@ class Assembler(object):
     self.valid_asm = False
     self._mmap = None
     self._stats = None
+    self._minit_18 = None
+    self._minit_9 = None
 
 
     self.optimizers = {}
@@ -528,6 +530,21 @@ class Assembler(object):
     if self._mmap is None:
       self.build_memmap()
     return self._mmap
+
+  @property
+  def minit_18(self):
+    '''Memoize 18-bit template init'''
+    if self._minit_18 is None:
+      self._minit_18 = build_xilinx_mem_init(self.mmap)
+    return self._minit_18
+
+  @property
+  def minit_9(self):
+    '''Memoize 9-bit template init'''
+    if self._minit_9 is None:
+      self._minit_9 = build_xilinx_mem_init(self.mmap, split_data=True)
+    return self._minit_9
+
 
   @property
   def stats(self):
@@ -1704,42 +1721,73 @@ class Assembler(object):
         printf(r)
 
 
-  def write_template_file(self, templates):
-    # FIXME: Improve params
-    minit_18 = build_xilinx_mem_init(self.mmap)
-    minit_9 = build_xilinx_mem_init(self.mmap, split_data=True)
+#  def XXXwrite_template_file(self, templates):
+#    # FIXME: Improve params
+#    if self._minit_18 is None:
+#      self._minit_18 = build_xilinx_mem_init(self.mmap)
+#    if self._minit_9 is None:
+#      self._minit_9 = build_xilinx_mem_init(self.mmap, split_data=True)
 
-    # Find longest template file name so we can align the warning messages
-    # about unmapped INIT fields.
-    if len(templates) > 0:
-      longest_template_name = max(len(v[1]) for v in templates.itervalues())
+#    # Find longest template file name so we can align the warning messages
+#    # about unmapped INIT fields.
+#    if len(templates) > 0:
+#      longest_template_name = max(len(v[1]) for v in templates.itervalues())
+#    else:
+#      longest_template_name = 0
+
+#    for hdl_name in templates.iterkeys():
+#      template_file, target_file = templates[hdl_name]
+#      # Prepare INIT strings for the memory width found in the template
+#      data_format = template_data_size(template_file)
+#      if data_format == TemplateDataFormat.ROMBoth:
+#        # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
+#        minit = self._minit_9.copy()
+#        minit.update(self._minit_18) # Merge the init strings together for both types
+#      elif data_format == TemplateDataFormat.ROM9:
+#        minit = self._minit_9
+#      elif data_format == TemplateDataFormat.ROM18:
+#        minit = self._minit_18
+#      elif data_format == TemplateDataFormat.ROMECC:
+#        minit = build_xilinx_ecc_mem_init(mmap)
+#      else:
+#        raise FatalError(_('Unknown template data format'))
+
+#      file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
+#      self.create_output_dir()
+#      all_inits_replaced = write_hdl_file(self.top_source_file, target_file, template_file, minit, self.timestamp.isoformat(), self.default_jump)
+
+#      field_size = 19
+#      unmapped_warn = warn(_('WARNING:')) + _(' Unmapped INIT fields found in template') if not all_inits_replaced else ''
+#      self._print('{:>{}} {:<{}}   {}'.format(file_type, field_size, target_file, longest_template_name, unmapped_warn))
+
+
+  def write_template_file(self, template_file, target_file, longest_name=0):
+    # Cache init strings when writing multiple templates
+
+    # Prepare INIT strings for the memory width found in the template
+    data_format = template_data_size(template_file)
+    if data_format == TemplateDataFormat.ROMBoth:
+      # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
+      minit = self.minit_9.copy()
+      minit.update(self.minit_18) # Merge the init strings together for both types
+    elif data_format == TemplateDataFormat.ROM9:
+      minit = self.minit_9
+    elif data_format == TemplateDataFormat.ROM18:
+      minit = self.minit_18
+    elif data_format == TemplateDataFormat.ROMECC:
+      minit = build_xilinx_ecc_mem_init(mmap)
     else:
-      longest_template_name = 0
+      raise FatalError(_('Unknown template data format'))
 
-    for hdl_name in templates.iterkeys():
-      template_file, target_file = templates[hdl_name]
-      # Prepare INIT strings for the memory width found in the template
-      data_format = template_data_size(template_file)
-      if data_format == TemplateDataFormat.ROMBoth:
-        # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
-        minit = minit_9.copy()
-        minit.update(minit_18) # Merge the init strings together for both types
-      elif data_format == TemplateDataFormat.ROM9:
-        minit = minit_9
-      elif data_format == TemplateDataFormat.ROM18:
-        minit = minit_18
-      elif data_format == TemplateDataFormat.ROMECC:
-        minit = build_xilinx_ecc_mem_init(mmap)
-      else:
-        raise FatalError(_('Unknown template data format'))
+    target_ext = os.path.splitext(target_file)[1].lower()
+    file_type = _('VHDL file:') if target_ext in ('.vhdl', '.vhd') else _('Verilog file:')
+    self.create_output_dir()
+    all_inits_replaced = write_hdl_file(self.top_source_file, target_file, template_file, \
+                                      minit, self.timestamp.isoformat(), self.default_jump)
 
-      file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
-      self.create_output_dir()
-      all_inits_replaced = write_hdl_file(self.top_source_file, target_file, template_file, minit, self.timestamp.isoformat(), self.default_jump)
-
-      field_size = 19
-      unmapped_warn = warn(_('WARNING:')) + _(' Unmapped INIT fields found in template') if not all_inits_replaced else ''
-      self._print('{:>{}} {:<{}}   {}'.format(file_type, field_size, target_file, longest_template_name, unmapped_warn))
+    field_size = 19
+    unmapped_warn = warn(_('WARNING:')) + _(' Unmapped INIT fields found in template') if not all_inits_replaced else ''
+    self._print('{:>{}} {:<{}}   {}'.format(file_type, field_size, target_file, longest_name, unmapped_warn))
 
 
   def write_formatted_source(self, output_dir):
@@ -1925,6 +1973,57 @@ class Assembler(object):
     # Add refline strings into statement objects
     for s, r in zip(self.assembled_code, graph):
       s.refline = r
+
+
+  def _basic_blocks(self):
+    blocks = []
+    start = 0
+    in_block = False
+    label_pending = None
+    
+    def end_block(i):
+      end = i;
+      if end >= start:
+        blocks.append((start, end))
+      #in_block = False
+      print('## END BLOCK', start, end)
+    
+    for i, s in enumerate(self.assembled_code):
+      print('## STMT:', i, str(s))    
+      if not s.is_instruction():
+        if s.command is not None and in_block: # Terminate previous block
+          end_block(i-1)
+          in_block = False
+        if s.label is not None and label_pending is None:
+          label_pending = i
+      else: # Got an instruction
+        if not in_block:
+          print('## NEW BLOCK:', i)
+          start = i
+
+        in_block = True
+
+        if (s.label is not None or label_pending is not None) and i > start:
+          # Labels can only be at the start of a block
+          # This guarantees a single entry point
+          if label_pending is None:
+            end_block(i-1)
+            start = i
+          else:
+            end_block(label_pending-1)
+            start = label_pending
+        elif s.command in ('jump', 'jump@', 'load&return', 'return', 'returni'):
+          # Jumps can't only be at the end of a block
+          # Guarantees a single exit point
+          end_block(i)
+          start = i+1
+          
+        label_pending = None
+
+    if in_block:
+      blocks.append((start, i))
+
+    return blocks
 
 
 ##############################################
@@ -2163,10 +2262,10 @@ def build_default_jump_inits(default_jump):
   '''Create a dummy memory map that contains enough default jump instructions to fill
      out an INIT and INITP string for both 18-bit and 9-bit memories'''
   dj_mmap = [default_jump] * 256
-  
+
   dj_minit_18 = build_xilinx_mem_init(dj_mmap)
   dj_minit_9 = build_xilinx_mem_init(dj_mmap, split_data=True)
-  
+
   dj_inits = { 'INIT':dj_minit_18['INIT_00'], 'INITP':dj_minit_18['INITP_00'],
                 r'\[17:9\]_INIT':dj_minit_9['[17:9]_INIT_00'], r'\[17:9\]_INITP':dj_minit_9['[17:9]_INITP_00'],
                 r'\[8:0\]_INIT':dj_minit_9['[8:0]_INIT_00'], r'\[8:0\]_INITP':dj_minit_9['[8:0]_INITP_00']
@@ -2174,7 +2273,7 @@ def build_default_jump_inits(default_jump):
 
   return dj_inits
 
-  
+
 def write_hdl_file(input_file, hdl_file, hdl_template, minit, timestamp, default_jump=0):
   '''Insert INIT strings and other fields into an HDL template.
      Returns False if the template contains additional INIT fields

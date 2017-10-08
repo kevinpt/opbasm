@@ -293,6 +293,8 @@ def main():
     asm_error(*e.args, exit=1)
   except FatalError, e:
     asm_error(str(e), exit=1)
+    
+  print('### TEMPLATES:', templates)
 
   # Make sure the extension of the generated VHDL file matches the template extension
   if 'vhdl' in templates:
@@ -375,7 +377,17 @@ def main():
   printq('{:>{}}'.format(_('log file:'), field_size), log_file)
 
   try:
-    asm.write_template_file(templates)
+    # Find longest template file name so we can align the warning messages
+    # about unmapped INIT fields.
+    if len(templates) > 0:
+      longest_name = max(len(v[1]) for v in templates.itervalues())
+    else:
+      longest_name = 0
+
+    for hdl_name in templates.iterkeys():
+      template_file, target_file = templates[hdl_name]
+      asm.write_template_file(template_file, target_file, longest_name)
+
   except StatementError, e:
     asm_error(*e.args, exit=1, statement=e.statement)
   except FatalError, e:
