@@ -294,8 +294,6 @@ def main():
   except FatalError, e:
     asm_error(str(e), exit=1)
     
-  print('### TEMPLATES:', templates)
-
   # Make sure the extension of the generated VHDL file matches the template extension
   if 'vhdl' in templates:
     vhdl_ext = os.path.splitext(templates['vhdl'])[1]

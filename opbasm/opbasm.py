@@ -1721,46 +1721,6 @@ class Assembler(object):
         printf(r)
 
 
-#  def XXXwrite_template_file(self, templates):
-#    # FIXME: Improve params
-#    if self._minit_18 is None:
-#      self._minit_18 = build_xilinx_mem_init(self.mmap)
-#    if self._minit_9 is None:
-#      self._minit_9 = build_xilinx_mem_init(self.mmap, split_data=True)
-
-#    # Find longest template file name so we can align the warning messages
-#    # about unmapped INIT fields.
-#    if len(templates) > 0:
-#      longest_template_name = max(len(v[1]) for v in templates.itervalues())
-#    else:
-#      longest_template_name = 0
-
-#    for hdl_name in templates.iterkeys():
-#      template_file, target_file = templates[hdl_name]
-#      # Prepare INIT strings for the memory width found in the template
-#      data_format = template_data_size(template_file)
-#      if data_format == TemplateDataFormat.ROMBoth:
-#        # KCPSM6 JTAG loader ROM_form contains both 18 and 9-bit memories
-#        minit = self._minit_9.copy()
-#        minit.update(self._minit_18) # Merge the init strings together for both types
-#      elif data_format == TemplateDataFormat.ROM9:
-#        minit = self._minit_9
-#      elif data_format == TemplateDataFormat.ROM18:
-#        minit = self._minit_18
-#      elif data_format == TemplateDataFormat.ROMECC:
-#        minit = build_xilinx_ecc_mem_init(mmap)
-#      else:
-#        raise FatalError(_('Unknown template data format'))
-
-#      file_type = _('VHDL file:') if hdl_name == 'vhdl' else _('Verilog file:')
-#      self.create_output_dir()
-#      all_inits_replaced = write_hdl_file(self.top_source_file, target_file, template_file, minit, self.timestamp.isoformat(), self.default_jump)
-
-#      field_size = 19
-#      unmapped_warn = warn(_('WARNING:')) + _(' Unmapped INIT fields found in template') if not all_inits_replaced else ''
-#      self._print('{:>{}} {:<{}}   {}'.format(file_type, field_size, target_file, longest_template_name, unmapped_warn))
-
-
   def write_template_file(self, template_file, target_file, longest_name=0):
     # Cache init strings when writing multiple templates
 
@@ -1976,6 +1936,7 @@ class Assembler(object):
 
 
   def _basic_blocks(self):
+    '''Extract basic blocks from assembled code'''
     blocks = []
     start = 0
     in_block = False
@@ -1985,11 +1946,10 @@ class Assembler(object):
       end = i;
       if end >= start:
         blocks.append((start, end))
-      #in_block = False
-      print('## END BLOCK', start, end)
+      #print('## END BLOCK', start, end)
     
     for i, s in enumerate(self.assembled_code):
-      print('## STMT:', i, str(s))    
+      #print('## STMT:', i, str(s))    
       if not s.is_instruction():
         if s.command is not None and in_block: # Terminate previous block
           end_block(i-1)
@@ -1998,7 +1958,7 @@ class Assembler(object):
           label_pending = i
       else: # Got an instruction
         if not in_block:
-          print('## NEW BLOCK:', i)
+          #print('## NEW BLOCK:', i)
           start = i
 
         in_block = True
