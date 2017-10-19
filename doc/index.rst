@@ -55,7 +55,7 @@ Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The
 Download
 --------
 
-You can access the Opbasm Git repository from `Github <https://github.com/kevinpt/opbasm>`_. `Packaged source code <https://goo.gl/tz2vwz>`_ is also available for download. You can install direct from PyPI with the ``pip`` command if you have it available.
+You can access the Opbasm Git repository from `Github <https://github.com/kevinpt/opbasm>`_. You can install direct from PyPI with the ``pip`` command if you have it available.
 
 
 Installation
