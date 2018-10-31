@@ -751,7 +751,7 @@ template simulateLoop(): untyped =
     opc = (w shr 12) and 0xFF
     x = (w shr 8) and 0xF
     y = (w shr 4) and 0xF
-    imm = w and 0xFF
+    imm = (uint8) w and 0xFF
     
     next_pc = state.pc + 1
     state.totalInsts += 1
@@ -917,6 +917,7 @@ template simulateLoop(): untyped =
         of 0x01: do_jump_nz()
         of 0x02: do_jump_c()
         of 0x03: do_jump_nc()
+        else: do_badOp
       
       of 0x30: do_call()
       of 0x31:
@@ -926,6 +927,7 @@ template simulateLoop(): untyped =
         of 0x01: do_call_nz()
         of 0x02: do_call_c()
         of 0x03: do_call_nc()
+        else: do_badOp
       
       of 0x2A: do_return()
       of 0x2B:
@@ -935,6 +937,7 @@ template simulateLoop(): untyped =
         of 0x01: do_return_nz()
         of 0x02: do_return_c()
         of 0x03: do_return_nc()
+        else: do_badOp
       
       else: do_badOp
 
