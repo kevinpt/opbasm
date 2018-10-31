@@ -134,8 +134,8 @@ The ``fetch`` and ``store`` instructions have an indirect variant where the seco
 
 .. code-block:: picoblaze
 
-  const M_ARRAY, 0F         ; Allocate array from 0x0F to 0x1F
-  const M_ARRAY_END, 1F
+  constant M_ARRAY, 0F         ; Allocate array from 0x0F to 0x1F
+  constant M_ARRAY_END, 1F
   
   load sA, M_ARRAY          ; Init pointer to start of array
   loop:  
