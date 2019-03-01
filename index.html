@@ -1,38 +1,37 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Open PicoBlaze Assembler &mdash; Opbasm 1.3 documentation</title>
-    
+    <title>Open PicoBlaze Assembler &#8212; Opbasm 1.3.9 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="stylesheet" href="_static/project.css" type="text/css" />
     <link rel="stylesheet" href="_static/tty/tty-player.min.css" type="text/css" />
-    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '1.3',
+        VERSION:     '1.3.9',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Opbasm 1.3 documentation" href="#" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="m4 support in Opbasm" href="rst/m4.html" />
 
    
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/webcomponentsjs/0.7.5/webcomponents-lite.min.js"></script>
+<script src="_static/tty/webcomponents-lite.min.js"></script>
 <script src="_static/tty/term.min.js"></script>
 <script src="_static/tty/tty-player.min.js"></script>
 
@@ -53,7 +52,7 @@
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
   <div class="section" id="open-picoblaze-assembler">
 <h1>Open PicoBlaze Assembler<a class="headerlink" href="#open-picoblaze-assembler" title="Permalink to this headline">¶</a></h1>
@@ -61,7 +60,7 @@
 <tty-player autoplay loop controls src="_static/tty/demo.ttyrec"></tty-player><p><strong>Special features of Opbasm:</strong></p>
 <blockquote>
 <div><ul class="simple">
-<li>Optional <a class="reference internal" href="rst/m4.html"><em>m4 preprocessor macros</em></a> are available when the m4 program is installed. An extensive set of built-in macros provide more advanced features than the base language. For example, converting temperature scales becomes as easy as this:</li>
+<li>Optional <a class="reference internal" href="rst/m4.html"><span class="doc">m4 preprocessor macros</span></a> are available when the m4 program is installed. An extensive set of built-in macros provide more advanced features than the base language. For example, converting temperature scales becomes as easy as this:</li>
 </ul>
 <blockquote>
 <div><div class="highlight-picoblaze"><div class="highlight"><pre><span class="nb">reg16(</span><span class="s">rx</span><span class="p">,</span> <span class="s">s4</span><span class="p">,</span><span class="s">s5</span><span class="nb">)</span>                <span class="c">; Create a virtual 16-bit register pair named rx</span>
@@ -77,7 +76,7 @@
 <ul class="simple">
 <li>Includes an optimizer that performs <a class="reference internal" href="#static-code-analysis">static code analysis</a> to identify dead code and optionally remove it. This permits the development of code libraries that can be included without wasting memory on unused functions.</li>
 <li>Code block annotations with <a class="reference internal" href="#user-defined-pragma-meta-comments">user defined PRAGMA meta-comments</a>.</li>
-<li>A basic <a class="reference internal" href="rst/opbsim.html"><em>command line simulator Opbsim</em></a> is included.</li>
+<li>A basic <a class="reference internal" href="rst/opbsim.html"><span class="doc">command line simulator Opbsim</span></a> is included.</li>
 </ul>
 </div></blockquote>
 <p>Support for the full PicoBlaze-6 syntax is provided as well as <a class="reference internal" href="#enabling-most-of-the-new-pb6-syntax-enhancements-in-picoblaze-3-code">enabling most of the new PB6 syntax enhancements in PicoBlaze-3 code</a>. The original templating system for ROM components is supported as well as a more flexible <a class="reference internal" href="#generic-rom-component">generic ROM component</a> that can read <em>.mem</em> and <em>.hex</em> files directly during synthesis and simulation. A utility script is included that permits <a class="reference internal" href="#updating-the-rom-contents-of-a-bitstream-file">updating the ROM contents of a bitstream file</a> without requiring resynthesis as was formerly supplied by the DOS-based KCPSM3 tools.</p>
@@ -85,29 +84,29 @@
 <img alt="_images/opbasm_perf.png" src="_images/opbasm_perf.png" />
 <div class="section" id="learning-about-picoblaze">
 <h2>Learning about PicoBlaze<a class="headerlink" href="#learning-about-picoblaze" title="Permalink to this headline">¶</a></h2>
-<p>If you are unfamiliar with the PicoBlaze architecture you can review the <a class="reference internal" href="rst/language.html"><em>reference guide</em></a> that describes its inner workings. The official documentation for KCPSM6 is also useful as Opbasm supports its syntax completely with a few extensions. If you are unfamiliar with assembly language programming in general there is a <a class="reference internal" href="rst/tutorial.html"><em>tutorial</em></a> that can guide you through the process of writing in assembly and demonstrates the steps needed to develop a working program.</p>
+<p>If you are unfamiliar with the PicoBlaze architecture you can review the <a class="reference internal" href="rst/language.html"><span class="doc">reference guide</span></a> that describes its inner workings. The official documentation for KCPSM6 is also useful as Opbasm supports its syntax completely with a few extensions. If you are unfamiliar with assembly language programming in general there is a <a class="reference internal" href="rst/tutorial.html"><span class="doc">tutorial</span></a> that can guide you through the process of writing in assembly and demonstrates the steps needed to develop a working program.</p>
 </div>
 <div class="section" id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
-<p>Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn&#8217;t currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package. The source is written in Python 2.7 syntax but will convert cleanly to Python 3 when the installer passes it through <tt class="docutils literal"><span class="pre">2to3</span></tt>.</p>
+<p>Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn’t currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package. The source is written in Python 2.7 syntax but will convert cleanly to Python 3 when the installer passes it through <code class="docutils literal"><span class="pre">2to3</span></code>.</p>
 </div>
 <div class="section" id="download">
 <h2>Download<a class="headerlink" href="#download" title="Permalink to this headline">¶</a></h2>
-<p>You can access the Opbasm Git repository from <a class="reference external" href="https://github.com/kevinpt/opbasm">Github</a>. <a class="reference external" href="https://goo.gl/tz2vwz">Packaged source code</a> is also available for download. You can install direct from PyPI with the <tt class="docutils literal"><span class="pre">pip</span></tt> command if you have it available.</p>
+<p>You can access the Opbasm Git repository from <a class="reference external" href="https://github.com/kevinpt/opbasm">Github</a>. You can install direct from PyPI with the <code class="docutils literal"><span class="pre">pip</span></code> command if you have it available.</p>
 </div>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
-<p>You must have Python installed first. Most modern Linux distributions and OS/X have it available by default. There are a number of options available for Windows. If you don&#8217;t already have a favorite, I recommend getting one of the <a class="reference external" href="http://www.scipy.org/install.html">&#8220;full-stack&#8221; Python distros</a> that are geared toward scientific computing such as Anaconda or Python(x,y).</p>
+<p>You must have Python installed first. Most modern Linux distributions and OS/X have it available by default. There are a number of options available for Windows. If you don’t already have a favorite, I recommend getting one of the <a class="reference external" href="http://www.scipy.org/install.html">“full-stack” Python distros</a> that are geared toward scientific computing such as Anaconda or Python(x,y).</p>
 <p>If your OS has a package manager, it may be preferable to install Python setuptools through that tool before attempting to install Opbasm. Otherwise, the installation script will install these packages directly without registering them with the OS package manager.</p>
 <p>The easiest way to install Opbasm is from <a class="reference external" href="https://pypi.python.org/pypi/opbasm">PyPI</a>.</p>
 <div class="highlight-console"><div class="highlight"><pre><span class="gp">&gt;</span> pip install --upgrade opbasm
 </pre></div>
 </div>
-<p>This will download and install the latest release, upgrading if you already have it installed. If you don&#8217;t have <tt class="docutils literal"><span class="pre">pip</span></tt> you may have the <tt class="docutils literal"><span class="pre">easy_install</span></tt> command available which can be used to install <tt class="docutils literal"><span class="pre">pip</span></tt> on your system:</p>
+<p>This will download and install the latest release, upgrading if you already have it installed. If you don’t have <code class="docutils literal"><span class="pre">pip</span></code> you may have the <code class="docutils literal"><span class="pre">easy_install</span></code> command available which can be used to install <code class="docutils literal"><span class="pre">pip</span></code> on your system:</p>
 <div class="highlight-console"><div class="highlight"><pre><span class="gp">&gt;</span> easy_install pip
 </pre></div>
 </div>
-<p>You can also use <tt class="docutils literal"><span class="pre">pip</span></tt> to get the latest development code from Github:</p>
+<p>You can also use <code class="docutils literal"><span class="pre">pip</span></code> to get the latest development code from Github:</p>
 <div class="highlight-console"><div class="highlight"><pre><span class="gp">&gt;</span> pip install --upgrade https://github.com/kevinpt/opbasm/tarball/master
 </pre></div>
 </div>
@@ -116,46 +115,46 @@
 </pre></div>
 </div>
 <p>On Linux systems you may need to install with root privileges using the <em>sudo</em> command.</p>
-<p>After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the <tt class="docutils literal"><span class="pre">&lt;Python</span> <span class="pre">root&gt;\Scripts</span></tt> directory is in your %PATH% environment variable.</p>
-<p>If you can&#8217;t use the installer script, it is possible to run <em>opbasm.py</em> directly without installation.</p>
+<p>After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the <code class="docutils literal"><span class="pre">&lt;Python</span> <span class="pre">root&gt;\Scripts</span></code> directory is in your %PATH% environment variable.</p>
+<p>If you can’t use the installer script, it is possible to run <em>opbasm.py</em> directly without installation.</p>
 <div class="highlight-console"><div class="highlight"><pre><span class="gp">&gt;</span> python opbasm.py ...
 </pre></div>
 </div>
-<p>The m4 preprocessor is optional. It is usually already installed on Linux. The m4 documentation provides <a class="reference internal" href="rst/m4.html#guidance-on-installing-m4-under-windows"><em>guidance on installing m4 under Windows</em></a>.</p>
+<p>The m4 preprocessor is optional. It is usually already installed on Linux. The m4 documentation provides <a class="reference internal" href="rst/m4.html#guidance-on-installing-m4-under-windows"><span class="std std-ref">guidance on installing m4 under Windows</span></a>.</p>
 </div>
 <div class="section" id="picoblaze-3-enhancements">
 <span id="enabling-most-of-the-new-pb6-syntax-enhancements-in-picoblaze-3-code"></span><h2>PicoBlaze-3 enhancements<a class="headerlink" href="#picoblaze-3-enhancements" title="Permalink to this headline">¶</a></h2>
-<p>You can use all PicoBlaze-6 syntax extensions in PicoBlaze-3 code that don&#8217;t depend on PB6 specific instructions. This makes writing PB3 code much less painful.</p>
+<p>You can use all PicoBlaze-6 syntax extensions in PicoBlaze-3 code that don’t depend on PB6 specific instructions. This makes writing PB3 code much less painful.</p>
 <p>For PicoBlaze-3 you can use the following syntax extensions from PicoBlaze-6:</p>
 <blockquote>
 <div><ul class="simple">
-<li>Decimal, binary, and character literals (<tt class="docutils literal"><span class="pre">41'd,</span> <span class="pre">01000001'b,</span> <span class="pre">&quot;A&quot;</span></tt>)</li>
-<li>Predefined char constants and date/time stamp fields (<tt class="docutils literal"><span class="pre">CR,</span> <span class="pre">LF,</span> <span class="pre">HT,</span> <span class="pre">datestamp_day</span></tt>, etc.)</li>
-<li>Inverted constants ( <tt class="docutils literal"><span class="pre">~my_const</span></tt> )</li>
-<li>Environment variable constants ( <tt class="docutils literal"><span class="pre">constant</span> <span class="pre">foo,</span> <span class="pre">%my_env_const</span></tt> )</li>
-<li><a class="reference internal" href="rst/language.html#inst-include"><em>INCLUDE</em></a>, <a class="reference internal" href="rst/language.html#inst-default-jump"><em>DEFAULT_JUMP</em></a>, and <a class="reference internal" href="rst/language.html#inst-inst"><em>INST</em></a> directives</li>
-<li>Address label constants ( <tt class="docutils literal"><span class="pre">my_label'upper</span>&nbsp; <span class="pre">my_label'lower</span></tt> )</li>
+<li>Decimal, binary, and character literals (<code class="docutils literal"><span class="pre">41'd,</span> <span class="pre">01000001'b,</span> <span class="pre">&quot;A&quot;</span></code>)</li>
+<li>Predefined char constants and date/time stamp fields (<code class="docutils literal"><span class="pre">CR,</span> <span class="pre">LF,</span> <span class="pre">HT,</span> <span class="pre">datestamp_day</span></code>, etc.)</li>
+<li>Inverted constants ( <code class="docutils literal"><span class="pre">~my_const</span></code> )</li>
+<li>Environment variable constants ( <code class="docutils literal"><span class="pre">constant</span> <span class="pre">foo,</span> <span class="pre">%my_env_const</span></code> )</li>
+<li><a class="reference internal" href="rst/language.html#inst-include"><span class="std std-ref">INCLUDE</span></a>, <a class="reference internal" href="rst/language.html#inst-default-jump"><span class="std std-ref">DEFAULT_JUMP</span></a>, and <a class="reference internal" href="rst/language.html#inst-inst"><span class="std std-ref">INST</span></a> directives</li>
+<li>Address label constants ( <code class="docutils literal"><span class="pre">my_label'upper</span>&#160; <span class="pre">my_label'lower</span></code> )</li>
 </ul>
 </div></blockquote>
 <p>For PicoBlaze-3 you <em>CANNOT</em> use the following:</p>
 <blockquote>
 <div><ul class="simple">
-<li><a class="reference internal" href="rst/language.html#inst-string"><em>STRING</em></a> and <a class="reference internal" href="rst/language.html#inst-table"><em>TABLE</em></a> directives</li>
-<li><a class="reference internal" href="rst/language.html#inst-pb6"><em>PicoBlaze-6 instructions</em></a> (<tt class="docutils literal"><span class="pre">CALL&#64;,</span> <span class="pre">COMPARECY,</span> <span class="pre">HWBUILD,</span> <span class="pre">JUMP&#64;,</span> <span class="pre">LOAD&amp;RETURN,</span> <span class="pre">OUTPUTK,</span> <span class="pre">REGBANK,</span> <span class="pre">STAR,</span> <span class="pre">TESTCY</span></tt>)</li>
+<li><a class="reference internal" href="rst/language.html#inst-string"><span class="std std-ref">STRING</span></a> and <a class="reference internal" href="rst/language.html#inst-table"><span class="std std-ref">TABLE</span></a> directives</li>
+<li><a class="reference internal" href="rst/language.html#inst-pb6"><span class="std std-ref">PicoBlaze-6 instructions</span></a> (<code class="docutils literal"><span class="pre">CALL&#64;,</span> <span class="pre">COMPARECY,</span> <span class="pre">HWBUILD,</span> <span class="pre">JUMP&#64;,</span> <span class="pre">LOAD&amp;RETURN,</span> <span class="pre">OUTPUTK,</span> <span class="pre">REGBANK,</span> <span class="pre">STAR,</span> <span class="pre">TESTCY</span></code>)</li>
 </ul>
 </div></blockquote>
-<p>Note that the included m4 macros have <a class="reference internal" href="rst/m4.html#string-and-table-ops"><em>alternative string operations</em></a> that do work on PicoBlaze-3 as well as a <a class="reference internal" href="rst/m4.html#portable-string-and-table-operations"><em>portable string system</em></a> that is optimized for both target processors.</p>
-<p>Refer to the file &#8220;all_kcpsm6_syntax.psm&#8221; distributed with KCPSM6 for a detailed
+<p>Note that the included m4 macros have <a class="reference internal" href="rst/m4.html#string-and-table-ops"><span class="std std-ref">alternative string operations</span></a> that do work on PicoBlaze-3 as well as a <a class="reference internal" href="rst/m4.html#portable-string-and-table-operations"><span class="std std-ref">portable string system</span></a> that is optimized for both target processors.</p>
+<p>Refer to the file “all_kcpsm6_syntax.psm” distributed with KCPSM6 for a detailed
 explanation of the new PicoBlaze-6 syntax.</p>
 </div>
 <div class="section" id="picoblaze-6-enhancements">
 <h2>PicoBlaze-6 enhancements<a class="headerlink" href="#picoblaze-6-enhancements" title="Permalink to this headline">¶</a></h2>
 <p>The native PB6 assembler KCPSM6.exe has a -c switch to limit the size of memory. Opbasm provides -m to do the same as well as -s to limit the scratchpad memory size to 64 or 128 bytes. MEM format files are output by default. KCPSM6-style HEX format is activated with <em>-x</em>.</p>
-<p>The predefined string &#8220;Opbasm_version$&#8221; is available to record the assembler version starting from version 1.3.3. This is a substitute for &#8220;KCPSM6_version$&#8221; which is not predefined by Opbasm.</p>
+<p>The predefined string “Opbasm_version$” is available to record the assembler version starting from version 1.3.3. This is a substitute for “KCPSM6_version$” which is not predefined by Opbasm.</p>
 </div>
 <div class="section" id="syntax-extensions">
 <h2>Syntax extensions<a class="headerlink" href="#syntax-extensions" title="Permalink to this headline">¶</a></h2>
-<p>Two non-standard syntax extensions have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a &#8221;.&#8221;. Local labels do not have to be globally unique, making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately preceeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.</p>
+<p>Two non-standard syntax extensions have been implemented in Opbasm. The first is the ability to define local labels by prefixing them with a “.”. Local labels do not have to be globally unique, making it easier to construct commonly used names inside procedures without concern for collisions or excessively long names. Internally, local labels are implemented by appending them to the immediately preceeding global label. The fully expanded name can be referred to anywhere in the program. The bare local label can be referred anywhere between the nearest global labels bounding it.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_proc:</span>
   <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">04</span>
 <span class="nl">.loop:</span>            <span class="c">; Local label for this procedure</span>
@@ -174,10 +173,10 @@ explanation of the new PicoBlaze-6 syntax.</p>
 <span class="k">jump</span> <span class="n">my_proc.loop</span> <span class="c">; Access the local label by referring to its expanded name</span>
 </pre></div>
 </div>
-<p>Labels generated by macro expansions are all prefixed with &#8220;__&#8221;. This prefix is ignored when tracking global labels so that structured programming macros can be invoked without unxpected changes in the behavior of local labels.</p>
-<p>Another small extension to the syntax is that the <a class="reference internal" href="rst/language.html#inst-address"><em>address</em></a> directive can take a label as a parameter as well as a numeric address. This is most useful when defining an ISR by inserting a <a class="reference internal" href="rst/language.html#inst-jump"><em>jump</em></a> instruction at the vector address and then returning back to a labeled address to resume assembling code from the the next point in memory.</p>
+<p>Labels generated by macro expansions are all prefixed with “__”. This prefix is ignored when tracking global labels so that structured programming macros can be invoked without any unexpected changes in the behavior of local labels.</p>
+<p>Another small extension to the syntax is that the <a class="reference internal" href="rst/language.html#inst-address"><span class="std std-ref">address</span></a> directive can take a label as a parameter as well as a numeric address. This is most useful when defining an ISR by inserting a <a class="reference internal" href="rst/language.html#inst-jump"><span class="std std-ref">jump</span></a> instruction at the vector address and then returning back to a labeled address to resume assembling code from the the next point in memory.</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_isr:</span>
-  <span class="k">address</span> <span class="mh">3FF</span>
+  <span class="k">address</span> <span class="mh">3FF</span>     <span class="c">; Switch to interrupt vector address</span>
   <span class="k">jump</span> <span class="n">my_isr</span>     <span class="c">; Assemble instruction at interrupt vector location</span>
   <span class="k">address</span> <span class="n">my_isr</span>  <span class="c">; Resume assembly at address previously captured in &quot;my_isr&quot;</span>
   <span class="ge">&lt;ISR code&gt;</span>
@@ -187,68 +186,68 @@ explanation of the new PicoBlaze-6 syntax.</p>
 </div>
 <div class="section" id="m4-preprocessor">
 <h2>m4 preprocessor<a class="headerlink" href="#m4-preprocessor" title="Permalink to this headline">¶</a></h2>
-<p>Opbasm uses the m4 preprocessor to provide enhanced syntax to PicoBlaze developers. A useful package of predefined macros is included automatically when m4 is run. You can activate m4 by naming source files with the &#8221;.psm4&#8221;, or &#8221;.m4&#8221; extensions or by passing the <em>&#8211;m4</em> option. See the more detailed <a class="reference internal" href="rst/m4.html"><em>m4 documentation</em></a> for more information on using the preprocessor macros.</p>
+<p>Opbasm uses the m4 preprocessor to provide enhanced syntax to PicoBlaze developers. A useful package of predefined macros is included automatically when m4 is run. You can activate m4 by naming source files with the “.psm4”, or “.m4” extensions or by passing the <em>–m4</em> option. See the more detailed <a class="reference internal" href="rst/m4.html"><span class="doc">m4 documentation</span></a> for more information on using the preprocessor macros.</p>
 </div>
 <div class="section" id="static-code-analysis">
 <h2>Static code analysis<a class="headerlink" href="#static-code-analysis" title="Permalink to this headline">¶</a></h2>
-<p>Opbasm provides static code analysis to identify unreachable &#8220;dead&#8221; instructions and potentially remove them to eliminate wasted memory. There are three command line options <em>-d</em> (<em>&#8211;report-dead-code</em>), <em>-r</em> (<em>&#8211;remove-dead-code</em>), and <em>-e</em> (<em>&#8211;entry-point</em>) used to control static code analysis.</p>
-<p>The <em>-d</em> (<em>&#8211;report-dead-code</em>) option activates static code analysis and shows dead instructions in the log file with &#8220;DEAD&#8221; after the assembled instruction. Instructions identified as dead will be reported and also removed when <em>-r</em> (<em>&#8211;remove-dead-code</em>) is used. Removed instructions appear in the log as comments starting with &#8221;;REMOVED:&#8221;.</p>
-<p>Static analysis is performed by following all possible execution paths from a set of initial entry points. There are three possible entry points for PicoBlaze code: address 0, the <a class="reference internal" href="rst/language.html#inst-default-jump"><em>default_jump</em></a> target (if used), and the ISR. The <em>-e</em> (<em>&#8211;entry-point</em>) option provides the address of the ISR entry point. It should be a decimal integer or a hex value in 0xnnn format. The ISR entry point defaults to 0x3FF. You will see a summary of the entry point addresses and the number of dead instructions found reported to standard output.</p>
-<p>The static analysis can&#8217;t follow the computed destination of <a class="reference internal" href="rst/language.html#inst-call-at"><em>call&#64;</em></a> and <a class="reference internal" href="rst/language.html#inst-jump-at"><em>jump&#64;</em></a> instructions. A <em>&#8221;;PRAGMA keep&#8221;</em> meta-comment can be used to prevent removal of code they jump to. Surround blocks of code with <em>&#8221;;PRAGMA keep on&#8221;</em> and <em>&#8221;;PRAGMA keep off&#8221;</em> to preserve them. These meta-comments are case insensitive. The log file will show kept instructions with &#8220;KEEP&#8221; after the assembled instruction.</p>
-<div class="figure">
+<p>Opbasm provides static code analysis to identify unreachable “dead” instructions and potentially remove them to eliminate wasted memory. There are three command line options <em>-d</em> (<em>–report-dead-code</em>), <em>-r</em> (<em>–remove-dead-code</em>), and <em>-e</em> (<em>–entry-point</em>) used to control static code analysis.</p>
+<p>The <em>-d</em> (<em>–report-dead-code</em>) option activates static code analysis and shows dead instructions in the log file with “DEAD” after the assembled instruction. Instructions identified as dead will be reported and also removed when <em>-r</em> (<em>–remove-dead-code</em>) is used. Removed instructions appear in the log as comments starting with “;REMOVED:”.</p>
+<p>Static analysis is performed by following all possible execution paths from a set of initial entry points. There are three possible entry points for PicoBlaze code: address 0, the <a class="reference internal" href="rst/language.html#inst-default-jump"><span class="std std-ref">default_jump</span></a> target (if used), and the ISR. The <em>-e</em> (<em>–entry-point</em>) option provides the address of the ISR entry point. It should be a decimal integer or a hex value in 0xnnn format. The ISR entry point defaults to 0x3FF. You will see a summary of the entry point addresses and the number of dead instructions found reported to standard output.</p>
+<p>The static analysis can’t follow the computed destination of <a class="reference internal" href="rst/language.html#inst-call-at"><span class="std std-ref">call&#64;</span></a> and <a class="reference internal" href="rst/language.html#inst-jump-at"><span class="std std-ref">jump&#64;</span></a> instructions. A <em>“;PRAGMA keep”</em> meta-comment can be used to prevent removal of code they jump to. Surround blocks of code with <em>“;PRAGMA keep on”</em> and <em>“;PRAGMA keep off”</em> to preserve them. These meta-comments are case insensitive. The log file will show kept instructions with “KEEP” after the assembled instruction.</p>
+<div class="figure" id="id2">
 <img alt="_images/static_analysis.png" src="_images/static_analysis.png" />
-<p class="caption"><em>Static analysis example</em></p>
+<p class="caption"><span class="caption-text"><em>Static analysis example</em></span></p>
 </div>
-<p>As an aid to the user, the static analyzer will automatically keep any code that is called or jumped to from a user annotated &#8220;keep&#8221; block. These blocks are identified with the name &#8220;keep_auto&#8221; in the log file. In addition, &#8220;keep_auto&#8221; is automatically applied to blocks of <a class="reference internal" href="rst/language.html#inst-load-return"><em>load&amp;return</em></a> instructions that are associated with a label in use. The result is that only unreferenced strings and tables will be marked as dead and potentially removed. &#8220;keep_auto&#8221; is also automatically applied to any <a class="reference internal" href="rst/language.html#inst-inst"><em>inst</em></a> directives.</p>
+<p>As an aid to the user, the static analyzer will automatically keep any code that is called or jumped to from a user annotated “keep” block. These blocks are identified with the name “keep_auto” in the log file. In addition, “keep_auto” is automatically applied to blocks of <a class="reference internal" href="rst/language.html#inst-load-return"><span class="std std-ref">load&amp;return</span></a> instructions that are associated with a label in use. The result is that only unreferenced strings and tables will be marked as dead and potentially removed. “keep_auto” is also automatically applied to any <a class="reference internal" href="rst/language.html#inst-inst"><span class="std std-ref">inst</span></a> directives.</p>
 <p>On the first assembly pass it is possible that the amount of extra code present causes spillover beyond the total memory available. When dead code removal is active the bounds checking is suspended on the first pass to allow for the possibility that the code will fit after it is trimmed down. Address bounds checking will still be applied on the final result.</p>
 </div>
 <div class="section" id="using-opbasm">
 <h2>Using Opbasm<a class="headerlink" href="#using-opbasm" title="Permalink to this headline">¶</a></h2>
 <p>After installation you are ready to use Opbasm. The native KCPSM assemblers rely on HDL templates to carry assembled ROM data into synthesis. You can continue to use that process by using the provided Spartan-3 template or using a template from the KCPSM6 distribution. You can alternately use the <a class="reference external" href="https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl">picoblaze_rom.vhdl</a> component which provides a generic resizeable ROM that reads <em>.mem</em> and <em>.hex</em> files directly without requiring a template. See below for more information on the templating options.</p>
 <p>The assembler is invoked with the <em>opbasm</em> script. It supports the following command line syntax:</p>
-<div class="highlight-python"><div class="highlight"><pre>Usage: opbasm [-i] &lt;input file&gt; [-n &lt;name&gt;] [-t &lt;template&gt;] [-6|-3] [-m &lt;mem size&gt;] [-s &lt;scratch size&gt;]
-              [-d] [-r] [-e &lt;address&gt;]
-              [-o &lt;output dir&gt;] [-q] [--m4]
-              [--debug-preproc &lt;file&gt;]
-       opbasm -g
+<div class="highlight-default"><div class="highlight"><pre><span class="n">Usage</span><span class="p">:</span> <span class="n">opbasm</span> <span class="p">[</span><span class="o">-</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span><span class="nb">input</span> <span class="n">file</span><span class="o">&gt;</span> <span class="p">[</span><span class="o">-</span><span class="n">n</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">t</span> <span class="o">&lt;</span><span class="n">template</span><span class="o">&gt;</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="mi">6</span><span class="o">|-</span><span class="mi">3</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">m</span> <span class="o">&lt;</span><span class="n">mem</span> <span class="n">size</span><span class="o">&gt;</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">s</span> <span class="o">&lt;</span><span class="n">scratch</span> <span class="n">size</span><span class="o">&gt;</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">-</span><span class="n">d</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">r</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">e</span> <span class="o">&lt;</span><span class="n">address</span><span class="o">&gt;</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">-</span><span class="n">o</span> <span class="o">&lt;</span><span class="n">output</span> <span class="nb">dir</span><span class="o">&gt;</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">q</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">m4</span><span class="p">]</span>
+              <span class="p">[</span><span class="o">--</span><span class="n">debug</span><span class="o">-</span><span class="n">preproc</span> <span class="o">&lt;</span><span class="n">file</span><span class="o">&gt;</span><span class="p">]</span>
+       <span class="n">opbasm</span> <span class="o">-</span><span class="n">g</span>
 
-Options:
-  -h, --help            show this help message and exit
-  -i INPUT_FILE, --input=INPUT_FILE
-                        Input file
-  -n MODULE_NAME, --name=MODULE_NAME
-                        Module or entity name (defaults to input file name)
-  -t TEMPLATE_FILE, --template=TEMPLATE_FILE
-                        Template file
-  -6, --pb6             Assemble PicoBlaze-6 code
-  -3, --pb3             Assemble PicoBlaze-3 code
-  -m MEM_SIZE, --mem-size=MEM_SIZE
-                        Program memory size
-  -s SCRATCH_SIZE, --scratch-size=SCRATCH_SIZE
-                        Scratchpad memory size
-  -x, --hex             Write HEX in place of MEM file
-  --mif                 Write MIF in place of MEM file
-  -o OUTPUT_DIR, --outdir=OUTPUT_DIR
-                        Output directory
-  -d, --report-dead-code
-                        Perform dead code analysis shown in log file
-  -r, --remove-dead-code
-                        Remove dead code from assembled source
-  -e ADDRESS, --entry-point=ADDRESS
-                        Set address of ISR (or other) entry point
-  -c, --color-log       Colorize log file
-  -g, --get-templates   Get default template files
-  -v, --version         Show OPBASM version
-  -q, --quiet           Quiet output
-  --m4                  Use m4 preprocessor on all source files
-  -D NAME[=VALUE], --define=NAME[=VALUE]
-                        Define m4 macro NAME as having VALUE or empty
-  --debug-preproc=FILE  Transformed source file after initial preprocessing
+<span class="n">Options</span><span class="p">:</span>
+  <span class="o">-</span><span class="n">h</span><span class="p">,</span> <span class="o">--</span><span class="n">help</span>            <span class="n">show</span> <span class="n">this</span> <span class="n">help</span> <span class="n">message</span> <span class="ow">and</span> <span class="n">exit</span>
+  <span class="o">-</span><span class="n">i</span> <span class="n">INPUT_FILE</span><span class="p">,</span> <span class="o">--</span><span class="nb">input</span><span class="o">=</span><span class="n">INPUT_FILE</span>
+                        <span class="n">Input</span> <span class="n">file</span>
+  <span class="o">-</span><span class="n">n</span> <span class="n">MODULE_NAME</span><span class="p">,</span> <span class="o">--</span><span class="n">name</span><span class="o">=</span><span class="n">MODULE_NAME</span>
+                        <span class="n">Module</span> <span class="ow">or</span> <span class="n">entity</span> <span class="n">name</span> <span class="p">(</span><span class="n">defaults</span> <span class="n">to</span> <span class="nb">input</span> <span class="n">file</span> <span class="n">name</span><span class="p">)</span>
+  <span class="o">-</span><span class="n">t</span> <span class="n">TEMPLATE_FILE</span><span class="p">,</span> <span class="o">--</span><span class="n">template</span><span class="o">=</span><span class="n">TEMPLATE_FILE</span>
+                        <span class="n">Template</span> <span class="n">file</span>
+  <span class="o">-</span><span class="mi">6</span><span class="p">,</span> <span class="o">--</span><span class="n">pb6</span>             <span class="n">Assemble</span> <span class="n">PicoBlaze</span><span class="o">-</span><span class="mi">6</span> <span class="n">code</span>
+  <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="o">--</span><span class="n">pb3</span>             <span class="n">Assemble</span> <span class="n">PicoBlaze</span><span class="o">-</span><span class="mi">3</span> <span class="n">code</span>
+  <span class="o">-</span><span class="n">m</span> <span class="n">MEM_SIZE</span><span class="p">,</span> <span class="o">--</span><span class="n">mem</span><span class="o">-</span><span class="n">size</span><span class="o">=</span><span class="n">MEM_SIZE</span>
+                        <span class="n">Program</span> <span class="n">memory</span> <span class="n">size</span>
+  <span class="o">-</span><span class="n">s</span> <span class="n">SCRATCH_SIZE</span><span class="p">,</span> <span class="o">--</span><span class="n">scratch</span><span class="o">-</span><span class="n">size</span><span class="o">=</span><span class="n">SCRATCH_SIZE</span>
+                        <span class="n">Scratchpad</span> <span class="n">memory</span> <span class="n">size</span>
+  <span class="o">-</span><span class="n">x</span><span class="p">,</span> <span class="o">--</span><span class="nb">hex</span>             <span class="n">Write</span> <span class="n">HEX</span> <span class="ow">in</span> <span class="n">place</span> <span class="n">of</span> <span class="n">MEM</span> <span class="n">file</span>
+  <span class="o">--</span><span class="n">mif</span>                 <span class="n">Write</span> <span class="n">MIF</span> <span class="ow">in</span> <span class="n">place</span> <span class="n">of</span> <span class="n">MEM</span> <span class="n">file</span>
+  <span class="o">-</span><span class="n">o</span> <span class="n">OUTPUT_DIR</span><span class="p">,</span> <span class="o">--</span><span class="n">outdir</span><span class="o">=</span><span class="n">OUTPUT_DIR</span>
+                        <span class="n">Output</span> <span class="n">directory</span>
+  <span class="o">-</span><span class="n">d</span><span class="p">,</span> <span class="o">--</span><span class="n">report</span><span class="o">-</span><span class="n">dead</span><span class="o">-</span><span class="n">code</span>
+                        <span class="n">Perform</span> <span class="n">dead</span> <span class="n">code</span> <span class="n">analysis</span> <span class="n">shown</span> <span class="ow">in</span> <span class="n">log</span> <span class="n">file</span>
+  <span class="o">-</span><span class="n">r</span><span class="p">,</span> <span class="o">--</span><span class="n">remove</span><span class="o">-</span><span class="n">dead</span><span class="o">-</span><span class="n">code</span>
+                        <span class="n">Remove</span> <span class="n">dead</span> <span class="n">code</span> <span class="kn">from</span> <span class="nn">assembled</span> <span class="n">source</span>
+  <span class="o">-</span><span class="n">e</span> <span class="n">ADDRESS</span><span class="p">,</span> <span class="o">--</span><span class="n">entry</span><span class="o">-</span><span class="n">point</span><span class="o">=</span><span class="n">ADDRESS</span>
+                        <span class="n">Set</span> <span class="n">address</span> <span class="n">of</span> <span class="n">ISR</span> <span class="p">(</span><span class="ow">or</span> <span class="n">other</span><span class="p">)</span> <span class="n">entry</span> <span class="n">point</span>
+  <span class="o">-</span><span class="n">c</span><span class="p">,</span> <span class="o">--</span><span class="n">color</span><span class="o">-</span><span class="n">log</span>       <span class="n">Colorize</span> <span class="n">log</span> <span class="n">file</span>
+  <span class="o">-</span><span class="n">g</span><span class="p">,</span> <span class="o">--</span><span class="n">get</span><span class="o">-</span><span class="n">templates</span>   <span class="n">Get</span> <span class="n">default</span> <span class="n">template</span> <span class="n">files</span>
+  <span class="o">-</span><span class="n">v</span><span class="p">,</span> <span class="o">--</span><span class="n">version</span>         <span class="n">Show</span> <span class="n">OPBASM</span> <span class="n">version</span>
+  <span class="o">-</span><span class="n">q</span><span class="p">,</span> <span class="o">--</span><span class="n">quiet</span>           <span class="n">Quiet</span> <span class="n">output</span>
+  <span class="o">--</span><span class="n">m4</span>                  <span class="n">Use</span> <span class="n">m4</span> <span class="n">preprocessor</span> <span class="n">on</span> <span class="nb">all</span> <span class="n">source</span> <span class="n">files</span>
+  <span class="o">-</span><span class="n">D</span> <span class="n">NAME</span><span class="p">[</span><span class="o">=</span><span class="n">VALUE</span><span class="p">],</span> <span class="o">--</span><span class="n">define</span><span class="o">=</span><span class="n">NAME</span><span class="p">[</span><span class="o">=</span><span class="n">VALUE</span><span class="p">]</span>
+                        <span class="n">Define</span> <span class="n">m4</span> <span class="n">macro</span> <span class="n">NAME</span> <span class="k">as</span> <span class="n">having</span> <span class="n">VALUE</span> <span class="ow">or</span> <span class="n">empty</span>
+  <span class="o">--</span><span class="n">debug</span><span class="o">-</span><span class="n">preproc</span><span class="o">=</span><span class="n">FILE</span>  <span class="n">Transformed</span> <span class="n">source</span> <span class="n">file</span> <span class="n">after</span> <span class="n">initial</span> <span class="n">preprocessing</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Opbasm currently defaults to using PicoBlaze-3 as the target processor. <strong>Beginning with version 1.4 the default will change to PicoBlaze-6.</strong> You should apply the optional <tt class="docutils literal"><span class="pre">-3</span></tt> switch when writing PB3 build scripts to guard against this future change.</p>
+<p class="last">Opbasm currently defaults to using PicoBlaze-3 as the target processor. <strong>Beginning with version 1.4 the default will change to PicoBlaze-6.</strong> You should apply the optional <code class="docutils literal"><span class="pre">-3</span></code> switch when writing PB3 build scripts to guard against this future change.</p>
 </div>
 <p>To compile to PicoBlaze-3 opcodes, use the following:</p>
 <div class="highlight-console"><div class="highlight"><pre><span class="gp">&gt;</span> opbasm foo.psm
@@ -282,12 +281,12 @@ Options:
 <span class="go">...</span>
 </pre></div>
 </div>
-<p>By default, Opbasm outputs <em>.mem</em> format ROM listings as produced by KCPSM3. If you want to output the <em>.hex</em> format listings produced by KCPSM6 pass the <em>-x</em> option. The only difference is that <em>.mem</em> format includes an &#8220;&#64;nnn&#8221; address directive setting the starting offset for the memory.</p>
+<p>By default, Opbasm outputs <em>.mem</em> format ROM listings as produced by KCPSM3. If you want to output the <em>.hex</em> format listings produced by KCPSM6 pass the <em>-x</em> option. The only difference is that <em>.mem</em> format includes an “&#64;nnn” address directive setting the starting offset for the memory.</p>
 <p>Opbasm returns 0 on success and can be incorporated into automated builds using make or another build/scripting system.</p>
 <div class="section" id="templating">
 <h3>Templating<a class="headerlink" href="#templating" title="Permalink to this headline">¶</a></h3>
-<p>All of the official KCPSM-provided HDL templates are supported. Any custom templates you have created can be used unchanged. Because of improvements to XST&#8217;s support for synthesis of BRAM generics since the last release of KCPSM3, an updated Spartan-3 template <a class="reference external" href="https://github.com/kevinpt/opbasm/blob/master/templates/ROM_form_S3_1K.vhdl">ROM_form_S3_1K.vhdl</a> is included that eliminates the warnings from redundant attribute declarations. Templates for PicoBlaze-6 devices can be found in the KCPSM6 distribution.</p>
-<p>Because Opbasm is more flexible in the naming of modules, the original template system&#8217;s assumption that the &#8220;{name}&#8221; field matches the input source file isn&#8217;t necessarily valid. A new field &#8220;{source file}&#8221; is added that clearly indicates the original top level source file used to populate a template. This field is optional and only used in a comment so it is not critical to include it in your templates.</p>
+<p>All of the official KCPSM-provided HDL templates are supported. Any custom templates you have created can be used unchanged. Because of improvements to XST’s support for synthesis of BRAM generics since the last release of KCPSM3, an updated Spartan-3 template <a class="reference external" href="https://github.com/kevinpt/opbasm/blob/master/templates/ROM_form_S3_1K.vhdl">ROM_form_S3_1K.vhdl</a> is included that eliminates the warnings from redundant attribute declarations. Templates for PicoBlaze-6 devices can be found in the KCPSM6 distribution.</p>
+<p>Because Opbasm is more flexible in the naming of modules, the original template system’s assumption that the “{name}” field matches the input source file isn’t necessarily valid. A new field “{source file}” is added that clearly indicates the original top level source file used to populate a template. This field is optional and only used in a comment so it is not critical to include it in your templates.</p>
 <p>The native KCPSM assemblers are hard-coded to look for a template named <em>ROM_form.vhd</em> or <em>ROM_form.v</em>. Opbasm searches for templates by those names (as well as <em>ROM_form.vhdl</em>) but you can also pass the <em>-t &lt;template file&gt;</em> option to specify a different template with any arbitrary name. If your OS supports symbolic links it is recommended to maintain a link from the original template to <em>ROM_form.xxx</em> rather than renaming it to one of the generic defaults.</p>
 <p>To save the bother of hunting down templates when you start a new project, you can generate copies of the default templates included with Opbasm using the following command:</p>
 <div class="highlight-console"><div class="highlight"><pre><span class="gp">&gt;</span> opbasm -g
@@ -300,12 +299,12 @@ Options:
 </div>
 <div class="section" id="generic-rom-component">
 <span id="generic-rom"></span><h3>Generic ROM component<a class="headerlink" href="#generic-rom-component" title="Permalink to this headline">¶</a></h3>
-<p>As an alternative to the templating system, a generic, synthesizable VHDL ROM is provided in the <a class="reference external" href="https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl">picoblaze_rom.vhdl</a>  file. This component uses XSTs limited support for textio during synthesis to read a <em>.mem</em> or <em>.hex</em> file directly without the use of a template file. It takes advantage of XSTs support for automatically partitioning memories that exceed the maximum size of a BRAM. This provides a simplification of the synthesis flow and you do not need to manually switch to different template files if you change the size of the ROM for PicoBlaze-6 designs. For simulation, this component has the advantage that it doesn&#8217;t have to be recompiled for every change to the PicoBlaze source code in a design and is portable across Xilinx families. It automatically re-reads the latest <em>.mem</em> or <em>.hex</em> whenever the simulation is reset. A generic can be set to select the implementation as BRAM or distributed RAM.</p>
+<p>As an alternative to the templating system, a generic, synthesizable VHDL ROM is provided in the <a class="reference external" href="https://github.com/kevinpt/opbasm/blob/master/templates/picoblaze_rom.vhdl">picoblaze_rom.vhdl</a>  file. This component uses XSTs limited support for textio during synthesis to read a <em>.mem</em> or <em>.hex</em> file directly without the use of a template file. It takes advantage of XSTs support for automatically partitioning memories that exceed the maximum size of a BRAM. This provides a simplification of the synthesis flow and you do not need to manually switch to different template files if you change the size of the ROM for PicoBlaze-6 designs. For simulation, this component has the advantage that it doesn’t have to be recompiled for every change to the PicoBlaze source code in a design and is portable across Xilinx families. It automatically re-reads the latest <em>.mem</em> or <em>.hex</em> whenever the simulation is reset. A generic can be set to select the implementation as BRAM or distributed RAM.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">XST doesn&#8217;t infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The &#8220;<tt class="docutils literal"><span class="pre">ROM_form_S6_4K_&lt;date&gt;.vhd</span></tt>&#8221; template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.</p>
+<p class="last">XST doesn’t infer the most efficient partition for a 4Kx18 ROM on Spartan-6. The “<code class="docutils literal"><span class="pre">ROM_form_S6_4K_&lt;date&gt;.vhd</span></code>” template distributed with KCPSM6 uses only 4 BRAMs rather than 5 and may be a better option.</p>
 </div>
-<p>A dual-ported <tt class="docutils literal"><span class="pre">picoblaze_dp_rom</span></tt> component is also included in this package. It provides a second read/write port that can be connected to internal logic to facilitate use of packed ROM data stored with <a class="reference internal" href="rst/language.html#inst-inst"><em>inst</em></a> directives or to use a portion of the BRAM as general purpose RAM. The <a class="reference internal" href="rst/m4.html#string-and-table-ops"><em>insttable m4 macros</em></a> are included to simplify the creation of <tt class="docutils literal"><span class="pre">inst</span></tt> directives containing packed byte data.</p>
+<p>A dual-ported <code class="docutils literal"><span class="pre">picoblaze_dp_rom</span></code> component is also included in this package. It provides a second read/write port that can be connected to internal logic to facilitate use of packed ROM data stored with <a class="reference internal" href="rst/language.html#inst-inst"><span class="std std-ref">inst</span></a> directives or to use a portion of the BRAM as general purpose RAM. The <a class="reference internal" href="rst/m4.html#string-and-table-ops"><span class="std std-ref">insttable m4 macros</span></a> are included to simplify the creation of <code class="docutils literal"><span class="pre">inst</span></code> directives containing packed byte data.</p>
 <p>It is not necessary to have an HDL template file present if you are using the generic ROM.</p>
 </div>
 </div>
@@ -319,7 +318,7 @@ Options:
 <span class="cs">;PRAGMA &lt;name&gt; off|stop|end</span>
 </pre></div>
 </div>
-<p>All fields are case insensitive. Case is preserved for the arguments. Blocks of different types can overlap. PRAGMAs with the &#8220;keep&#8221; name are the only ones with special behavior (see <a class="reference internal" href="#static-code-analysis">static code analysis</a>). All others are just annotations that appear in the log. The optional arguments can be any space separated list of strings. The most likely use case is to annotate functions as follows:</p>
+<p>All fields are case insensitive. Case is preserved for the arguments. Blocks of different types can overlap. PRAGMAs with the “keep” name are the only ones with special behavior (see <a class="reference internal" href="#static-code-analysis">static code analysis</a>). All others are just annotations that appear in the log. The optional arguments can be any space separated list of strings. The most likely use case is to annotate functions as follows:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="cs">;PRAGMA FUNCTION empty_func BEGIN</span>
 <span class="nl">empty_func:</span> <span class="k">return</span>
 <span class="cs">;PRAGMA function END</span>
@@ -338,16 +337,16 @@ Options:
 </pre></div>
 </div>
 <p>The blocks are listed in a section of the log file like this:</p>
-<div class="highlight-python"><div class="highlight"><pre>List of pragma blocks
----------------------
-   Name      Addr range   Value
-   ----      ----------   -----
-   function  (025 - 025)  empty_func
-   keep      (026 - 027)  True
-   function  (026 - 027)  another_func arg2 arg3
+<div class="highlight-default"><div class="highlight"><pre><span class="n">List</span> <span class="n">of</span> <span class="n">pragma</span> <span class="n">blocks</span>
+<span class="o">---------------------</span>
+   <span class="n">Name</span>      <span class="n">Addr</span> <span class="nb">range</span>   <span class="n">Value</span>
+   <span class="o">----</span>      <span class="o">----------</span>   <span class="o">-----</span>
+   <span class="n">function</span>  <span class="p">(</span><span class="mi">025</span> <span class="o">-</span> <span class="mi">025</span><span class="p">)</span>  <span class="n">empty_func</span>
+   <span class="n">keep</span>      <span class="p">(</span><span class="mi">026</span> <span class="o">-</span> <span class="mi">027</span><span class="p">)</span>  <span class="k">True</span>
+   <span class="n">function</span>  <span class="p">(</span><span class="mi">026</span> <span class="o">-</span> <span class="mi">027</span><span class="p">)</span>  <span class="n">another_func</span> <span class="n">arg2</span> <span class="n">arg3</span>
 </pre></div>
 </div>
-<p>Blocks containing no instructions are omitted from the log (&#8220;nothing&#8221; in this case). This eliminates any functions removed by static analysis. You can easily extract function bounds from the log file by matching on lines that start with the name you&#8217;ve selected for your PRAGMA.</p>
+<p>Blocks containing no instructions are omitted from the log (“nothing” in this case). This eliminates any functions removed by static analysis. You can easily extract function bounds from the log file by matching on lines that start with the name you’ve selected for your PRAGMA.</p>
 <p>One potential use for the flexible formatting is to include a signature with a function block. Using VHDL-style syntax you can do the following:</p>
 <div class="highlight-picoblaze"><div class="highlight"><pre><span class="cs">;PRAGMA function do_something [s0, s1 return s0] begin</span>
 ...
@@ -358,58 +357,58 @@ Options:
 <div class="section" id="updating-bit-files">
 <span id="updating-the-rom-contents-of-a-bitstream-file"></span><h2>Updating bit files<a class="headerlink" href="#updating-bit-files" title="Permalink to this headline">¶</a></h2>
 <p>The KCPSM3 assembler included a program and batch file that automated the process of updating a PicoBlaze ROM in a bit file without requiring a resynthesis. For PicoBlaze-6 that process has been abandoned in favor of using the JTAG loader.</p>
-<p>Because some platforms don&#8217;t readily support the use of the JTAG loader, the old system of updating bit files has been reimplemented as a utility script <tt class="docutils literal"><span class="pre">pb_update</span></tt>. You will need to have a new <em>.mem</em> file along with the top level <em>.ncd</em> and <em>.bit</em> files for the design. The Xilinx ISE tools <tt class="docutils literal"><span class="pre">xdl</span></tt> and <tt class="docutils literal"><span class="pre">data2mem</span></tt> must be accessible from your command line path.</p>
+<p>Because some platforms don’t readily support the use of the JTAG loader, the old system of updating bit files has been reimplemented as a utility script <code class="docutils literal"><span class="pre">pb_update</span></code>. You will need to have a new <em>.mem</em> file along with the top level <em>.ncd</em> and <em>.bit</em> files for the design. The Xilinx ISE tools <code class="docutils literal"><span class="pre">xdl</span></code> and <code class="docutils literal"><span class="pre">data2mem</span></code> must be accessible from your command line path.</p>
 <img alt="_images/pb_update.png" src="_images/pb_update.png" />
 <p>When run, the <em>pb_update</em> script will convert the <em>.ncd</em> netlist to the textual <em>.xdl</em> format and scan it for any block RAM instances. If one BRAM is found it is assumed to be the PicoBlaze ROM. If multiple BRAMs are in the design, a list is provided with their instance names and you are prompted to select which one(s) are part of the PicoBlaze ROM.</p>
-<p>If the ROM is divided amongst multiple BRAMs the interactive selection process lets you describe the layout of the memory array. You select the BRAM instances needed to fill out a row of memory until 18 bits for an instruction word are allocated. If the required memory depth isn&#8217;t satisfied a new row of memory is started where you continue to add BRAMs. The required depth is derived from the number of words present in the assembled <em>.mem</em> file.</p>
-<p>Once the layout is described, <tt class="docutils literal"><span class="pre">pb_update</span></tt> runs the <tt class="docutils literal"><span class="pre">data2mem</span></tt> program with the contents for each BRAM generated according to the layout. After the first run with the interactive BRAM selection, <tt class="docutils literal"><span class="pre">pb_update</span></tt> outputs a string describing the layout specification that can be passed with the <tt class="docutils literal"><span class="pre">-l</span> <span class="pre">&quot;&lt;specification</span> <span class="pre">string&gt;&quot;</span></tt> option to bypass the interactive mode on future runs.</p>
-<div class="highlight-python"><div class="highlight"><pre>&gt; pb_update -m foobar.mem -n foobar.ncd
-PicoBlaze ROM updater
-Running XDL...
-Release 14.5 - xdl P.58f (lin64)
-Copyright (c) 1995-2012 Xilinx, Inc.  All rights reserved.
+<p>If the ROM is divided amongst multiple BRAMs the interactive selection process lets you describe the layout of the memory array. You select the BRAM instances needed to fill out a row of memory until 18 bits for an instruction word are allocated. If the required memory depth isn’t satisfied a new row of memory is started where you continue to add BRAMs. The required depth is derived from the number of words present in the assembled <em>.mem</em> file.</p>
+<p>Once the layout is described, <code class="docutils literal"><span class="pre">pb_update</span></code> runs the <code class="docutils literal"><span class="pre">data2mem</span></code> program with the contents for each BRAM generated according to the layout. After the first run with the interactive BRAM selection, <code class="docutils literal"><span class="pre">pb_update</span></code> outputs a string describing the layout specification that can be passed with the <code class="docutils literal"><span class="pre">-l</span> <span class="pre">&quot;&lt;specification</span> <span class="pre">string&gt;&quot;</span></code> option to bypass the interactive mode on future runs.</p>
+<div class="highlight-default"><div class="highlight"><pre><span class="o">&gt;</span> <span class="n">pb_update</span> <span class="o">-</span><span class="n">m</span> <span class="n">foobar</span><span class="o">.</span><span class="n">mem</span> <span class="o">-</span><span class="n">n</span> <span class="n">foobar</span><span class="o">.</span><span class="n">ncd</span>
+<span class="n">PicoBlaze</span> <span class="n">ROM</span> <span class="n">updater</span>
+<span class="n">Running</span> <span class="n">XDL</span><span class="o">...</span>
+<span class="n">Release</span> <span class="mf">14.5</span> <span class="o">-</span> <span class="n">xdl</span> <span class="n">P</span><span class="o">.</span><span class="mi">58</span><span class="n">f</span> <span class="p">(</span><span class="n">lin64</span><span class="p">)</span>
+<span class="n">Copyright</span> <span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="mi">1995</span><span class="o">-</span><span class="mi">2012</span> <span class="n">Xilinx</span><span class="p">,</span> <span class="n">Inc</span><span class="o">.</span>  <span class="n">All</span> <span class="n">rights</span> <span class="n">reserved</span><span class="o">.</span>
 
-Loading device for application Rf_Device from file &#39;6slx4.nph&#39; in environment
-  /usr/local/packages/Xilinx/14.5/ISE_DS/ISE/.
-   &quot;foobar&quot; is an NCD, version 3.2, device xc6slx4, package tqg144, speed -3
-Successfully converted design &#39;foobar.ncd&#39; to &#39;foobar.xdl&#39;.
-Required memory depth: 4096
+<span class="n">Loading</span> <span class="n">device</span> <span class="k">for</span> <span class="n">application</span> <span class="n">Rf_Device</span> <span class="kn">from</span> <span class="nn">file</span> <span class="s">&#39;6slx4.nph&#39;</span> <span class="ow">in</span> <span class="n">environment</span>
+  <span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">local</span><span class="o">/</span><span class="n">packages</span><span class="o">/</span><span class="n">Xilinx</span><span class="o">/</span><span class="mf">14.5</span><span class="o">/</span><span class="n">ISE_DS</span><span class="o">/</span><span class="n">ISE</span><span class="o">/.</span>
+   <span class="s">&quot;foobar&quot;</span> <span class="ow">is</span> <span class="n">an</span> <span class="n">NCD</span><span class="p">,</span> <span class="n">version</span> <span class="mf">3.2</span><span class="p">,</span> <span class="n">device</span> <span class="n">xc6slx4</span><span class="p">,</span> <span class="n">package</span> <span class="n">tqg144</span><span class="p">,</span> <span class="n">speed</span> <span class="o">-</span><span class="mi">3</span>
+<span class="n">Successfully</span> <span class="n">converted</span> <span class="n">design</span> <span class="s">&#39;foobar.ncd&#39;</span> <span class="n">to</span> <span class="s">&#39;foobar.xdl&#39;</span><span class="o">.</span>
+<span class="n">Required</span> <span class="n">memory</span> <span class="n">depth</span><span class="p">:</span> <span class="mi">4096</span>
 
-... &lt;interactive BRAM selection&gt;
+<span class="o">...</span> <span class="o">&lt;</span><span class="n">interactive</span> <span class="n">BRAM</span> <span class="n">selection</span><span class="o">&gt;</span>
 
-Final memory layout:
-    Row 0:     0 - 2047    [9][9]
-      rom/kcpsm6_rom_lh     2048x9   17 - 9
-      rom/kcpsm6_rom_ll     2048x9    8 - 0
-    Row 1:  2048 - 4095    [9][9]
-      rom/kcpsm6_rom_hh     2048x9   17 - 9
-      rom/kcpsm6_rom_hl     2048x9    8 - 0
+<span class="n">Final</span> <span class="n">memory</span> <span class="n">layout</span><span class="p">:</span>
+    <span class="n">Row</span> <span class="mi">0</span><span class="p">:</span>     <span class="mi">0</span> <span class="o">-</span> <span class="mi">2047</span>    <span class="p">[</span><span class="mi">9</span><span class="p">][</span><span class="mi">9</span><span class="p">]</span>
+      <span class="n">rom</span><span class="o">/</span><span class="n">kcpsm6_rom_lh</span>     <span class="mi">2048</span><span class="n">x9</span>   <span class="mi">17</span> <span class="o">-</span> <span class="mi">9</span>
+      <span class="n">rom</span><span class="o">/</span><span class="n">kcpsm6_rom_ll</span>     <span class="mi">2048</span><span class="n">x9</span>    <span class="mi">8</span> <span class="o">-</span> <span class="mi">0</span>
+    <span class="n">Row</span> <span class="mi">1</span><span class="p">:</span>  <span class="mi">2048</span> <span class="o">-</span> <span class="mi">4095</span>    <span class="p">[</span><span class="mi">9</span><span class="p">][</span><span class="mi">9</span><span class="p">]</span>
+      <span class="n">rom</span><span class="o">/</span><span class="n">kcpsm6_rom_hh</span>     <span class="mi">2048</span><span class="n">x9</span>   <span class="mi">17</span> <span class="o">-</span> <span class="mi">9</span>
+      <span class="n">rom</span><span class="o">/</span><span class="n">kcpsm6_rom_hl</span>     <span class="mi">2048</span><span class="n">x9</span>    <span class="mi">8</span> <span class="o">-</span> <span class="mi">0</span>
 
-Layout Spec: &quot;rom/kcpsm6_rom_lh,rom/kcpsm6_rom_ll:rom/kcpsm6_rom_hh,rom/kcpsm6_rom_hl&quot;
+<span class="n">Layout</span> <span class="n">Spec</span><span class="p">:</span> <span class="s">&quot;rom/kcpsm6_rom_lh,rom/kcpsm6_rom_ll:rom/kcpsm6_rom_hh,rom/kcpsm6_rom_hl&quot;</span>
 
-Running data2mem...
-  data2mem -bm r0_b17_9.bmm -bd r0_b17_9.mem -bt foobar.bit -o b r0_b17_9.bit
+<span class="n">Running</span> <span class="n">data2mem</span><span class="o">...</span>
+  <span class="n">data2mem</span> <span class="o">-</span><span class="n">bm</span> <span class="n">r0_b17_9</span><span class="o">.</span><span class="n">bmm</span> <span class="o">-</span><span class="n">bd</span> <span class="n">r0_b17_9</span><span class="o">.</span><span class="n">mem</span> <span class="o">-</span><span class="n">bt</span> <span class="n">foobar</span><span class="o">.</span><span class="n">bit</span> <span class="o">-</span><span class="n">o</span> <span class="n">b</span> <span class="n">r0_b17_9</span><span class="o">.</span><span class="n">bit</span>
 
-Running data2mem...
-  data2mem -bm r0_b8_0.bmm -bd r0_b8_0.mem -bt r0_b17_9.bit -o b r0_b8_0.bit
+<span class="n">Running</span> <span class="n">data2mem</span><span class="o">...</span>
+  <span class="n">data2mem</span> <span class="o">-</span><span class="n">bm</span> <span class="n">r0_b8_0</span><span class="o">.</span><span class="n">bmm</span> <span class="o">-</span><span class="n">bd</span> <span class="n">r0_b8_0</span><span class="o">.</span><span class="n">mem</span> <span class="o">-</span><span class="n">bt</span> <span class="n">r0_b17_9</span><span class="o">.</span><span class="n">bit</span> <span class="o">-</span><span class="n">o</span> <span class="n">b</span> <span class="n">r0_b8_0</span><span class="o">.</span><span class="n">bit</span>
 
-Running data2mem...
-  data2mem -bm r1_b17_9.bmm -bd r1_b17_9.mem -bt r0_b8_0.bit -o b r1_b17_9.bit
+<span class="n">Running</span> <span class="n">data2mem</span><span class="o">...</span>
+  <span class="n">data2mem</span> <span class="o">-</span><span class="n">bm</span> <span class="n">r1_b17_9</span><span class="o">.</span><span class="n">bmm</span> <span class="o">-</span><span class="n">bd</span> <span class="n">r1_b17_9</span><span class="o">.</span><span class="n">mem</span> <span class="o">-</span><span class="n">bt</span> <span class="n">r0_b8_0</span><span class="o">.</span><span class="n">bit</span> <span class="o">-</span><span class="n">o</span> <span class="n">b</span> <span class="n">r1_b17_9</span><span class="o">.</span><span class="n">bit</span>
 
-Running data2mem...
-  data2mem -bm r1_b8_0.bmm -bd r1_b8_0.mem -bt r1_b17_9.bit -o b r1_b8_0.bit
-Generated updated bit file: new_foobar.bit
+<span class="n">Running</span> <span class="n">data2mem</span><span class="o">...</span>
+  <span class="n">data2mem</span> <span class="o">-</span><span class="n">bm</span> <span class="n">r1_b8_0</span><span class="o">.</span><span class="n">bmm</span> <span class="o">-</span><span class="n">bd</span> <span class="n">r1_b8_0</span><span class="o">.</span><span class="n">mem</span> <span class="o">-</span><span class="n">bt</span> <span class="n">r1_b17_9</span><span class="o">.</span><span class="n">bit</span> <span class="o">-</span><span class="n">o</span> <span class="n">b</span> <span class="n">r1_b8_0</span><span class="o">.</span><span class="n">bit</span>
+<span class="n">Generated</span> <span class="n">updated</span> <span class="n">bit</span> <span class="n">file</span><span class="p">:</span> <span class="n">new_foobar</span><span class="o">.</span><span class="n">bit</span>
 </pre></div>
 </div>
-<p>The updated bit file is created with the prefix &#8220;<tt class="docutils literal"><span class="pre">new_</span></tt>&#8221;.</p>
+<p>The updated bit file is created with the prefix “<code class="docutils literal"><span class="pre">new_</span></code>”.</p>
 </div>
 <div class="section" id="syntax-highlighting">
 <h2>Syntax highlighting<a class="headerlink" href="#syntax-highlighting" title="Permalink to this headline">¶</a></h2>
-<p>PicoBlaze syntax highlighting rules for Gedit and Notepad++ have been included in the &#8220;highlight&#8221; directory in the source distribution.</p>
+<p>PicoBlaze syntax highlighting rules for Gedit and Notepad++ have been included in the “highlight” directory in the source distribution.</p>
 <blockquote>
 <div><ul class="simple">
-<li>Gedit install: Copy <tt class="docutils literal"><span class="pre">picoblaze.lang</span></tt> to &#8220;~/.local/share/gtksourceview-3.0/language-specs&#8221;. Create the directories if they do not exist.</li>
-<li>Notepad++ install: Select &#8220;Language|Define your language...&#8221;. Click &#8220;Import...&#8221; and select the <tt class="docutils literal"><span class="pre">picoblaze.xml</span></tt> file.</li>
+<li>Gedit install: Copy <code class="docutils literal"><span class="pre">picoblaze.lang</span></code> to “~/.local/share/gtksourceview-3.0/language-specs”. Create the directories if they do not exist.</li>
+<li>Notepad++ install: Select “Language|Define your language…”. Click “Import…” and select the <code class="docutils literal"><span class="pre">picoblaze.xml</span></code> file.</li>
 </ul>
 </div></blockquote>
 <div class="toctree-wrapper compound">
@@ -422,8 +421,8 @@ Generated updated bit file: new_foobar.bit
 <div class="section" id="indices-and-tables">
 <h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
-<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
 </ul>
 </div>
 </div>
@@ -432,7 +431,7 @@ Generated updated bit file: new_foobar.bit
           </div>
         </div>
       </div>
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
             <p class="logo"><a href="#">
               <img class="logo" src="_static/opbasm_logo.png" alt="Logo"/>
@@ -570,17 +569,14 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
 
 });
 </script>
-<div id="searchbox" style="display: none">
+<div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
-      <input type="submit" value="Go" />
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>
@@ -588,10 +584,10 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2015, Kevin Thibedeau.
+      &copy;2017, Kevin Thibedeau.
       
       |
-      <a href="_sources/index.txt"
+      <a href="_sources/index.rst.txt"
           rel="nofollow">Page source</a>
     </div>
 
