@@ -173,12 +173,12 @@ The PicoBlaze has a simple architecture that operates on information stored in t
   Registers
     A set of 16 8-bit registers. They default to the registers named s0-sF but can be renamed with the :ref:`inst-namereg` directive.
 
-    The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the :ref:`inst-regbank` instruction. The default register names are case-insensitive so "SA", "sa", "Sa", and "sA" are all valid.
+    The PicoBlaze-3 has a single bank of registers. PicoBlaze-6 has a second bank of 16 (bank B) that can be swapped in or out using the :ref:`inst-regbank` instruction. The default register names are case-insensitive so "SA", "sa", "Sa", and "sA" are all valid and refer to the same register.
     
     All register values, flags, and the call stack are initialized to 0 on initial FPGA power up but the registers retain their values on subsequent resets. Your code should not assume registers are cleared after a reset.
 
   Instruction memory
-    Instruction words are stored in an isolated memory. Limited to 1K on PicoBlaze-3. Selectable between 1K, 2K, or 4K on PicoBlaze-6. This memory is implemented outside the PicoBlaze core component and attached to the instruction memory port. Because the PicoBlaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.
+    Instruction words are stored in an isolated memory. It is limited to 1K on PicoBlaze-3 and selectable between 1K, 2K, or 4K on PicoBlaze-6. You can also use smaller memories for instruction storage if you don't need to use the full address space. This memory is implemented outside the PicoBlaze core component and attached to the instruction memory port. Because the PicoBlaze is a Harvard architecture micro, this memory is not directly accessible from within your program. However, a dual ported memory can be implemented to access data stored in instruction memory or to modify instructions through the I/O port interface.
     
   Scratchpad memory
     A small pool of RAM used as a local memory. This is 64 bytes on the PicoBlaze-3 and
@@ -212,11 +212,11 @@ Interrupts
 
 The PicoBlaze has a single ``interrupt`` input. When interrupts are enabled and this pin transitions high, the normal execution is suspended and the processor jumps to a special interrupt handler routine. This behavior lets your code respond to external events in the FPGA fabric without having to explicitly poll for changes in state. Handling multiple interrupts requires external logic to multiplex them onto the single input provided by the PicoBlaze.
 
-The PB3 has a fixed interrupt vector address of 0x3FF which is the last instruction in the 1K instruction memory space. You must insert a `jump`_ instruction here that branches to your ISR code. The PB6 defaults to 0x3FF but you can change the default vector address with the ``interrupt_vector`` generic on the ``KCPSM6`` component. This gives you the option to place the vector at the start of your ISR without the need for an extra ``jump``.
+The PB3 has a fixed interrupt vector address of 0x3FF which is the last instruction in the 1K instruction memory space. You must insert a `jump`_ instruction here that branches to your ISR code. The PB6 defaults to 0x3FF as its default vector but you can change it to a different address with the ``interrupt_vector`` generic on the ``KCPSM6`` component. This gives you the option to place the vector at the start of your ISR without the need for an extra ``jump``.
 
 The ``interrupt`` signal should stay high for at least two clock cycles to guarantee it is seen by the processor. An optional ``interrupt_ack`` output signal is provided to interface with external interrupt generating logic. It notifies you when the processor has started processing the interrupt, at which point it is safe to release the ``interrupt`` input signal.
 
-Interrupts are controlled with the `enable`_ and `disable`_ instructions. they take a special dummy operand of "interrupt". A special `returni`_ instruction is used to exit from the ISR and resume normal execution. It takes an operand of "enable" or"disable" to set the new state of the interrupt flag after the return. You cannot use the normal `return`_ instruction to accomplish this since the original interrupt saved the flag and register bank state and only ``returni`` can restore it so that your normal code is not affected by the change of execution state.
+Interrupts are controlled with the `enable`_ and `disable`_ instructions. They take a special dummy operand of "interrupt". A special `returni`_ instruction is used to exit from the ISR and resume normal execution. It takes an operand of "enable" or"disable" to set the new state of the interrupt flag after the return. You cannot use the normal `return`_ instruction to accomplish this since the original interrupt saved the flag and register bank state and only ``returni`` can restore it so that your normal code remains unaffected by the change of execution state.
   
 
 Directives
@@ -270,7 +270,7 @@ Format                                Example                  Result
 default_jump
 ~~~~~~~~~~~~
 
-By default, unused memory is filled with zeros. The PicoBlaze doesn't know about which areas of memory are unused and will continue executing whatever instruction data is located there. On PB3 a zero instruction equates to "LOAD s0, 00". On PB6 it is "LOAD s0, s0" (a NOP). These instructions can be problematic in high reliability code that needs to recover from accidentally falling into these unused areas of memory. To protect against this the ``default_jump`` directive lets you fill unused memory with a jump to a specified label or address.
+Unused instruction memory is filled with zeros by default. The PicoBlaze doesn't know about which areas of memory are unused and will continue executing whatever instruction data is located there. On PB3 a zero instruction (0x00000) equates to "LOAD s0, 00". On PB6 it is "LOAD s0, s0" (a NOP). These instructions can be problematic in high reliability code that needs to recover from accidentally falling into these unused areas of memory. The ``default_jump`` directive protects against this by filling unused instruction memory with a jump to a specified label or address. That jump target can be a special error handler or just reinitialize the entire program starting from address 0.
 
 ===================================== ======================== ========================================
 Format                                Example                  Result
