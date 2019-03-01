@@ -24,6 +24,8 @@
 
 from __future__ import print_function, division, unicode_literals, absolute_import
 
+from opbasm.common import *
+
 class DeviceArch(object):
   def __init__(self):
     self.name = ''

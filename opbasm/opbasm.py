@@ -40,6 +40,7 @@ import hashlib
 
 import  opbasm.optimize as optimize
 
+from opbasm.common import *
 from opbasm.color import *
 from opbasm.devices import *
 from opbasm.hamming import secded_encode_num
@@ -63,26 +64,8 @@ else:
   gettext.install('opbasm', os.path.join(find_lib_dir(), 'lang'))
 
 
-__version__ = '1.3.8'
+__version__ = '1.3.9'
 
-
-class FatalError(Exception):
-  pass
-
-class ParseError(FatalError):
-  pass
-
-class StatementError(FatalError):
-  '''General error reporting exception'''
-  def __init__(self, statement, *args):
-    self.statement = statement
-    self.args = args
-
-  def __str__(self):
-    if self.statement is not None:
-      return '{}\n{}'.format(self.statment, self.args)
-    else:
-      return '{}'.format(self.args)
 
 
 regex_parser = re.compile(r'''
