@@ -1,11 +1,12 @@
-[Package]
-name          = "opbsim"
+# Package
+
 version       = "1.3"
 author        = "Kevin Thibedeau"
 description   = "Open PicoBlaze Simulator"
 license       = "MIT"
+bin           = @["opbsim"]
 
-bin = "opbsim"
 
-[Deps]
-Requires: "nim >= 0.11.2"
+# Dependencies
+
+requires "nim >= 0.19.4"

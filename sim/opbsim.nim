@@ -28,7 +28,7 @@
 ## Hardware differences:
 ## * Overflowing or underflowing the call stack causes termination
 
-import strutils, sequtils, tables, times, parseopt2, json, sets, math, nre, os, options
+import strutils, sequtils, tables, times, parseopt, json, sets, math, nre, os, options
 import engineering
 
 proc getVersion(fname: string): string {.compileTime.} =
@@ -1088,7 +1088,7 @@ proc main() =
       for i in f.val:
         if offset > jsonInput.high: break
         
-        jsonInput[offset] = i.getNum.uint8
+        jsonInput[offset] = i.getInt.uint8
         offset.inc
 
 
