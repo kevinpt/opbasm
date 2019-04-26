@@ -14,9 +14,11 @@ Opbsim is built with the Nim compiler using the following command:
 .. code-block:: sh
 
   > cd sim
-  > nim c -d:release opbsim.nim
+  > nim c -d:release --nilseqs:on opbsim.nim
   
 This will produce an executable ``opbsim`` program that should be placed at a location on your search path. Nim does not include 64-bit DLLs. When building on 64-bit Windows you will need to copy the 64-bit ``pcre.dll`` from the "sim/win64" directory to the same location as ``opbsim.exe``.
+
+Running opbsim requires an up-to-date version of the Perl PCRE library on OSX. If you see the following error: "could not import: pcre_free_study", then update your version of PCRE using the ``brew`` package manager: ``brew install pcre``.
 
 It you have the Nimble package manager installed you can build and install Opbsim with the following:
 
