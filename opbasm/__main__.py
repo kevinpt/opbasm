@@ -289,9 +289,9 @@ def main():
 
   try:
     templates = find_templates(options.template_file)
-  except StatementError, e:
+  except StatementError as e:
     asm_error(*e.args, exit=1)
-  except FatalError, e:
+  except FatalError as e:
     asm_error(str(e), exit=1)
     
   # Make sure the extension of the generated VHDL file matches the template extension
@@ -334,9 +334,9 @@ def main():
 
   try:
     assembled_code = asm.assemble_file(options.input_file)
-  except StatementError, e:
+  except StatementError as e:
     asm_error(*e.args, exit=1, statement=e.statement)
-  except FatalError, e:
+  except FatalError as e:
     asm_error(str(e), exit=1)
 
 
@@ -386,9 +386,9 @@ def main():
       template_file, target_file = templates[hdl_name]
       asm.write_template_file(template_file, target_file, longest_name)
 
-  except StatementError, e:
+  except StatementError as e:
     asm_error(*e.args, exit=1, statement=e.statement)
-  except FatalError, e:
+  except FatalError as e:
     asm_error(str(e), exit=1)
 
   asm.write_formatted_source(config.output_dir)
