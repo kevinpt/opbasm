@@ -978,7 +978,7 @@ proc newRomInfo(memFile: string, logFile: string): ref RomInfo =
   new result
   result.data = readMemFile(memFile)[]
   
-  if logFile != nil and logFile != "":
+  if logFile != "":
     result.symbolTable = extractSymbols(logFile)
   else:
     result.symbolTable = initTable[int32, string]()
@@ -1046,7 +1046,7 @@ proc parseCommandLine() : CommandOptions =
     
   if cmdOpts.version: echo "OPBSIM version ", buildVersion; quit(0)
 
-  if cmdOpts.memFile == "" or cmdOpts.memFile == nil: echo usageString; quit(1)
+  if cmdOpts.memFile == "": echo usageString; quit(1)
   if cmdOpts.usePB3 and cmdOpts.usePB6:
     echo "Invalid options: Select only one PicoBlaze architecture"
     quit(1)
@@ -1077,7 +1077,7 @@ proc main() =
   
   var jsonInput : array[0..255, uint8]
   
-  if cmdOpts.jsonInput != "" and cmdOpts.jsonInput != nil:
+  if cmdOpts.jsonInput != "":
     # Initialize input data
     let jobj = parseJson(cmdOpts.jsonInput)
     assert jobj.kind == JObject
@@ -1100,7 +1100,7 @@ proc main() =
 
 
   # Look for log file if one wasn't provided in arguments
-  if cmdOpts.logFile == "" or cmdOpts.logFile == nil:
+  if cmdOpts.logFile == "":
     let elems = splitFile(cmdOpts.memFile)
     let logFile = elems.dir / (elems.name & ".log")
     if fileExists(logFile):
@@ -1113,7 +1113,7 @@ proc main() =
   if not cmdOpts.quiet:
     echo "Read $# words\n" % [$len(romData.data)]
 
-    if cmdOpts.logFile != nil and cmdOpts.logFile != "":
+    if cmdOpts.logFile != "":
       echo "Found $# symbols in $#\n" % [$len(romData.symbolTable), cmdOpts.logFile]
 
 
