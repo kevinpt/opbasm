@@ -304,7 +304,7 @@ def main():
   vhdl_file = build_path(config.output_dir, options.module_name + vhdl_ext)
   verilog_file = build_path(config.output_dir, options.module_name + '.v')
 
-  for hdl in templates.iterkeys():
+  for hdl in templates:
     templates[hdl] = (templates[hdl], vhdl_file if hdl == 'vhdl' else verilog_file)
 
   log_file = build_path(config.output_dir, options.module_name + '.log')
@@ -350,7 +350,7 @@ def main():
 
     if len(templates) > 0:
       printq(_('\n  Found {}:').format(_('templates') if len(templates) > 1 else _('template')))
-      for f in templates.itervalues():
+      for f in templates.values():
         printq('   ', f[0])
 
 
@@ -378,11 +378,11 @@ def main():
     # Find longest template file name so we can align the warning messages
     # about unmapped INIT fields.
     if len(templates) > 0:
-      longest_name = max(len(v[1]) for v in templates.itervalues())
+      longest_name = max(len(v[1]) for v in templates.values())
     else:
       longest_name = 0
 
-    for hdl_name in templates.iterkeys():
+    for hdl_name in templates:
       template_file, target_file = templates[hdl_name]
       asm.write_template_file(template_file, target_file, longest_name)
 
