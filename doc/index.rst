@@ -49,7 +49,7 @@ If you are unfamiliar with the PicoBlaze architecture you can review the :doc:`r
 Requirements
 ------------
 
-Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn't currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package. The source is written in Python 2.7 syntax but will convert cleanly to Python 3 when the installer passes it through ``2to3``.
+Opbasm requires Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn't currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package.
 
 
 Download

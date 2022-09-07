@@ -41,8 +41,6 @@ setup(name='opbasm',
     },
     include_package_data = True,
 
-    use_2to3 = True,
-    
     keywords='Picoblaze assembler',
     license='MIT',
     classifiers=['Development Status :: 5 - Production/Stable',
