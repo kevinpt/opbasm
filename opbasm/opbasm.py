@@ -37,6 +37,7 @@ import io
 import re
 import gettext
 import hashlib
+import uuid
 
 import  opbasm.optimize as optimize
 
@@ -606,7 +607,7 @@ class Assembler(object):
     '''
     self.create_output_dir() # Make sure directory exists for generated source
 
-    pp_source_file = os.path.splitext(source_file)[0] + '.gen.psm'
+    pp_source_file = os.path.splitext(source_file)[0] + uuid.uuid4().hex + '.gen.psm'
     pp_source_file = build_path(self.config.output_dir, pp_source_file)
 
     # Look for common picoblaze.m4 macro definitions
