@@ -28,8 +28,7 @@
 ## Hardware differences:
 ## * Overflowing or underflowing the call stack causes termination
 
-import strutils, sequtils, tables, times, parseopt, json, sets, math, nre, os, options
-import engineering
+import std/[strutils, sequtils, tables, times, parseopt, json, sets, math, nre, os, options]
 
 proc getVersion(fname: string): string {.compileTime.} =
   for ln in staticRead(fname).splitLines:
@@ -684,7 +683,7 @@ proc newProcState(periphs: openarray[Peripheral], jsonInput: array[0..255, uint8
 
   state.pc = 0
   state.termination = termNormal
-  state.executed = initSet[int32](1024)
+  state.executed = initHashSet[int32](1024)
   state.callStack = @[]
   state.portsIn = jsonInput
   state.peripherals = @periphs
@@ -1021,9 +1020,11 @@ proc parseCommandLine() : CommandOptions =
   
   cmdOpts.instLimit = 100_000_000
   cmdOpts.scratchSize = 64;
-  
+
+  var p = initOptParser(quoteShellCommand(commandLineParams()))
+
   # Parse command line
-  for kind, key, val in getopt():
+  for kind, key, val in p.getopt():
     case kind
     of cmdShortOption, cmdLongOption:
       case key
@@ -1031,7 +1032,7 @@ proc parseCommandLine() : CommandOptions =
       of "mem", "m"    : cmdOpts.memFile = val
       of "scratch-size", "s" : cmdOpts.scratchSize = parseInt(val)
       of "limit", "L"  : cmdOpts.instLimit = parseInt(val)
-      of "log",        : cmdOpts.logFile = val
+      of "log"         : cmdOpts.logFile = val
       of "verbose", "v": cmdOpts.verbose = true
       of "trace", "t"  : cmdOpts.trace = true
       of "quiet", "q"  : cmdOpts.quiet = true
@@ -1042,11 +1043,12 @@ proc parseCommandLine() : CommandOptions =
       of "pb6"         : cmdOpts.usePB6 = true
       of "version"     : cmdOpts.version = true
       else             : discard
+    of cmdEnd: assert(false) # Cannot happen
     else: discard
     
   if cmdOpts.version: echo "OPBSIM version ", buildVersion; quit(0)
 
-  if cmdOpts.memFile == "" or cmdOpts.memFile == nil: echo usageString; quit(1)
+  if cmdOpts.memFile == "" or cstring(cmdOpts.memFile) == nil: echo usageString; quit(1)
   if cmdOpts.usePB3 and cmdOpts.usePB6:
     echo "Invalid options: Select only one PicoBlaze architecture"
     quit(1)
@@ -1077,7 +1079,7 @@ proc main() =
   
   var jsonInput : array[0..255, uint8]
   
-  if cmdOpts.jsonInput != "" and cmdOpts.jsonInput != nil:
+  if cmdOpts.jsonInput != "" and cstring(cmdOpts.jsonInput) != nil:
     # Initialize input data
     let jobj = parseJson(cmdOpts.jsonInput)
     assert jobj.kind == JObject
@@ -1100,7 +1102,7 @@ proc main() =
 
 
   # Look for log file if one wasn't provided in arguments
-  if cmdOpts.logFile == "" or cmdOpts.logFile == nil:
+  if cmdOpts.logFile == "" or cstring(cmdOpts.logFile) == nil:
     let elems = splitFile(cmdOpts.memFile)
     let logFile = elems.dir / (elems.name & ".log")
     if fileExists(logFile):
@@ -1113,7 +1115,7 @@ proc main() =
   if not cmdOpts.quiet:
     echo "Read $# words\n" % [$len(romData.data)]
 
-    if cmdOpts.logFile != nil and cmdOpts.logFile != "":
+    if cstring(cmdOpts.logFile) != nil and cmdOpts.logFile != "":
       echo "Found $# symbols in $#\n" % [$len(romData.symbolTable), cmdOpts.logFile]
 
 
@@ -1156,7 +1158,9 @@ proc main() =
   if not cmdOpts.quiet:
     let simTime = state.totalInsts.float * 2.0 / 50.0e6
     echo "\nExecuted $1 instructions ($2 @ 50 MHz, CPU time = $3, $4x realtime)" %
-        [$state.totalInsts, formatSI(simTime, "s", 0), formatSI(cpuRuntime, "s", 0), formatFloat(simTime / cpuRuntime, ffDecimal, 2)]
+        [$state.totalInsts, formatEng(simTime, 1, trim=true, siPrefix=true, unit="s"),
+        formatEng(cpuRuntime, 0, trim=true, siPrefix=true, unit="s"), formatFloat(simTime / cpuRuntime, ffDecimal, 2)]
+
     echo "$1 instructions visited of $2 total ($3%)" % [$state.executed.len, $instCount, $round(state.executed.len / instCount * 100.0)]
     echo "$1 testbench error(s)" % [$state.portsOut[quitPort]]
     
@@ -1170,7 +1174,7 @@ proc main() =
     of termInvalidScratchpad: echo "UNEXPECTED TERMINATION: Invalid scratchpad address"
     of termStackUnderflow:    echo "UNEXPECTED TERMINATION: PC stack underflow"
     of termStackOverflow:     echo "UNEXPECTED TERMINATION: PC stack overflow"
-    else:                     echo "UNEXPECTED TERMINATION: UNKNOWN"
+#    else:                     echo "UNEXPECTED TERMINATION: UNKNOWN"
     
     if cmdOpts.listPeriphs:
       echo "\nPeripherals:"
