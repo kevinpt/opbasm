@@ -16,7 +16,7 @@ from docutils import nodes
 
 from sphinx import addnodes
 from sphinx.roles import XRefRole
-from sphinx.locale import l_, _
+from sphinx.locale import _
 from sphinx.domains import Domain, ObjType
 from sphinx.directives import ObjectDescription
 from sphinx.util.nodes import make_refnode
@@ -88,12 +88,12 @@ class PBObject(ObjectDescription):
     """
 
     doc_field_types = [
-        TypedField('parameter', label=l_('Parameters'),
+        TypedField('parameter', label=_('Parameters'),
                    names=('param', 'parameter', 'arg', 'argument'),
                    typerolename='type', typenames=('type',)),
-        Field('returnvalue', label=l_('Returns'), has_arg=False,
+        Field('returnvalue', label=_('Returns'), has_arg=False,
               names=('returns', 'return')),
-        Field('returntype', label=l_('Return type'), has_arg=False,
+        Field('returntype', label=_('Return type'), has_arg=False,
               names=('rtype',)),
     ]
 
@@ -192,9 +192,9 @@ class PicoBlazeDomain(Domain):
     name = 'pb'
     label = 'PicoBlaze'
     object_types = {
-        'function': ObjType(l_('function'), 'func'),
-        'macro':    ObjType(l_('macro'),    'macro'),
-        'var':      ObjType(l_('variable'), 'data'),
+        'function': ObjType(_('function'), 'func'),
+        'macro':    ObjType(_('macro'),    'macro'),
+        'var':      ObjType(_('variable'), 'data'),
     }
 
     directives = {
@@ -218,7 +218,7 @@ class PicoBlazeDomain(Domain):
     
 
     def clear_doc(self, docname):
-        for fullname, (fn, _) in self.data['objects'].items():
+        for fullname, (fn, _) in list(self.data['objects'].items()):
             if fn == docname:
                 del self.data['objects'][fullname]
 
@@ -232,7 +232,7 @@ class PicoBlazeDomain(Domain):
                             contnode, target)
 
     def get_objects(self):
-        for refname, (docname, type) in self.data['objects'].iteritems():
+        for refname, (docname, type) in self.data['objects'].items():
             yield (refname, refname, type, docname, 'pb.' + refname, 1)
             
 def setup(app):

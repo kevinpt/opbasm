@@ -95,15 +95,15 @@ def build_signature(macro, body):
 funcs = extract_docstrings(sys.argv[1])
 
 
-print '''
+print('''
 Opbasm PicoBlaze macro library reference
 ========================================
-'''
+''')
 
-for k in sorted(funcs.iterkeys()):
+for k in sorted(funcs.keys()):
   body = indent(str(PicoBlazeGoogleDocstring(funcs[k])))
   
   signature = build_signature(k, body)
   
-  print '.. pb:macro:: {}\n\n{}\n'.format(signature, body)
+  print('.. pb:macro:: {}\n\n{}\n'.format(signature, body))
 

@@ -62,13 +62,11 @@ significantly faster than the native implementation:
 Requirements
 ------------
 
-Opbasm requires either Python 2.7 or Python 3.x and no additional libraries.
+Opbasm requires Python 3.x and no additional libraries.
 The installation script depends on setuptools which will be installed if it
 isn't currently present in your Python distribution. Optional macro support is
 provided when m4 is installed. You can get optional colorized output from the
-scripts by installing the Python colorama package. The source is written in
-Python 2.7 syntax but will convert cleanly to Python 3 when the installer
-passes it through 2to3.
+scripts by installing the Python colorama package.
 
 
 Download
@@ -79,6 +77,26 @@ You can access the Opbasm Git repository from `Github
 <https://drive.google.com/folderview?id=0B5jin2146-EXd0hBTlAzem1ybmM&usp=sharing>`_
 is also available for download. You can install direct from PyPI with the "pip"
 command if you have it available.
+
+
+Installation
+------------
+
+You can use ``pip`` to get the latest development code from Github:
+
+.. code-block:: console
+
+  > pip install --upgrade https://github.com/kevinpt/opbasm/tarball/master
+
+If you manually downloaded a source package or created a clone with Git you can install Opbasm with the following command run from the base Opbasm directory:
+
+.. code-block:: console
+
+  > python setup.py install
+
+On Linux systems you may need to install with root privileges using the *sudo* command.
+
+After a successful install the Opbasm scripts will be available. On Linux they should be immediately accessible from your current search path. On Windows you will need to make sure that the ``<Python root>\Scripts`` directory is in your %PATH% environment variable.
 
 
 Documentation

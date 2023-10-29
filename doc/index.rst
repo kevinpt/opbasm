@@ -49,7 +49,7 @@ If you are unfamiliar with the PicoBlaze architecture you can review the :doc:`r
 Requirements
 ------------
 
-Opbasm requires either Python 2.7 or Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn't currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package. The source is written in Python 2.7 syntax but will convert cleanly to Python 3 when the installer passes it through ``2to3``.
+Opbasm requires Python 3.x and no additional libraries. The installation script depends on setuptools which will be installed if it isn't currently present in your Python distribution. Optional macro support is provided when m4 is installed. You can get optional colorized output from the scripts by installing the Python colorama package.
 
 
 Download
@@ -65,19 +65,7 @@ You must have Python installed first. Most modern Linux distributions and OS/X h
 
 If your OS has a package manager, it may be preferable to install Python setuptools through that tool before attempting to install Opbasm. Otherwise, the installation script will install these packages directly without registering them with the OS package manager.
 
-The easiest way to install Opbasm is from `PyPI <https://pypi.python.org/pypi/opbasm>`_.
-
-.. code-block:: console
-
-  > pip install --upgrade opbasm
-
-This will download and install the latest release, upgrading if you already have it installed. If you don't have ``pip`` you may have the ``easy_install`` command available which can be used to install ``pip`` on your system:
-
-.. code-block:: console
-
-  > easy_install pip
-  
-You can also use ``pip`` to get the latest development code from Github:
+You can use ``pip`` to get the latest development code from Github:
 
 .. code-block:: console
 

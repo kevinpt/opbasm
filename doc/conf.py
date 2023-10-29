@@ -45,9 +45,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Opbasm'
-copyright = u'2017, Kevin Thibedeau'
-author = u'Kevin Thibedeau'
+project = 'Opbasm'
+copyright = '2023, Kevin Thibedeau'
+author = 'Kevin Thibedeau'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -75,7 +75,7 @@ release = version
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -171,8 +171,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Opbasm.tex', u'Opbasm Documentation',
-     u'Kevin Thibedeau', 'manual'),
+    (master_doc, 'Opbasm.tex', 'Opbasm Documentation',
+     'Kevin Thibedeau', 'manual'),
 ]
 
 
@@ -181,7 +181,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'opbasm', u'Opbasm Documentation',
+    (master_doc, 'opbasm', 'Opbasm Documentation',
      [author], 1)
 ]
 
@@ -204,5 +204,5 @@ def setup(sphinx):
     from PicoBlazeLexer import PicoBlazeLexer
     import pbDomain
     
-    sphinx.add_lexer('picoblaze', PicoBlazeLexer())
+    sphinx.add_lexer('picoblaze', PicoBlazeLexer)
     pbDomain.setup(sphinx)
