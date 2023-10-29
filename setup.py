@@ -41,8 +41,6 @@ setup(name='opbasm',
     },
     include_package_data = True,
 
-    use_2to3 = True,
-    
     keywords='Picoblaze assembler',
     license='MIT',
     classifiers=['Development Status :: 5 - Production/Stable',
@@ -51,7 +49,6 @@ setup(name='opbasm',
         'Topic :: Software Development :: Assemblers',
         'Topic :: Software Development :: Embedded Systems',
         'Natural Language :: English',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Assembly',
         'License :: OSI Approved :: MIT License'

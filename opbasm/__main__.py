@@ -65,7 +65,7 @@ Refer to the file "all_kcpsm6_syntax.psm" distributed with KCPSM6 for a detailed
 explanation of the new PicoBlaze-6 syntax.
 '''
 
-from __future__ import print_function, division, unicode_literals, absolute_import
+
 
 import os, sys
 from argparse import ArgumentParser
@@ -258,8 +258,7 @@ def main():
 
   def printq(*args, **keys):
     if not config.quiet:
-      utf_args = [a.encode('utf-8') for a in args]
-      print(*utf_args, **keys)
+      print(*args, **keys)
 
   printq(note(_('OPBASM - Open PicoBlaze Assembler {}').format(opbasm.__version__)))
 
@@ -289,9 +288,9 @@ def main():
 
   try:
     templates = find_templates(options.template_file)
-  except StatementError, e:
+  except StatementError as e:
     asm_error(*e.args, exit=1)
-  except FatalError, e:
+  except FatalError as e:
     asm_error(str(e), exit=1)
     
   # Make sure the extension of the generated VHDL file matches the template extension
@@ -304,7 +303,7 @@ def main():
   vhdl_file = build_path(config.output_dir, options.module_name + vhdl_ext)
   verilog_file = build_path(config.output_dir, options.module_name + '.v')
 
-  for hdl in templates.iterkeys():
+  for hdl in templates.keys():
     templates[hdl] = (templates[hdl], vhdl_file if hdl == 'vhdl' else verilog_file)
 
   log_file = build_path(config.output_dir, options.module_name + '.log')
@@ -334,9 +333,9 @@ def main():
 
   try:
     assembled_code = asm.assemble_file(options.input_file)
-  except StatementError, e:
+  except StatementError as e:
     asm_error(*e.args, exit=1, statement=e.statement)
-  except FatalError, e:
+  except FatalError as e:
     asm_error(str(e), exit=1)
 
 
@@ -350,7 +349,7 @@ def main():
 
     if len(templates) > 0:
       printq(_('\n  Found {}:').format(_('templates') if len(templates) > 1 else _('template')))
-      for f in templates.itervalues():
+      for f in templates.values():
         printq('   ', f[0])
 
 
@@ -378,17 +377,17 @@ def main():
     # Find longest template file name so we can align the warning messages
     # about unmapped INIT fields.
     if len(templates) > 0:
-      longest_name = max(len(v[1]) for v in templates.itervalues())
+      longest_name = max(len(v[1]) for v in templates.values())
     else:
       longest_name = 0
 
-    for hdl_name in templates.iterkeys():
+    for hdl_name in templates.keys():
       template_file, target_file = templates[hdl_name]
       asm.write_template_file(template_file, target_file, longest_name)
 
-  except StatementError, e:
+  except StatementError as e:
     asm_error(*e.args, exit=1, statement=e.statement)
-  except FatalError, e:
+  except FatalError as e:
     asm_error(str(e), exit=1)
 
   asm.write_formatted_source(config.output_dir)

@@ -24,7 +24,7 @@
 
 '''PicoBlaze ROM update script
 '''
-from __future__ import print_function, division
+
 
 import sys
 import os
@@ -56,10 +56,7 @@ def find_lib_dir():
 
   return lib_dir
 
-if sys.version_info[0] < 3:
-  gettext.install('pb_update', os.path.join(find_lib_dir(), 'lang'), unicode=True)
-else:
-  gettext.install('pb_update', os.path.join(find_lib_dir(), 'lang'))
+gettext.install('pb_update', os.path.join(find_lib_dir(), 'lang'))
 
 try:
   from opbasm_lib.color import *
@@ -211,7 +208,7 @@ def main():
       for i, n in enumerate(inames):
         print('  {}) {}  [{} {}]'.format(i+1, n, ram_insts[n].primitive, ram_insts[n].dimensions))
       print(_('  q) Quit'))
-      sel = raw_input(_('\nSelect RAM instance: ').encode(sys.stdout.encoding))
+      sel = input(_('\nSelect RAM instance: ').encode(sys.stdout.encoding))
       if sel.lower() == 'q': sys.exit(0)
 
       try:
@@ -289,7 +286,7 @@ def main():
           width = b.width
           if width == 2:
             it = iter(bram_data)
-            bram_pairs = itertools.izip(it, it)
+            bram_pairs = zip(it, it)
             bram_data = [(p[0] << 2) + p[1] for p in bram_pairs]
             width = 4
             nlo.rows[0].brams[0].width = width

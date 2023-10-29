@@ -25,9 +25,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from __future__ import print_function, division
+
 
 import math
+from functools import reduce
 
 
 def split_bits(n, num_bits):
@@ -39,7 +40,7 @@ def split_bits(n, num_bits):
   Returns a list of ints representing each bit in n.
   '''
   bits = [0] * num_bits
-  for i in xrange(num_bits-1, -1, -1):
+  for i in range(num_bits-1, -1, -1):
     bits[i] = n & 0x01
     n >>= 1
 
@@ -101,10 +102,10 @@ def hamming_interleave( data, parity_bits ):
   message_size = len(data) + len(parity_bits)
   assert len(data) == hamming_data_size(message_size), 'Data and parity size mismatch'
 
-  msg = [0 for _ in xrange(message_size)]
+  msg = [0 for _ in range(message_size)]
   parity_ix = 0
   data_ix = 0
-  for i in xrange(1,len(msg)+1):
+  for i in range(1,len(msg)+1):
     if 2**int(math.ceil(math.log(i,2))) == i: # This is a power of 2 and will be a parity bit
       msg[i-1] = parity_bits[parity_ix]
       parity_ix += 1
@@ -127,13 +128,13 @@ def hamming_parity( message ):
   
   Returns the computed parity bits
   '''
-  result = [0 for _ in xrange(hamming_parity_size(len(message)))]
+  result = [0 for _ in range(hamming_parity_size(len(message)))]
   result_ix = 0
-  for i in xrange(1, len(message)+1):
+  for i in range(1, len(message)+1):
     if 2**int(math.ceil(math.log(i,2))) == i: # This is a power of 2
       count = i
       parity_bit = 0
-      for d in xrange(i, len(message)+1):
+      for d in range(i, len(message)+1):
         if count > 0:
           parity_bit ^= message[d-1]
         elif count == 1 - i:
@@ -148,7 +149,7 @@ def hamming_parity( message ):
 
 def hamming_encode( data ):
   '''Generate parity for the data'''
-  parity_bits = [0 for _ in xrange(hamming_parity_size(hamming_message_size(len(data))))]
+  parity_bits = [0 for _ in range(hamming_parity_size(hamming_message_size(len(data))))]
   parity_bits = hamming_parity(hamming_interleave(data, parity_bits))
 
   return parity_bits

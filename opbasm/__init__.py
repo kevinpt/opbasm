@@ -1,3 +1,3 @@
 '''Main Opbasm package'''
 
-from opbasm import *
+from .opbasm import *

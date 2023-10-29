@@ -20,7 +20,7 @@ def fix_broken_win_console():
     # So be paranoid about catching errors and reporting them to original_stderr,
     # so that we can at least see them.
     def _complain(message):
-        print >>original_stderr, message if isinstance(message, str) else repr(message)
+        print(message if isinstance(message, str) else repr(message), file=original_stderr)
 
     # Work around <http://bugs.python.org/issue6058>.
     codecs.register(lambda name: codecs.lookup('utf-8') if name == 'cp65001' else None)
@@ -117,11 +117,11 @@ def fix_broken_win_console():
                 def write(self, text):
                     try:
                         if self._hConsole is None:
-                            if isinstance(text, unicode):
+                            if isinstance(text, str):
                                 text = text.encode('utf-8')
                             self._stream.write(text)
                         else:
-                            if not isinstance(text, unicode):
+                            if not isinstance(text, str):
                                 text = str(text).decode('utf-8')
                             remaining = len(text)
                             while remaining:
@@ -170,7 +170,7 @@ def fix_broken_win_console():
     argc = c_int(0)
     argv_unicode = CommandLineToArgvW(GetCommandLineW(), byref(argc))
 
-    argv = [argv_unicode[i].encode('utf-8') for i in xrange(0, argc.value)]
+    argv = [argv_unicode[i].encode('utf-8') for i in range(0, argc.value)]
 
     if not hasattr(sys, 'frozen'):
         # If this is an executable produced by py2exe or bbfreeze, then it will
@@ -181,15 +181,15 @@ def fix_broken_win_console():
         # Also skip option arguments to the Python interpreter.
         while len(argv) > 0:
             arg = argv[0]
-            if not arg.startswith(u"-") or arg == u"-":
+            if not arg.startswith("-") or arg == "-":
                 break
             argv = argv[1:]
-            if arg == u'-m':
+            if arg == '-m':
                 # sys.argv[0] should really be the absolute path of the module source,
                 # but never mind
                 break
-            if arg == u'-c':
-                argv[0] = u'-c'
+            if arg == '-c':
+                argv[0] = '-c'
                 break
 
     # if you like:
