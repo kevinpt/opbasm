@@ -1,36 +1,29 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>PicoBlaze assembly tutorial &#8212; Opbasm 1.3.9 documentation</title>
-    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>PicoBlaze assembly tutorial &#8212; Opbasm 1.3.10 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
     <link rel="stylesheet" href="../_static/project.css" type="text/css" />
     <link rel="stylesheet" href="../_static/tty/tty-player.min.css" type="text/css" />
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../',
-        VERSION:     '1.3.9',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
-      };
-    </script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Opbsim" href="opbsim.html" />
     <link rel="prev" title="PicoBlaze architecture reference" href="language.html" />
 
    
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
 <script src="_static/tty/webcomponents-lite.min.js"></script>
 <script src="_static/tty/term.min.js"></script>
@@ -47,21 +40,23 @@
 </style>
 
 
-  </head>
-  <body>  
+  </head><body>
+  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+          
+
           <div class="body" role="main">
             
-  <div class="section" id="picoblaze-assembly-tutorial">
-<h1>PicoBlaze assembly tutorial<a class="headerlink" href="#picoblaze-assembly-tutorial" title="Permalink to this headline">¶</a></h1>
+  <section id="picoblaze-assembly-tutorial">
+<h1>PicoBlaze assembly tutorial<a class="headerlink" href="#picoblaze-assembly-tutorial" title="Permalink to this heading">¶</a></h1>
 <p>If you’ve never written assembly code before it may be confusing to determine where to start. The following tutorial will provide guidance on how to develop a PicoBlaze program with explanations of ways to implement the most common idioms. If you aren’t familiar with the PicoBlaze architecture you should review the official Xilinx documentation or browse through the <a class="reference internal" href="language.html"><span class="doc">architecture and language reference</span></a> to learn the basics of what facilities the PicoBlaze has and what the assembly syntax is like.</p>
-<div class="section" id="a-first-look">
-<h2>A first look<a class="headerlink" href="#a-first-look" title="Permalink to this headline">¶</a></h2>
+<section id="a-first-look">
+<h2>A first look<a class="headerlink" href="#a-first-look" title="Permalink to this heading">¶</a></h2>
 <p>A typical PicoBlaze assembly program will follow a pattern like that shown below. You should follow this general plan when starting out with PicoBlaze programming.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">;==============================</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="c">;==============================</span>
 <span class="c">;== PREAMBLE</span>
 
 <span class="ge">&lt;Directives to set up constants, rename registers, and include other files&gt;</span>
@@ -118,38 +113,38 @@
 <span class="k">jump</span> <span class="n">my_ISR</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="program-storage">
-<h2>Program storage<a class="headerlink" href="#program-storage" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="program-storage">
+<h2>Program storage<a class="headerlink" href="#program-storage" title="Permalink to this heading">¶</a></h2>
 <p>The PicoBlaze is a <a class="reference external" href="https://en.wikipedia.org/wiki/Harvard_architecture">Harvard architecture</a> machine with an instruction memory separate from data storage and the I/O address space. Your program is typically stored in a Xilinx Block RAM (BRAM) that has predefined initial values to make it act like a ROM. The PicoBlaze has no built in mechanisms to write to this memory but it is possible to do so with additional logic for more advanced applications. It is also possible to store non-instruction data in the in left over free space of a Block RAM which can be accessed through a second address port connected to the PicoBlaze I/O.</p>
 <p>Each instruction is a fixed 18-bit word that naturally fills a Xilinx BRAM utilizing all of its extra parity bits. The PicoBlaze-3 supports up to 1k instruction words and the PB6 can use up to 4k. It is possible to put smaller programs into the other type of memory available on Xilinx parts, distributed RAM, which is synthesized from the programmable logic LUTs configured for a special SRAM mode. Another option is to use the dual-ported capability to split a BRAM between two PicoBlaze devices.</p>
 <p>The assembler converts your program into a list of instruction words that are used to initialize a BRAM. This becomes part of your FPGA project in one of two ways. The traditional way is to use an HDL template file that instantiates the proper BRAM for your device. The template BRAM has the program words filled in through generic parameters to create a synthesizable ROM that is instantiated in your FPGA project. The alternative way is to use the Opbasm <a class="reference internal" href="../index.html#generic-rom"><span class="std std-ref">synthesizable ROM template</span></a> which currently only works with the Xilinx ISE toolset and not Vivado. Either way, the synthesizer will translate the template into a memory with initial instruction values assigned on power up so that it behaves as a ROM.</p>
-</div>
-<div class="section" id="assembler-syntax">
-<h2>Assembler syntax<a class="headerlink" href="#assembler-syntax" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="assembler-syntax">
+<h2>Assembler syntax<a class="headerlink" href="#assembler-syntax" title="Permalink to this heading">¶</a></h2>
 <p>PicoBlaze assembly consists of a series of lines that contain machine instructions and assembler directives that are used to control the generated program data. It follows this basic structure:</p>
 <img alt="../_images/statement.svg" src="../_images/statement.svg" /><p>There are three parts, all of which are optional. The instruction portion is the main part of a statement. It has a named mnemonic possibly folowed by some operands. You can have an optional label at the beginning and an optional comment at the end. Blank lines are ignored. It is possible for a label or comment to be on a line by itself if you wish. The label functions as a reference that you can use as a target for branching and calling subroutines.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; This is a comment</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="c">; This is a comment</span>
 <span class="nl">my_label:</span>
 <span class="nl">another_label:</span>         <span class="c">; This is a label and comment</span>
 <span class="k">add</span> <span class="n">s0</span><span class="p">,</span> <span class="n">s1</span>             <span class="c">; An instruction and comment</span>
 <span class="nl">last_label:</span> <span class="k">add</span> <span class="n">s2</span><span class="p">,</span> <span class="n">s3</span> <span class="c">; Label, instruction, and comment</span>
 </pre></div>
 </div>
-<p>Labels act as symbolic placeholders for an address in instruction memory. Bare labels without an instruction assume the address of the next statement with an instruction field. Which means that multiple labels can refer to the same address. In the example above “my_label” and “another_label” both refer to the first <code class="docutils literal"><span class="pre">add</span></code> instruction.</p>
-</div>
-<div class="section" id="assigning-variables">
-<h2>Assigning variables<a class="headerlink" href="#assigning-variables" title="Permalink to this headline">¶</a></h2>
+<p>Labels act as symbolic placeholders for an address in instruction memory. Bare labels without an instruction assume the address of the next statement with an instruction field. Which means that multiple labels can refer to the same address. In the example above “my_label” and “another_label” both refer to the first <code class="docutils literal notranslate"><span class="pre">add</span></code> instruction.</p>
+</section>
+<section id="assigning-variables">
+<h2>Assigning variables<a class="headerlink" href="#assigning-variables" title="Permalink to this heading">¶</a></h2>
 <p>The most fundamental action you can take in a program is to assign a value to a storage location. PB3 and PB6 have two areas for storing data internally: registers, and scratchpad memory. There are 16 8-bit registers which are all fully general purpose. PB6 has a second bank of 16 registers that can be exchanged with the first set for special purposes. The scratchpad is a 64 byte RAM on PB3 expandable to 128 or 256 bytes on PB6.</p>
 <p>Values that need to be accessed frequently will typically be kept in a register. Values that need to be saved for long periods of time may be better kept in scratchpad to avoid monopolizing registers. All PicoBlaze instructions can work directly with registers but scratchpad memory is only accessible through two dedicated access instructions <a class="reference internal" href="language.html#inst-fetch"><span class="std std-ref">fetch</span></a> and <a class="reference internal" href="language.html#inst-store"><span class="std std-ref">store</span></a>. Data stored in scratchpad takes more code to process and consumes more time and program memory as a result.</p>
 <p>The most basic instruction for assigning a value to a register is <a class="reference internal" href="language.html#inst-load"><span class="std std-ref">load</span></a>. It takes a destination register as the first argument and either another register or a constant literal as the second.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">5A</span>  <span class="c">; Load s0 with 0x5A (90 decimal)</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">5A</span>  <span class="c">; Load s0 with 0x5A (90 decimal)</span>
 <span class="k">load</span> <span class="n">s1</span><span class="p">,</span> <span class="n">s0</span>  <span class="c">; Load s1 with value of s0</span>
 </pre></div>
 </div>
 <p>Note that the assembler defaults to using hex for constant literals.</p>
-<p>Using <code class="docutils literal"><span class="pre">fetch</span></code> and <code class="docutils literal"><span class="pre">store</span></code> we can save variables in scratchpad RAM:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">constant</span> <span class="n">M_COUNTER</span><span class="p">,</span> <span class="mh">0F</span>  <span class="c">; Scratchpad address 0x0F used for our variable</span>
+<p>Using <code class="docutils literal notranslate"><span class="pre">fetch</span></code> and <code class="docutils literal notranslate"><span class="pre">store</span></code> we can save variables in scratchpad RAM:</p>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">constant</span> <span class="n">M_COUNTER</span><span class="p">,</span> <span class="mh">0F</span>  <span class="c">; Scratchpad address 0x0F used for our variable</span>
 <span class="k">load</span> <span class="n">s0</span><span class="p">,</span> <span class="mh">00</span>             <span class="c">; Initialize counter to 0</span>
 <span class="k">store</span> <span class="n">s0</span><span class="p">,</span> <span class="n">M_COUNTER</span>     <span class="c">; Save initial value</span>
 
@@ -160,10 +155,10 @@
 <span class="c">; Scratchpad[15] is now 1</span>
 </pre></div>
 </div>
-<p>Using a constant for scratchpad variable addresses makes it easy to modify their location in the future. You should avoid hardcoding numeric addresses directly into <code class="docutils literal"><span class="pre">fetch</span></code> and <code class="docutils literal"><span class="pre">store</span></code> instructions.</p>
-<p>The <code class="docutils literal"><span class="pre">fetch</span></code> and <code class="docutils literal"><span class="pre">store</span></code> instructions have an indirect variant where the second operand is a register containing a scratchpad address rather than a fixed literal value. This register acts as a pointer variable to a piece of memory. Because PicoBlaze doesn’t have any relative indexed addressing modes you have to directly modify this register to access different parts of the scratchpad. You can store and retrieve arrays of data with indirect addressing:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">const</span> <span class="n">M_ARRAY</span><span class="p">,</span> <span class="mh">0F</span>         <span class="c">; Allocate array from 0x0F to 0x1F</span>
-<span class="k">const</span> <span class="n">M_ARRAY_END</span><span class="p">,</span> <span class="mh">1F</span>
+<p>Using a constant for scratchpad variable addresses makes it easy to modify their location in the future. You should avoid hardcoding numeric addresses directly into <code class="docutils literal notranslate"><span class="pre">fetch</span></code> and <code class="docutils literal notranslate"><span class="pre">store</span></code> instructions.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">fetch</span></code> and <code class="docutils literal notranslate"><span class="pre">store</span></code> instructions have an indirect variant where the second operand is a register containing a scratchpad address rather than a fixed literal value. This register acts as a pointer variable to a piece of memory. Because PicoBlaze doesn’t have any relative indexed addressing modes you have to directly modify this register to access different parts of the scratchpad. You can store and retrieve arrays of data with indirect addressing:</p>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">constant</span> <span class="n">M_ARRAY</span><span class="p">,</span> <span class="mh">0F</span>         <span class="c">; Allocate array from 0x0F to 0x1F</span>
+<span class="k">constant</span> <span class="n">M_ARRAY_END</span><span class="p">,</span> <span class="mh">1F</span>
 
 <span class="k">load</span> <span class="n">sA</span><span class="p">,</span> <span class="n">M_ARRAY</span>          <span class="c">; Init pointer to start of array</span>
 <span class="nl">loop:</span>
@@ -174,137 +169,128 @@
   <span class="k">jump</span>   <span class="n">NZ</span><span class="p">,</span> <span class="n">loop</span>         <span class="c">; Continue if we haven&#39;t reached the end</span>
 </pre></div>
 </div>
-<div class="section" id="register-allocation">
-<h3>Register allocation<a class="headerlink" href="#register-allocation" title="Permalink to this headline">¶</a></h3>
+<section id="register-allocation">
+<h3>Register allocation<a class="headerlink" href="#register-allocation" title="Permalink to this heading">¶</a></h3>
 <p>Unlike compiled programming languages, it is left up to you to determine how registers are used in your program. It is useful to come up with a regular scheme for using the registers for specific purposes to reduce confusion and improve maintainability. It becomes difficult to manage registers if you randomly assign them in various parts of your program.</p>
 <p>There are five common classes of data that registers can be used for:</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li>Arguments to subroutines</li>
-<li>Return values from subroutines</li>
-<li>Local variables (preserved on a stack)</li>
-<li>Temporary values (never preserved)</li>
-<li>Special purpose values (globals)</li>
+<li><p>Arguments to subroutines</p></li>
+<li><p>Return values from subroutines</p></li>
+<li><p>Local variables (preserved on a stack)</p></li>
+<li><p>Temporary values (never preserved)</p></li>
+<li><p>Special purpose values (globals)</p></li>
 </ol>
 </div></blockquote>
 <p>By default all registers are general purpose and can be used interchangeably. The PicoBlaze assembly syntax includes a <a class="reference internal" href="language.html#inst-namereg"><span class="std std-ref">namereg</span></a> directive that can rename a register. You can then give more meaningful names to commonly used registers. It is also useful to protect registers you’ve reserved for a special purpose from being accidentally overwritten by other code.</p>
 <p>Here is one possible register usage convention:</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="15%" />
-<col width="13%" />
-<col width="72%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Register</th>
-<th class="head">Renamed</th>
-<th class="head">Purpose</th>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Register</p></th>
+<th class="head"><p>Renamed</p></th>
+<th class="head"><p>Purpose</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>s0</td>
-<td>&#160;</td>
-<td>Subroutine return value</td>
+<tbody>
+<tr class="row-even"><td><p>s0</p></td>
+<td></td>
+<td><p>Subroutine return value</p></td>
 </tr>
-<tr class="row-odd"><td>s1</td>
-<td>&#160;</td>
-<td>Argument 1</td>
+<tr class="row-odd"><td><p>s1</p></td>
+<td></td>
+<td><p>Argument 1</p></td>
 </tr>
-<tr class="row-even"><td>s2</td>
-<td>&#160;</td>
-<td>Argument 2</td>
+<tr class="row-even"><td><p>s2</p></td>
+<td></td>
+<td><p>Argument 2</p></td>
 </tr>
-<tr class="row-odd"><td>s3</td>
-<td>&#160;</td>
-<td>Argument 3</td>
+<tr class="row-odd"><td><p>s3</p></td>
+<td></td>
+<td><p>Argument 3</p></td>
 </tr>
-<tr class="row-even"><td>s4</td>
-<td>&#160;</td>
-<td>Argument 4</td>
+<tr class="row-even"><td><p>s4</p></td>
+<td></td>
+<td><p>Argument 4</p></td>
 </tr>
-<tr class="row-odd"><td>s5</td>
-<td>&#160;</td>
-<td>Local 1</td>
+<tr class="row-odd"><td><p>s5</p></td>
+<td></td>
+<td><p>Local 1</p></td>
 </tr>
-<tr class="row-even"><td>s6</td>
-<td>&#160;</td>
-<td>Local 2</td>
+<tr class="row-even"><td><p>s6</p></td>
+<td></td>
+<td><p>Local 2</p></td>
 </tr>
-<tr class="row-odd"><td>s7</td>
-<td>&#160;</td>
-<td>Local 3</td>
+<tr class="row-odd"><td><p>s7</p></td>
+<td></td>
+<td><p>Local 3</p></td>
 </tr>
-<tr class="row-even"><td>s8</td>
-<td>&#160;</td>
-<td>Local 4</td>
+<tr class="row-even"><td><p>s8</p></td>
+<td></td>
+<td><p>Local 4</p></td>
 </tr>
-<tr class="row-odd"><td>s9</td>
-<td>&#160;</td>
-<td>Local 5</td>
+<tr class="row-odd"><td><p>s9</p></td>
+<td></td>
+<td><p>Local 5</p></td>
 </tr>
-<tr class="row-even"><td>sA</td>
-<td>&#160;</td>
-<td>Temporary 1</td>
+<tr class="row-even"><td><p>sA</p></td>
+<td></td>
+<td><p>Temporary 1</p></td>
 </tr>
-<tr class="row-odd"><td>sB</td>
-<td>&#160;</td>
-<td>Temporary 2</td>
+<tr class="row-odd"><td><p>sB</p></td>
+<td></td>
+<td><p>Temporary 2</p></td>
 </tr>
-<tr class="row-even"><td>sC</td>
-<td>&#160;</td>
-<td>Temporary 3</td>
+<tr class="row-even"><td><p>sC</p></td>
+<td></td>
+<td><p>Temporary 3</p></td>
 </tr>
-<tr class="row-odd"><td>sD</td>
-<td>&#160;</td>
-<td>Temporary 4</td>
+<tr class="row-odd"><td><p>sD</p></td>
+<td></td>
+<td><p>Temporary 4</p></td>
 </tr>
-<tr class="row-even"><td>sE</td>
-<td>&#160;</td>
-<td>Temporary 5</td>
+<tr class="row-even"><td><p>sE</p></td>
+<td></td>
+<td><p>Temporary 5</p></td>
 </tr>
-<tr class="row-odd"><td>sF</td>
-<td>SP</td>
-<td><a class="reference internal" href="#stack-variables"><span class="std std-ref">Stack pointer</span></a></td>
+<tr class="row-odd"><td><p>sF</p></td>
+<td><p>SP</p></td>
+<td><p><a class="reference internal" href="#stack-variables"><span class="std std-ref">Stack pointer</span></a></p></td>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
-<div class="section" id="computing-in-assembly">
-<h2>Computing in assembly<a class="headerlink" href="#computing-in-assembly" title="Permalink to this headline">¶</a></h2>
+</section>
+</section>
+<section id="computing-in-assembly">
+<h2>Computing in assembly<a class="headerlink" href="#computing-in-assembly" title="Permalink to this heading">¶</a></h2>
 <p>You can’t accomplish much by just assigning values to registers and RAM. To get useful work done in assembly you have to use the class of instructions associated with the Arithmetic Logic Unit (ALU) of the processor. This is a part of the PicoBlaze that performs arithmetic, logical, and shift operations on registers.</p>
 <p>In addition to performing operations on register values, the ALU maintains two state flags that represent additional information about the result. These are the Z and C flags for zero and carry. The Z flag is fairly simple. It is almost always set to 1 when the result of an ALU operation is zero. It is cleared to 0 when the result is non-zero. The C flag represents a carry from addition or a borrow from subtraction. In a few instructions it is used to hold the result of a parity calculation representing the number of 1 bits in a number.</p>
 <p>The flags can be examined after an operation to execute conditional code that branches to different parts of your program. In this way, arithmetic is used to control the order of execution as well as actual numeric computation.</p>
-<div class="section" id="arithmetic-operations">
-<h3>Arithmetic operations<a class="headerlink" href="#arithmetic-operations" title="Permalink to this headline">¶</a></h3>
-<table border="1" class="docutils">
-<colgroup>
-<col width="35%" />
-<col width="65%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Instruction</th>
-<th class="head">Description</th>
+<section id="arithmetic-operations">
+<h3>Arithmetic operations<a class="headerlink" href="#arithmetic-operations" title="Permalink to this heading">¶</a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Instruction</p></th>
+<th class="head"><p>Description</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td><a class="reference internal" href="language.html#inst-add"><span class="std std-ref">add</span></a></td>
-<td>Add two values</td>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="language.html#inst-add"><span class="std std-ref">add</span></a></p></td>
+<td><p>Add two values</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="language.html#inst-sub"><span class="std std-ref">sub</span></a></td>
-<td>Subtract two values</td>
+<tr class="row-odd"><td><p><a class="reference internal" href="language.html#inst-sub"><span class="std std-ref">sub</span></a></p></td>
+<td><p>Subtract two values</p></td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="language.html#inst-addcy"><span class="std std-ref">addcy</span></a></td>
-<td>Add two values with carry</td>
+<tr class="row-even"><td><p><a class="reference internal" href="language.html#inst-addcy"><span class="std std-ref">addcy</span></a></p></td>
+<td><p>Add two values with carry</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="language.html#inst-subcy"><span class="std std-ref">subcy</span></a></td>
-<td>Subtract two values with borrow</td>
+<tr class="row-odd"><td><p><a class="reference internal" href="language.html#inst-subcy"><span class="std std-ref">subcy</span></a></p></td>
+<td><p>Subtract two values with borrow</p></td>
 </tr>
 </tbody>
 </table>
-<p>The <code class="docutils literal"><span class="pre">add</span></code> and <code class="docutils literal"><span class="pre">sub</span></code> instructions perform addition and subtraction respectively on a pair of 8-bit operands. The first operand is always a register and it is used as the final destination of the result. The second operand can be another register or a constant value.</p>
-<p>The <code class="docutils literal"><span class="pre">addcy</span></code> and <code class="docutils literal"><span class="pre">subcy</span></code> instructions are used to extend the addition and subtraction operations for numbers larger than 8-bits. While the PicoBlaze is always limited to working on 8-bit values in a single instruction, larger numbers can be represented by groups of 8-bit registers processed in pieces.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; 8-bit addition</span>
+<p>The <code class="docutils literal notranslate"><span class="pre">add</span></code> and <code class="docutils literal notranslate"><span class="pre">sub</span></code> instructions perform addition and subtraction respectively on a pair of 8-bit operands. The first operand is always a register and it is used as the final destination of the result. The second operand can be another register or a constant value.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">addcy</span></code> and <code class="docutils literal notranslate"><span class="pre">subcy</span></code> instructions are used to extend the addition and subtraction operations for numbers larger than 8-bits. While the PicoBlaze is always limited to working on 8-bit values in a single instruction, larger numbers can be represented by groups of 8-bit registers processed in pieces.</p>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="c">; 8-bit addition</span>
 <span class="k">add</span>   <span class="n">s5</span><span class="p">,</span> <span class="n">sA</span>  <span class="c">; 8-bit addition</span>
 <span class="c">; Result in s5</span>
 
@@ -320,39 +306,35 @@
 <span class="c">; Result in s7,s6,s5</span>
 </pre></div>
 </div>
-<p>For multi-byte addition, the carry flag is set when the previous addition overflows beyond an 8-bit result. An overflow can never be more than 1 since the largest 8-bit sum is: <code class="docutils literal"><span class="pre">255</span> <span class="pre">+</span> <span class="pre">255</span> <span class="pre">=</span> <span class="pre">510</span> <span class="pre">=</span> <span class="pre">0x1FE</span></code>. The overflow carries into the next most significant addition by the use of <code class="docutils literal"><span class="pre">addcy</span></code>.</p>
-<p>For multi-byte subtraction, the carry flag functions as a “borrow” bit. When it is set, the previous subtraction is considered to have borrowed from the current pair of bytes and so an additional -1 is taken from the result by <code class="docutils literal"><span class="pre">subcy</span></code>.</p>
+<p>For multi-byte addition, the carry flag is set when the previous addition overflows beyond an 8-bit result. An overflow can never be more than 1 since the largest 8-bit sum is: <code class="docutils literal notranslate"><span class="pre">255</span> <span class="pre">+</span> <span class="pre">255</span> <span class="pre">=</span> <span class="pre">510</span> <span class="pre">=</span> <span class="pre">0x1FE</span></code>. The overflow carries into the next most significant addition by the use of <code class="docutils literal notranslate"><span class="pre">addcy</span></code>.</p>
+<p>For multi-byte subtraction, the carry flag functions as a “borrow” bit. When it is set, the previous subtraction is considered to have borrowed from the current pair of bytes and so an additional -1 is taken from the result by <code class="docutils literal notranslate"><span class="pre">subcy</span></code>.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">In PicoBlaze architectures prior to PB6, the <code class="docutils literal"><span class="pre">addcy</span></code> and <code class="docutils literal"><span class="pre">subcy</span></code> instructions don’t set the Z flag in the logically expected way. Instead of setting Z only when the entire multi-byte result is zero. They only consider the last 8-bits of the result. The Z flag could be set even if a previous byte was non-zero. Because of this the Z flag cannot be used to check for a zero result on PB3 after performing multi-byte addition or subtraction.</p>
+<p class="admonition-title">Note</p>
+<p>In PicoBlaze architectures prior to PB6, the <code class="docutils literal notranslate"><span class="pre">addcy</span></code> and <code class="docutils literal notranslate"><span class="pre">subcy</span></code> instructions don’t set the Z flag in the logically expected way. Instead of setting Z only when the entire multi-byte result is zero. They only consider the last 8-bits of the result. The Z flag could be set even if a previous byte was non-zero. Because of this the Z flag cannot be used to check for a zero result on PB3 after performing multi-byte addition or subtraction.</p>
 </div>
-</div>
-<div class="section" id="logical-operations">
-<h3>Logical operations<a class="headerlink" href="#logical-operations" title="Permalink to this headline">¶</a></h3>
-<table border="1" class="docutils">
-<colgroup>
-<col width="38%" />
-<col width="62%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Instruction</th>
-<th class="head">Description</th>
+</section>
+<section id="logical-operations">
+<h3>Logical operations<a class="headerlink" href="#logical-operations" title="Permalink to this heading">¶</a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Instruction</p></th>
+<th class="head"><p>Description</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td><a class="reference internal" href="language.html#inst-and"><span class="std std-ref">and</span></a></td>
-<td>Bitwise AND of two bytes</td>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="language.html#inst-and"><span class="std std-ref">and</span></a></p></td>
+<td><p>Bitwise AND of two bytes</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="language.html#inst-or"><span class="std std-ref">or</span></a></td>
-<td>Bitwise OR of two bytes</td>
+<tr class="row-odd"><td><p><a class="reference internal" href="language.html#inst-or"><span class="std std-ref">or</span></a></p></td>
+<td><p>Bitwise OR of two bytes</p></td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="language.html#inst-xor"><span class="std std-ref">xor</span></a></td>
-<td>Bitwise XOR of two bytes</td>
+<tr class="row-even"><td><p><a class="reference internal" href="language.html#inst-xor"><span class="std std-ref">xor</span></a></p></td>
+<td><p>Bitwise XOR of two bytes</p></td>
 </tr>
 </tbody>
 </table>
 <p>At times it can be useful to perform operations on values using binary logic gates. These instructions are conceptually equivalent to a set of 8 parallel AND, OR, or XOR gates operating on the corresponding bits of the two operands simultaneously. The fourth fundamental logic gate, the NOT, does not have a dedicated instruction but it can be performed by the XOR operation with a constant second operand of 0xFF. These have a variety of uses but among the most common is the ability to set and clear selected bits within a register when needed.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">and</span> <span class="n">s5</span><span class="p">,</span> <span class="n">s6</span>         <span class="c">; s5 = s5 AND s6</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">and</span> <span class="n">s5</span><span class="p">,</span> <span class="n">s6</span>         <span class="c">; s5 = s5 AND s6</span>
 <span class="k">and</span> <span class="n">s5</span><span class="p">,</span> <span class="mh">7F</span>         <span class="c">; Clear upper bit of s5</span>
 <span class="k">and</span> <span class="n">s5</span><span class="p">,</span> <span class="o">~</span><span class="mh">80</span>        <span class="c">; Clear upper bit of s5 (Using inverted bitmask)</span>
 <span class="k">or</span>  <span class="n">s5</span><span class="p">,</span> <span class="mh">80</span>         <span class="c">; Set upper bit of s5</span>
@@ -361,54 +343,50 @@
 <span class="k">xor</span> <span class="n">s5</span><span class="p">,</span> <span class="mh">FF</span>         <span class="c">; s5 = NOT s5</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="bit-shifting-operations">
-<h3>Bit shifting operations<a class="headerlink" href="#bit-shifting-operations" title="Permalink to this headline">¶</a></h3>
-<table border="1" class="docutils">
-<colgroup>
-<col width="35%" />
-<col width="65%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Instruction</th>
-<th class="head">Description</th>
+</section>
+<section id="bit-shifting-operations">
+<h3>Bit shifting operations<a class="headerlink" href="#bit-shifting-operations" title="Permalink to this heading">¶</a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Instruction</p></th>
+<th class="head"><p>Description</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td><a class="reference internal" href="language.html#inst-sl0"><span class="std std-ref">sl0</span></a></td>
-<td>Shift left and ‘0’ fill</td>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="language.html#inst-sl0"><span class="std std-ref">sl0</span></a></p></td>
+<td><p>Shift left and ‘0’ fill</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="language.html#inst-sl1"><span class="std std-ref">sl1</span></a></td>
-<td>Shift left and ‘1’ fill</td>
+<tr class="row-odd"><td><p><a class="reference internal" href="language.html#inst-sl1"><span class="std std-ref">sl1</span></a></p></td>
+<td><p>Shift left and ‘1’ fill</p></td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="language.html#inst-sla"><span class="std std-ref">sla</span></a></td>
-<td>Shift left through all bits</td>
+<tr class="row-even"><td><p><a class="reference internal" href="language.html#inst-sla"><span class="std std-ref">sla</span></a></p></td>
+<td><p>Shift left through all bits</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="language.html#inst-slx"><span class="std std-ref">slx</span></a></td>
-<td>Shift left with extension</td>
+<tr class="row-odd"><td><p><a class="reference internal" href="language.html#inst-slx"><span class="std std-ref">slx</span></a></p></td>
+<td><p>Shift left with extension</p></td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="language.html#inst-sr0"><span class="std std-ref">sr0</span></a></td>
-<td>Shift right and ‘0’ fill</td>
+<tr class="row-even"><td><p><a class="reference internal" href="language.html#inst-sr0"><span class="std std-ref">sr0</span></a></p></td>
+<td><p>Shift right and ‘0’ fill</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="language.html#inst-sr1"><span class="std std-ref">sr1</span></a></td>
-<td>Shift right and ‘1’ fill</td>
+<tr class="row-odd"><td><p><a class="reference internal" href="language.html#inst-sr1"><span class="std std-ref">sr1</span></a></p></td>
+<td><p>Shift right and ‘1’ fill</p></td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="language.html#inst-sra"><span class="std std-ref">sra</span></a></td>
-<td>Shift right through all bits</td>
+<tr class="row-even"><td><p><a class="reference internal" href="language.html#inst-sra"><span class="std std-ref">sra</span></a></p></td>
+<td><p>Shift right through all bits</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="language.html#inst-srx"><span class="std std-ref">srx</span></a></td>
-<td>Shift right with extension</td>
+<tr class="row-odd"><td><p><a class="reference internal" href="language.html#inst-srx"><span class="std std-ref">srx</span></a></p></td>
+<td><p>Shift right with extension</p></td>
 </tr>
-<tr class="row-even"><td><a class="reference internal" href="language.html#inst-rl"><span class="std std-ref">rl</span></a></td>
-<td>Rotate left</td>
+<tr class="row-even"><td><p><a class="reference internal" href="language.html#inst-rl"><span class="std std-ref">rl</span></a></p></td>
+<td><p>Rotate left</p></td>
 </tr>
-<tr class="row-odd"><td><a class="reference internal" href="language.html#inst-rr"><span class="std std-ref">rr</span></a></td>
-<td>Rotate right</td>
+<tr class="row-odd"><td><p><a class="reference internal" href="language.html#inst-rr"><span class="std std-ref">rr</span></a></p></td>
+<td><p>Rotate right</p></td>
 </tr>
 </tbody>
 </table>
 <p>The third set of ALU operations is used to shift and rotate the position of bits in a register. Each instruction shifts or rotates one bit at a time. Multple bit shifts require repeated instructions. The shift instructions have a number of variants that differ in how they select the new bit being shifted in. In all cases the bit shifted out is stored in the carry flag. The “1” and “0” shifts fill in the respective constant bit. The “A” shift instructions perform all-bit shifts by inserting the carry flag into the new position. This is useful for extending shifts across multiple bytes. The “X” shift instructions perform bit extension by duplicating the leftmost or rightmost bit of rht shifted value. For <a class="reference internal" href="language.html#inst-srx"><span class="std std-ref">srx</span></a> this is equivalent to a shift with sign-extension for signed values.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">load</span> <span class="n">sA</span><span class="p">,</span> <span class="mh">01</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">load</span> <span class="n">sA</span><span class="p">,</span> <span class="mh">01</span>
 <span class="k">sl0</span> <span class="n">sA</span>
 <span class="k">sl0</span> <span class="n">sA</span>       <span class="c">; Shift left by 2 bits and &#39;0&#39; fill. sA = 0x04</span>
 
@@ -427,65 +405,60 @@
 <span class="k">rr</span> <span class="n">sA</span>        <span class="c">; sA = 0xC0</span>
 </pre></div>
 </div>
-</div>
-</div>
-<div class="section" id="control-structures">
-<h2>Control structures<a class="headerlink" href="#control-structures" title="Permalink to this headline">¶</a></h2>
+</section>
+</section>
+<section id="control-structures">
+<h2>Control structures<a class="headerlink" href="#control-structures" title="Permalink to this heading">¶</a></h2>
 <p>If you are used to programming in high level languages the biggest change when using assembly is that there are no built in control structures. You have to implement them all implicitly in assembly code. This may create some tedium in writing assembly and can make it hard to follow along when reading code because the control flow isn’t readily apparent. The Opbasm macro package has a system to let you write <a class="reference internal" href="m4.html#c-style-if-then"><span class="std std-ref">control structures in a high-level style syntax</span></a>. However, it is still useful to know the basics of how this is done as explained in the next section.</p>
-<div class="section" id="if-then-else">
-<h3>If-then-else<a class="headerlink" href="#if-then-else" title="Permalink to this headline">¶</a></h3>
+<section id="if-then-else">
+<h3>If-then-else<a class="headerlink" href="#if-then-else" title="Permalink to this heading">¶</a></h3>
 <p>An if-then-else statement consists of three parts: an expression to evaluate, a block of code to execute when the expression is true, and an optional block for a false expression. A basic if-then-else is of the following form:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">if</span><span class="p">(</span><span class="n">RX_DATA</span> <span class="o">==</span> <span class="mi">42</span><span class="p">)</span> <span class="p">{</span>
-  <span class="n">TX_DATA</span> <span class="o">=</span> <span class="sc">&#39;E&#39;</span><span class="p">;</span>
-<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-  <span class="n">TX_DATA</span> <span class="o">=</span> <span class="sc">&#39;N&#39;</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="p">(</span><span class="n">RX_DATA</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">42</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">TX_DATA</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="sc">&#39;E&#39;</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">TX_DATA</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="sc">&#39;N&#39;</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 <p>In PicoBlaze assembly the expression is evaluated with instructions that will set or clear the ALU C and Z flags. Subsequent conditional <a class="reference internal" href="language.html#inst-jump"><span class="std std-ref">jump</span></a> and <a class="reference internal" href="language.html#inst-call"><span class="std std-ref">call</span></a> instructions will examine these flags to determine what to execute next. This allows us to follow the different execution paths of the if-then-else construct.</p>
 <p>The main instruction for evaluating expressions is <a class="reference internal" href="language.html#inst-compare"><span class="std std-ref">compare</span></a>. It subtracts its second argument from the first and changes the C and Z flags based on the result. Note that it only changes the flags. The subtraction result is thrown away and does not affect the registers.</p>
-<p>After a <code class="docutils literal"><span class="pre">compare</span></code> instruction the flags can be interpreted as follows:</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="9%" />
-<col width="9%" />
-<col width="82%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Z</th>
-<th class="head">C</th>
-<th class="head">Meaning</th>
+<p>After a <code class="docutils literal notranslate"><span class="pre">compare</span></code> instruction the flags can be interpreted as follows:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Z</p></th>
+<th class="head"><p>C</p></th>
+<th class="head"><p>Meaning</p></th>
 </tr>
 </thead>
-<tbody valign="top">
-<tr class="row-even"><td>1</td>
-<td>-</td>
-<td>= operands are equal</td>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>-</p></td>
+<td><p>= operands are equal</p></td>
 </tr>
-<tr class="row-odd"><td>0</td>
-<td>-</td>
-<td>≠ operands are not equal</td>
+<tr class="row-odd"><td><p>0</p></td>
+<td><p>-</p></td>
+<td><p>≠ operands are not equal</p></td>
 </tr>
-<tr class="row-even"><td>0</td>
-<td>0</td>
-<td>&gt; first is greater than second</td>
+<tr class="row-even"><td><p>0</p></td>
+<td><p>0</p></td>
+<td><p>&gt; first is greater than second</p></td>
 </tr>
-<tr class="row-odd"><td>-</td>
-<td>0</td>
-<td>≥ first is greater or equal to second</td>
+<tr class="row-odd"><td><p>-</p></td>
+<td><p>0</p></td>
+<td><p>≥ first is greater or equal to second</p></td>
 </tr>
-<tr class="row-even"><td>-</td>
-<td>1</td>
-<td>&lt; first is less than second</td>
+<tr class="row-even"><td><p>-</p></td>
+<td><p>1</p></td>
+<td><p>&lt; first is less than second</p></td>
 </tr>
-<tr class="row-odd"><td>1</td>
-<td>1</td>
-<td>≤ first is less or equal to second</td>
+<tr class="row-odd"><td><p>1</p></td>
+<td><p>1</p></td>
+<td><p>≤ first is less or equal to second</p></td>
 </tr>
 </tbody>
 </table>
 <p>We now have enough tools to replicate the pseudocode above:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre>       <span class="k">input</span>   <span class="n">s5</span><span class="p">,</span> <span class="n">RX_DATA</span>  <span class="c">; Load a local register to work with</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span>       <span class="k">input</span>   <span class="n">s5</span><span class="p">,</span> <span class="n">RX_DATA</span>  <span class="c">; Load a local register to work with</span>
        <span class="k">compare</span> <span class="n">s5</span><span class="p">,</span> <span class="m">42&#39;d</span>     <span class="c">; Subtract 42 from s5 and update C and Z flags</span>
 <span class="hll">       <span class="k">jump</span>    <span class="n">Z</span><span class="p">,</span> <span class="n">equal</span>     <span class="c">; If s5 == 42 the Z flag is set</span>
 </span><span class="c">; Not equal (false block)</span>
@@ -497,9 +470,9 @@
        <span class="k">output</span> <span class="n">sE</span><span class="p">,</span> <span class="n">TX_DATA</span>
 </pre></div>
 </div>
-<p>Here the <code class="docutils literal"><span class="pre">jump</span> <span class="pre">Z,</span> <span class="pre">equal</span></code> instruction branches to the “equal” label when the Z flag is set. Otherwise the next instruction is executed. Notice that the false block appears before the true block.</p>
+<p>Here the <code class="docutils literal notranslate"><span class="pre">jump</span> <span class="pre">Z,</span> <span class="pre">equal</span></code> instruction branches to the “equal” label when the Z flag is set. Otherwise the next instruction is executed. Notice that the false block appears before the true block.</p>
 <p>When you have no else condition, the true block can be placed immediately after the expression evaluation code:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; if(RX_DATA &lt; 42) {</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="c">; if(RX_DATA &lt; 42) {</span>
 <span class="c">;   TX_DATA = &#39;L&#39;;</span>
 <span class="c">; }</span>
 
@@ -512,10 +485,10 @@
 <span class="nl">gte:</span> <span class="c">; (false)</span>
 </pre></div>
 </div>
-<p>In this case we want to branch past the true block when the expression is false so we use “NC” instead of “C” to check for <code class="docutils literal"><span class="pre">RX_DATA</span> <span class="pre">&lt;</span> <span class="pre">42</span></code>.</p>
-<p>It isn’t always necessary to use the <code class="docutils literal"><span class="pre">compare</span></code> instruction to evaluate an expression. If an instruction you already need to use changes the flags in a useful way then you can check them directly without a <code class="docutils literal"><span class="pre">compare</span></code>.</p>
+<p>In this case we want to branch past the true block when the expression is false so we use “NC” instead of “C” to check for <code class="docutils literal notranslate"><span class="pre">RX_DATA</span> <span class="pre">&lt;</span> <span class="pre">42</span></code>.</p>
+<p>It isn’t always necessary to use the <code class="docutils literal notranslate"><span class="pre">compare</span></code> instruction to evaluate an expression. If an instruction you already need to use changes the flags in a useful way then you can check them directly without a <code class="docutils literal notranslate"><span class="pre">compare</span></code>.</p>
 <p>Consider you are incementing a register and want to detect when it overflows past 0xFF. In this case the result is zero so you could compare for equality with 0x00 but the <a class="reference internal" href="language.html#inst-add"><span class="std std-ref">add</span></a> instruction also sets the C flag on overflow so you could also just branch directly after the increment.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">add</span>     <span class="n">s5</span><span class="p">,</span> <span class="mh">01</span>       <span class="c">; Increment</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">add</span>     <span class="n">s5</span><span class="p">,</span> <span class="mh">01</span>       <span class="c">; Increment</span>
 <span class="k">compare</span> <span class="n">s5</span><span class="p">,</span> <span class="mh">00</span>       <span class="c">; Test for overflow</span>
 <span class="k">jump</span>    <span class="n">Z</span><span class="p">,</span> <span class="n">overflow</span>  <span class="c">; Branch with s5 == 0x00</span>
 
@@ -525,17 +498,17 @@
 </pre></div>
 </div>
 <p>Recognizing these opportunities to reduce the number of instructions used is important for fitting complex programs into the limited space available for PicoBlaze program storage.</p>
-</div>
-<div class="section" id="complex-expressions">
-<h3>Complex expressions<a class="headerlink" href="#complex-expressions" title="Permalink to this headline">¶</a></h3>
+</section>
+<section id="complex-expressions">
+<h3>Complex expressions<a class="headerlink" href="#complex-expressions" title="Permalink to this heading">¶</a></h3>
 <p>If your high level logic needs to evaluate multiple terms you need to decompose it into multiple comparisons with appropriate jumps to replicate the effect of a short-circuited AND or OR.</p>
 <p>Boolean AND means both comparisons have to be a success:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">if</span><span class="p">(</span><span class="n">a</span> <span class="o">&gt;=</span> <span class="mi">42</span> <span class="o">&amp;&amp;</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="mi">90</span><span class="p">)</span> <span class="p">{</span>
-  <span class="n">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">42</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">90</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<div class="highlight-picoblaze"><div class="highlight"><pre>    <span class="k">compare</span> <span class="n">sA</span><span class="p">,</span> <span class="m">42&#39;d</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span>    <span class="k">compare</span> <span class="n">sA</span><span class="p">,</span> <span class="m">42&#39;d</span>
     <span class="k">jump</span> <span class="mh">C</span><span class="p">,</span> <span class="n">end_if</span>     <span class="c">; sA ≥ 42 → C = 0</span>
     <span class="c">; First term is true. Check second term for AND</span>
     <span class="k">compare</span> <span class="n">sA</span><span class="p">,</span> <span class="m">90&#39;d</span>
@@ -546,12 +519,12 @@
 </pre></div>
 </div>
 <p>Boolean OR means there are two ways to enter into the true block if either comparison is a success:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">if</span><span class="p">(</span><span class="n">a</span> <span class="o">&gt;=</span> <span class="mi">90</span> <span class="o">||</span> <span class="n">a</span> <span class="o">&lt;</span> <span class="mi">42</span><span class="p">)</span> <span class="p">{</span>
-  <span class="n">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">if</span><span class="p">(</span><span class="n">a</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">90</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">42</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<div class="highlight-picoblaze"><div class="highlight"><pre>    <span class="k">compare</span> <span class="n">sA</span><span class="p">,</span> <span class="m">90&#39;d</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span>    <span class="k">compare</span> <span class="n">sA</span><span class="p">,</span> <span class="m">90&#39;d</span>
     <span class="k">jump</span> <span class="n">NC</span><span class="p">,</span> <span class="n">true_block</span> <span class="c">; sA ≥ 90 → C = 0 : Short circuit OR</span>
     <span class="c">; First term is false. Try again on second term</span>
     <span class="k">compare</span> <span class="n">sA</span><span class="p">,</span> <span class="m">42&#39;d</span>
@@ -561,23 +534,23 @@
 <span class="nl">end_if:</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="loops">
-<h3>Loops<a class="headerlink" href="#loops" title="Permalink to this headline">¶</a></h3>
+</section>
+<section id="loops">
+<h3>Loops<a class="headerlink" href="#loops" title="Permalink to this heading">¶</a></h3>
 <p>The other major control structures are loops used to repetitively execute blocks of code. The most fundamental of these are the while loop and do-while loop which only differ in when the loop expression is evaluated: either before or after the block.</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">while</span><span class="p">(</span><span class="n">count</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">)</span> <span class="p">{</span>
-  <span class="n">value</span> <span class="o">=</span> <span class="n">value</span> <span class="o">+</span> <span class="mi">4</span><span class="p">;</span>
-  <span class="n">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">while</span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">20</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<span class="w">  </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
 <span class="p">}</span>
 
-<span class="k">do</span> <span class="p">{</span>
-  <span class="n">value</span> <span class="o">=</span> <span class="n">value</span> <span class="o">+</span> <span class="mi">4</span><span class="p">;</span>
-  <span class="n">count</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
-<span class="p">}</span> <span class="k">while</span><span class="p">(</span><span class="n">count</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">)</span>
+<span class="k">do</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<span class="w">  </span><span class="n">count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="k">while</span><span class="p">(</span><span class="n">count</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">20</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We can implement these in PicoBlaze assembly as follows:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">fetch</span>   <span class="n">s5</span><span class="p">,</span> <span class="n">VALUE</span>       <span class="c">; Get value from scratchpad RAM</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">fetch</span>   <span class="n">s5</span><span class="p">,</span> <span class="n">VALUE</span>       <span class="c">; Get value from scratchpad RAM</span>
 <span class="k">load</span>    <span class="n">s6</span><span class="p">,</span> <span class="mh">00</span>          <span class="c">; Initialize count</span>
 
 <span class="nl">while_loop:</span>
@@ -600,12 +573,12 @@
 </pre></div>
 </div>
 <p>Notice that the do-while loop requires one less instruction and is the more efficient form if you can arrange your program to work with that variant.</p>
-</div>
-</div>
-<div class="section" id="subroutines">
-<h2>Subroutines<a class="headerlink" href="#subroutines" title="Permalink to this headline">¶</a></h2>
-<p>It is useful to have reusable code that can be executed from different locations in a program. This is done by creating a subroutine. These are blocks of code that begin with a label like those used for <a class="reference internal" href="language.html#inst-jump"><span class="std std-ref">jump</span></a> targets. You enter into the subroutine with a <a class="reference internal" href="language.html#inst-call"><span class="std std-ref">call</span></a> instruction. It will branch to the target label just like <code class="docutils literal"><span class="pre">jump</span></code> but it also saves the next address on to the hardware call stack. When the subroutine is finished the <a class="reference internal" href="language.html#inst-return"><span class="std std-ref">return</span></a> instruction pops the most recent address from the stack and resumes execution after the <code class="docutils literal"><span class="pre">call</span></code> instruction that initiated the jump into the subroutine.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">compute_something:</span>
+</section>
+</section>
+<section id="subroutines">
+<h2>Subroutines<a class="headerlink" href="#subroutines" title="Permalink to this heading">¶</a></h2>
+<p>It is useful to have reusable code that can be executed from different locations in a program. This is done by creating a subroutine. These are blocks of code that begin with a label like those used for <a class="reference internal" href="language.html#inst-jump"><span class="std std-ref">jump</span></a> targets. You enter into the subroutine with a <a class="reference internal" href="language.html#inst-call"><span class="std std-ref">call</span></a> instruction. It will branch to the target label just like <code class="docutils literal notranslate"><span class="pre">jump</span></code> but it also saves the next address on to the hardware call stack. When the subroutine is finished the <a class="reference internal" href="language.html#inst-return"><span class="std std-ref">return</span></a> instruction pops the most recent address from the stack and resumes execution after the <code class="docutils literal notranslate"><span class="pre">call</span></code> instruction that initiated the jump into the subroutine.</p>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="nl">compute_something:</span>
   <span class="ge">&lt;common code&gt;</span>
   <span class="k">return</span>               <span class="c">; Resume execution after call</span>
 
@@ -618,8 +591,8 @@
 <span class="k">call</span> <span class="n">compute_something</span> <span class="c">; Call it again</span>
 </pre></div>
 </div>
-<p>Nothing truly isolates subroutines from executing as normal code other than convention. You must make certain that the processor can’t accidentally begin executing a subroutine outside of the <code class="docutils literal"><span class="pre">call</span></code>/<code class="docutils literal"><span class="pre">return</span></code> mechanism. If you <code class="docutils literal"><span class="pre">jump</span></code> into a subroutine and then execute <code class="docutils literal"><span class="pre">return</span></code> you will pop the wrong address from the call stack and have a malfunction. Likewise, you must not allow the processor to enter into a subroutine by normal sequential execution without a <code class="docutils literal"><span class="pre">call</span></code> to prepare the hardware stack. Any subroutines placed before the main program must be skipped over with a <code class="docutils literal"><span class="pre">jump</span></code> instruction.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="c">; Protect processor from executing subroutines</span>
+<p>Nothing truly isolates subroutines from executing as normal code other than convention. You must make certain that the processor can’t accidentally begin executing a subroutine outside of the <code class="docutils literal notranslate"><span class="pre">call</span></code>/<code class="docutils literal notranslate"><span class="pre">return</span></code> mechanism. If you <code class="docutils literal notranslate"><span class="pre">jump</span></code> into a subroutine and then execute <code class="docutils literal notranslate"><span class="pre">return</span></code> you will pop the wrong address from the call stack and have a malfunction. Likewise, you must not allow the processor to enter into a subroutine by normal sequential execution without a <code class="docutils literal notranslate"><span class="pre">call</span></code> to prepare the hardware stack. Any subroutines placed before the main program must be skipped over with a <code class="docutils literal notranslate"><span class="pre">jump</span></code> instruction.</p>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="c">; Protect processor from executing subroutines</span>
 <span class="c">; as normal code.</span>
 <span class="k">jump</span> <span class="n">main</span>
 
@@ -636,8 +609,8 @@
 </pre></div>
 </div>
 <p>Subroutines can call other subroutines up to the limit of the hardware stack which is 31 levels on PB3 and 30 levels on PB6. Be extremely careful when writing recursive subroutines that call themselves. Don’t assume you can use the entire stack at any time.</p>
-<p>The <code class="docutils literal"><span class="pre">call</span></code> instruction has a conditional form that works the same as a conditional <code class="docutils literal"><span class="pre">jump</span></code>. It allows you to use a subroutine as the body of a control structure.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">subroutine:</span>
+<p>The <code class="docutils literal notranslate"><span class="pre">call</span></code> instruction has a conditional form that works the same as a conditional <code class="docutils literal notranslate"><span class="pre">jump</span></code>. It allows you to use a subroutine as the body of a control structure.</p>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="nl">subroutine:</span>
   ...
   <span class="k">return</span>
 
@@ -653,12 +626,12 @@
 <span class="nl">end_if:</span>
 </pre></div>
 </div>
-<div class="section" id="stack-variables">
-<span id="id1"></span><h3>stack variables<a class="headerlink" href="#stack-variables" title="Permalink to this headline">¶</a></h3>
+<section id="stack-variables">
+<span id="id1"></span><h3>stack variables<a class="headerlink" href="#stack-variables" title="Permalink to this heading">¶</a></h3>
 <p>Initially you might start using registers in an ad hoc way. Inevitably you will end up in a situation where you don’t have any free registers left to do your next task. Worse yet, you may have subtle bugs caused by accidentally overwriting a register that wasn’t expected to change.</p>
 <p>Higher level languages employ a calling convention where they save registers not deemed as temporaries onto a stack at the beginning of a subroutine and restore these saved values before returning. With this approach you can reuse the same register for different purposes in a program. The stack is a region of memory that expands as more data is pushed onto it and shrinks as data is popped off. Most processors have special instructions to assist in managing such a stack in RAM but not the PicoBlaze. The hardware call stack is dedicated to storing only return addresses and is unavailable for general purpose use. It is possible, however, to create a stack in the scratchpad memory and emulate the behavior of push and pop operations.</p>
 <p>To accomplish this we reserve a register to function as a stack pointer. It will hold an index into scratchpad memory that always points to the next free location on the stack. Pushes and pops will manipulate the pointer and move data to and from the scratchpad memory.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">namereg</span> <span class="n">sF</span><span class="p">,</span> <span class="n">SP</span>    <span class="c">; Reserve sF as the stack pointer</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">namereg</span> <span class="n">sF</span><span class="p">,</span> <span class="n">SP</span>    <span class="c">; Reserve sF as the stack pointer</span>
 <span class="k">load</span>  <span class="n">SP</span><span class="p">,</span> <span class="mh">3F</span>      <span class="c">; Start stack at address 0x3F</span>
 
 <span class="c">; Push s5 register</span>
@@ -689,12 +662,12 @@
 <span class="c">; SP points at address 0x3F again, ready for new data</span>
 </pre></div>
 </div>
-<p>Each push operation is implemented as a pair of <code class="docutils literal"><span class="pre">store</span></code> and <code class="docutils literal"><span class="pre">sub</span></code> instructions and each pop is an <code class="docutils literal"><span class="pre">add</span></code> <code class="docutils literal"><span class="pre">fetch</span></code>. You must pop registers in the reverse of the order they were pushed to restore them to their original state.</p>
+<p>Each push operation is implemented as a pair of <code class="docutils literal notranslate"><span class="pre">store</span></code> and <code class="docutils literal notranslate"><span class="pre">sub</span></code> instructions and each pop is an <code class="docutils literal notranslate"><span class="pre">add</span></code> <code class="docutils literal notranslate"><span class="pre">fetch</span></code>. You must pop registers in the reverse of the order they were pushed to restore them to their original state.</p>
 <p>It would be disastrous if the stack register were mistakenly changed by another part of your code while the stack is in use. To diminish this problem we use the <cite>namereg`</cite> directive to rename our stack register “sF” to “SP”. After which, register sF is no longer accessible by its default name. Any code trying to use it by the old name will fail to assemble.</p>
 <p>In most cases the stack is designed to grow down from higher addresses to lower addresses. Typically you would place the stack at the upper end of the scratchpad and use the lower end for other purposes. You don’t have to follow this convention and can have a stack grow from low to high if you wish. It is important that the stack never grows large enough to overwrite other data stored in scratchpad.</p>
-<p>While simple in concept, this can all get a bit tedious and clutter your code. The Opbasm macro library has <a class="reference internal" href="library.html#pb.push" title="push"><code class="xref pb pb-macro docutils literal"><span class="pre">push()</span></code></a> and <a class="reference internal" href="library.html#pb.pop" title="pop"><code class="xref pb pb-macro docutils literal"><span class="pre">pop()</span></code></a> macros as well as <a class="reference internal" href="m4.html#stack-operations"><span class="std std-ref">other stack handling macros</span></a> to simplify stack management when writing your programs.</p>
+<p>While simple in concept, this can all get a bit tedious and clutter your code. The Opbasm macro library has <a class="reference internal" href="library.html#pb.push" title="push"><code class="xref pb pb-macro docutils literal notranslate"><span class="pre">push()</span></code></a> and <a class="reference internal" href="library.html#pb.pop" title="pop"><code class="xref pb pb-macro docutils literal notranslate"><span class="pre">pop()</span></code></a> macros as well as <a class="reference internal" href="m4.html#stack-operations"><span class="std std-ref">other stack handling macros</span></a> to simplify stack management when writing your programs.</p>
 <p>With a stack in place you can use it to enforce a calling convention for your subroutines. Within a subroutine, all modified registers must be saved to the stack before modification unless they are designated as temporaries that are never saved or a return value. When this convention is followed a subroutine caller never sees registers change before and after a <a class="reference internal" href="language.html#inst-call"><span class="std std-ref">call</span></a> except the return value register.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">rotate:</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="nl">rotate:</span>
   <span class="c">; Push s5</span>
   <span class="k">store</span>   <span class="n">s5</span><span class="p">,</span> <span class="p">(</span><span class="n">SP</span><span class="p">)</span>
   <span class="k">sub</span>     <span class="n">SP</span><span class="p">,</span> <span class="mh">01</span>
@@ -726,26 +699,26 @@
 </pre></div>
 </div>
 <p>Remember that a push/pop pair consumes four instructions for every register saved on the stack. That can grow to a significant portion of the total program memory if the stack is used extensively across many subroutines.</p>
-</div>
-</div>
-<div class="section" id="external-i-o">
-<h2>External I/O<a class="headerlink" href="#external-i-o" title="Permalink to this headline">¶</a></h2>
+</section>
+</section>
+<section id="external-i-o">
+<h2>External I/O<a class="headerlink" href="#external-i-o" title="Permalink to this heading">¶</a></h2>
 <p>With the basic foundations of writing assembly in place, it comes time to actually do something useful with the PicoBlaze. Since it is implemented as a soft-core within an FPGA there will usually be additional logic outside of the PicoBlaze that you need to interact with. You do this by reading and writing to the I/O ports. There are 256 input and output ports which are multiplexed together onto an 8-bit address bus.These ports are accessed with the <a class="reference internal" href="language.html#inst-input"><span class="std std-ref">input</span></a> and <a class="reference internal" href="language.html#inst-output"><span class="std std-ref">output</span></a> instructions.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">input</span>  <span class="n">s5</span><span class="p">,</span> <span class="mh">01</span>  <span class="c">; Input from port 0x01</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">input</span>  <span class="n">s5</span><span class="p">,</span> <span class="mh">01</span>  <span class="c">; Input from port 0x01</span>
 <span class="k">add</span>    <span class="n">s5</span><span class="p">,</span> <span class="mh">02</span>
 <span class="k">output</span> <span class="n">s5</span><span class="p">,</span> <span class="mh">01</span>  <span class="c">; Write back to port 0x01</span>
 </pre></div>
 </div>
 <p>To use the port interface you will have to implement decode logic to handle port operations based on their addresses. Refer to the official PicoBlaze documentation for examples of how this can be done. If you want to completely decode the ports and save their state in registers, one general purpose solution would be to instantiate the <a class="reference external" href="http://kevinpt.github.io/vhdl-extras/rst/modules/reg_file.html">generic register file component</a> from the VHDL-extras library.</p>
 <p>It will be up to you to decide how the ports are applied to control your external logic. Some may be used to transfer data values in and out of the picoblaze. Others can be used to set control flags or initiate actions in external state machines.</p>
-</div>
-<div class="section" id="external-events">
-<h2>External events<a class="headerlink" href="#external-events" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="external-events">
+<h2>External events<a class="headerlink" href="#external-events" title="Permalink to this heading">¶</a></h2>
 <p>The final topic to explore in developing for the PicoBlaze are interrupts. This is a mechanism where external hardware can interrupt normal program execution to cause special code known as an interrupt service routine (ISR) to run. The PicoBlaze has a single interrupt input and supports a single ISR.</p>
 <p>Interrupts are optional. You do not have to use them in your designs. Their main benefit is that they let you avoid polling for changes in the hardware state through the I/O ports and you can respond to external events with the lowest, most deterministic delay possible.</p>
 <p>Interrupt handling is controlled by an internal flag. Interrupts are off by default. The <a class="reference internal" href="language.html#inst-enable"><span class="std std-ref">enable</span></a> instruction will enable the interrupts. The <a class="reference internal" href="language.html#inst-disable"><span class="std std-ref">disable</span></a> instruction disables them.</p>
 <p>When the interrupt input goes high the PicoBlaze saves the current instruction address on the hardware stack like a normal subroutine call. It also saves the values of the Z, C flags, and on PB6, saves the active register bank. The processor then executes the instruction located at the interrupt vector address. This address is fixed at 0x3FF for PB3 and can be modified for PB6 in its generic block. The instruction placed at the vector address is usually a <a class="reference internal" href="language.html#inst-jump"><span class="std std-ref">jump</span></a> into the body of the ISR:</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="nl">my_ISR:</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="nl">my_ISR:</span>
   <span class="ge">&lt;Save registers in scratchpad RAM or switch register banks&gt;</span>
   <span class="ge">&lt;ISR body&gt;</span>
   <span class="ge">&lt;Restore registers&gt;</span>
@@ -761,20 +734,21 @@
 <span class="k">jump</span> <span class="n">my_ISR</span>
 </pre></div>
 </div>
-<p>The ISR is created like a special subroutine starting with a label as usual. You must exit from the ISR using the <a class="reference internal" href="language.html#inst-returni"><span class="std std-ref">returni</span></a> instruction instead of <a class="reference internal" href="language.html#inst-return"><span class="std std-ref">return</span></a>. Interrupts are disabled after entry into the ISR and they must remain disabled during the entire ISR. You can choose whether to re-enable them with the <code class="docutils literal"><span class="pre">returni</span></code> instruction or later on with an <a class="reference internal" href="language.html#inst-enable"><span class="std std-ref">enable</span></a> instruction outside the ISR. The <code class="docutils literal"><span class="pre">returni</span></code> resumes execution at the address saved upon the start of the interrupt. The saved Z, C, and register bank are restored to their previous values. Execution can then proceed as normal.</p>
+<p>The ISR is created like a special subroutine starting with a label as usual. You must exit from the ISR using the <a class="reference internal" href="language.html#inst-returni"><span class="std std-ref">returni</span></a> instruction instead of <a class="reference internal" href="language.html#inst-return"><span class="std std-ref">return</span></a>. Interrupts are disabled after entry into the ISR and they must remain disabled during the entire ISR. You can choose whether to re-enable them with the <code class="docutils literal notranslate"><span class="pre">returni</span></code> instruction or later on with an <a class="reference internal" href="language.html#inst-enable"><span class="std std-ref">enable</span></a> instruction outside the ISR. The <code class="docutils literal notranslate"><span class="pre">returni</span></code> resumes execution at the address saved upon the start of the interrupt. The saved Z, C, and register bank are restored to their previous values. Execution can then proceed as normal.</p>
 <p>You must be careful not to let the ISR disrupt processor state such that execution fails after resuming normal execution. In particular, you can’t change any registers needed by the main program. An easy but inconvenient solution is to reserve some registers for exclusive use by the ISR. On PB6, you can employ the second register bank for the ISR if it isn’t already in use. Otherwise you must implement a stack as described above and push all registers that will be modified before changing them. Similarly, the ISR should only modify scratchpad locations it has exclusive write access to so as to avoid corrupting the normal program in progress.</p>
 <p>The ISR can execute at any time and it could potentially interrupt a timing critical task that can’t afford long delays. For this reason it is best to minimize the amount of code in the ISR to minimize its execution time. The most critical sections of code that can’t tolerate an interrupt should be guarded by turning interrupts off around them using the <a class="reference internal" href="language.html#inst-disable"><span class="std std-ref">disable</span></a> and <a class="reference internal" href="language.html#inst-enable"><span class="std std-ref">enable</span></a> instructions.</p>
-<div class="highlight-picoblaze"><div class="highlight"><pre><span class="k">disable</span> <span class="n">interrupt</span>
+<div class="highlight-picoblaze notranslate"><div class="highlight"><pre><span></span><span class="k">disable</span> <span class="n">interrupt</span>
 <span class="ge">&lt;Critical code here&gt;</span>
 <span class="k">enable</span> <span class="n">interrupt</span>
 </pre></div>
 </div>
 <p>With only a single interrupt input, you have to take extra steps to handle multiple external events. External logic can be added that captures multiple interrupt sources and that can be checked through an I/O port to determine which interupt launched the ISR. The VHDL-extras library includes a general purpose <a class="reference external" href="https://github.com/kevinpt/vhdl-extras/blob/master/rtl/extras/interrupt_ctl.vhdl">interrupt controller</a> that can help with servicing multiple interrupts.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
+          
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -790,10 +764,14 @@
 
 
 
+
 <p>
-<iframe src="https://ghbtns.com/github-btn.html?user=kevinpt&repo=opbasm&type=watch&count=true&size=large"
+<iframe src="https://ghbtns.com/github-btn.html?user=kevinpt&repo=opbasm&type=watch&count=true&size=large&v=2"
   allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
 </p>
+
+
+
 
 
 <div class="relations">
@@ -805,8 +783,9 @@
   </ul></li>
 </ul>
 </div>
-  <h3><a href="../index.html">Table Of Contents</a></h3>
-  <ul>
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
 <li><a class="reference internal" href="#">PicoBlaze assembly tutorial</a><ul>
 <li><a class="reference internal" href="#a-first-look">A first look</a></li>
 <li><a class="reference internal" href="#program-storage">Program storage</a></li>
@@ -836,7 +815,8 @@
 </ul>
 </li>
 </ul>
-<h3>Other projects</h3>
+
+  </div><h3>Other projects</h3>
 
 <div id="proj_list">
 <p>
@@ -914,21 +894,21 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
 });
 </script>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
     </form>
+    </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2017, Kevin Thibedeau.
+      &copy;2023, Kevin Thibedeau.
       
       |
       <a href="../_sources/rst/tutorial.rst.txt"

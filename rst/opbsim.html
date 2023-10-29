@@ -1,36 +1,29 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Opbsim &#8212; Opbasm 1.3.9 documentation</title>
-    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Opbsim &#8212; Opbasm 1.3.10 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
     <link rel="stylesheet" href="../_static/project.css" type="text/css" />
     <link rel="stylesheet" href="../_static/tty/tty-player.min.css" type="text/css" />
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../',
-        VERSION:     '1.3.9',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
-      };
-    </script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Opbasm PicoBlaze macro library reference" href="library.html" />
     <link rel="prev" title="PicoBlaze assembly tutorial" href="tutorial.html" />
 
    
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
 <script src="_static/tty/webcomponents-lite.min.js"></script>
 <script src="_static/tty/term.min.js"></script>
@@ -47,43 +40,46 @@
 </style>
 
 
-  </head>
-  <body>  
+  </head><body>
+  
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+          
+
           <div class="body" role="main">
             
-  <div class="section" id="opbsim">
-<h1>Opbsim<a class="headerlink" href="#opbsim" title="Permalink to this headline">¶</a></h1>
+  <section id="opbsim">
+<h1>Opbsim<a class="headerlink" href="#opbsim" title="Permalink to this heading">¶</a></h1>
 <p>Opbsim is a command line simulator for PicoBlaze-3 and PicoBlaze-6. The full instruction set for both targets is supported. The primary purpose of Opbsim is to run the automated test suite that validates the Opbasm macro library. However, it is designed to be simple and run fast to permit testing of long running programs and, as such, may be of of general use as well. Opbsim can run faster than real-time when it is built in release mode. The simulator is simple enough (900 SLOC) to permit easy modifications and a modular object system is in place to simulate various external peripherals.</p>
-<div class="section" id="building-opbsim">
-<h2>Building Opbsim<a class="headerlink" href="#building-opbsim" title="Permalink to this headline">¶</a></h2>
+<section id="building-opbsim">
+<h2>Building Opbsim<a class="headerlink" href="#building-opbsim" title="Permalink to this heading">¶</a></h2>
 <p>Opbsim is written in the <a class="reference external" href="http://nim-lang.org/">Nim</a> programming language. To build it you will need the nim compiler <a class="reference external" href="http://nim-lang.org/download.html">installed</a> and working. The Opbasm installation script does not build Opbsim for you. Its sources are located in the “sim” directory. The test suite expects to find the compiled executable in the same location.</p>
 <p>Opbsim is built with the Nim compiler using the following command:</p>
-<div class="highlight-sh"><div class="highlight"><pre>&gt; <span class="nb">cd </span>sim
-&gt; nim c -d:release opbsim.nim
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>&gt;<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>sim
+&gt;<span class="w"> </span>nim<span class="w"> </span>c<span class="w"> </span>-d:release<span class="w"> </span>--nilseqs:on<span class="w"> </span>opbsim.nim
 </pre></div>
 </div>
-<p>This will produce an executable <code class="docutils literal"><span class="pre">opbsim</span></code> program that should be placed at a location on your search path. Nim does not include 64-bit DLLs. When building on 64-bit Windows you will need to copy the 64-bit <code class="docutils literal"><span class="pre">pcre.dll</span></code> from the “sim/win64” directory to the same location as <code class="docutils literal"><span class="pre">opbsim.exe</span></code>.</p>
+<p>This will produce an executable <code class="docutils literal notranslate"><span class="pre">opbsim</span></code> program that should be placed at a location on your search path. Nim does not include 64-bit DLLs. When building on 64-bit Windows you will need to copy the 64-bit <code class="docutils literal notranslate"><span class="pre">pcre.dll</span></code> from the “sim/win64” directory to the same location as <code class="docutils literal notranslate"><span class="pre">opbsim.exe</span></code>.</p>
+<p>Running opbsim requires an up-to-date version of the Perl PCRE library on OSX. If you see the following error: “could not import: pcre_free_study”, then update your version of PCRE using the <code class="docutils literal notranslate"><span class="pre">brew</span></code> package manager: <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">pcre</span></code>.</p>
 <p>It you have the Nimble package manager installed you can build and install Opbsim with the following:</p>
-<div class="highlight-sh"><div class="highlight"><pre>&gt; <span class="nb">cd </span>sim
-&gt; nimble install
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>&gt;<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>sim
+&gt;<span class="w"> </span>nimble<span class="w"> </span>install
 </pre></div>
 </div>
 <p>This will create a release build and install it to the following default locations.</p>
-<dl class="docutils">
-<dt>On <cite>*nix</cite>:</dt>
-<dd>A symbolic link at ~/.nimble/bin/opbsim</dd>
-<dt>On Windows:</dt>
-<dd>A batch wrapper at C:\Users\&lt;username&gt;.nimble\bin\opbsim.bat</dd>
+<dl class="simple">
+<dt>On <cite>*nix</cite>:</dt><dd><p>A symbolic link at ~/.nimble/bin/opbsim</p>
+</dd>
+<dt>On Windows:</dt><dd><p>A batch wrapper at C:\Users\&lt;username&gt;\.nimble\bin\opbsim.bat</p>
+</dd>
 </dl>
-</div>
-<div class="section" id="using-opbsim">
-<h2>Using Opbsim<a class="headerlink" href="#using-opbsim" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="using-opbsim">
+<h2>Using Opbsim<a class="headerlink" href="#using-opbsim" title="Permalink to this heading">¶</a></h2>
 <p>Opbsim is run with the following options:</p>
-<div class="highlight-default"><div class="highlight"><pre><span class="n">Open</span> <span class="n">PicoBlaze</span> <span class="n">simulator</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Open</span> <span class="n">PicoBlaze</span> <span class="n">simulator</span>
 <span class="n">Usage</span><span class="p">:</span> <span class="n">opbsim</span> <span class="p">[</span><span class="n">OPTIONS</span><span class="p">]</span>
 
 <span class="n">Options</span><span class="p">:</span>
@@ -100,36 +96,36 @@
   <span class="o">--</span><span class="n">pb6</span>                         <span class="n">Simulate</span> <span class="n">PicoBlaze</span><span class="o">-</span><span class="mi">6</span> <span class="n">code</span> <span class="p">[</span><span class="n">default</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>You have to provide a MEM file with the <code class="docutils literal"><span class="pre">-m</span></code> option. As a guard against infinite loops, there is a default execution limit of 100 million instructions (4 seconds of simulation time at 50 MHz). You can increase or decrease this limit with <code class="docutils literal"><span class="pre">-L</span></code>. PB6 is the default processor target. You have to use the <code class="docutils literal"><span class="pre">--pb3</span></code> option to simulate PB3 code. Opbsim cannot detect the difference between PB3 and PB6 code and will produce erroneous results if you simulate with the wrong target.</p>
-<div class="highlight-default"><div class="highlight"><pre>&gt; opbasm -6 carry_flag.psm4
-...
-&gt; opbsim --pb6 -m:carry_flag.mem
-PicoBlaze simulator
-Running in PicoBlaze-6 mode
-Input: carry_flag.mem
-Read 4096 words
+<p>You have to provide a MEM file with the <code class="docutils literal notranslate"><span class="pre">-m</span></code> option. As a guard against infinite loops, there is a default execution limit of 100 million instructions (4 seconds of simulation time at 50 MHz). You can increase or decrease this limit with <code class="docutils literal notranslate"><span class="pre">-L</span></code>. PB6 is the default processor target. You have to use the <code class="docutils literal notranslate"><span class="pre">--pb3</span></code> option to simulate PB3 code. Opbsim cannot detect the difference between PB3 and PB6 code and will produce erroneous results if you simulate with the wrong target.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;</span> <span class="n">opbasm</span> <span class="o">-</span><span class="mi">6</span> <span class="n">carry_flag</span><span class="o">.</span><span class="n">psm4</span>
+<span class="o">...</span>
+<span class="o">&gt;</span> <span class="n">opbsim</span> <span class="o">--</span><span class="n">pb6</span> <span class="o">-</span><span class="n">m</span><span class="p">:</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">mem</span>
+<span class="n">PicoBlaze</span> <span class="n">simulator</span>
+<span class="n">Running</span> <span class="ow">in</span> <span class="n">PicoBlaze</span><span class="o">-</span><span class="mi">6</span> <span class="n">mode</span>
+<span class="n">Input</span><span class="p">:</span> <span class="n">carry_flag</span><span class="o">.</span><span class="n">mem</span>
+<span class="n">Read</span> <span class="mi">4096</span> <span class="n">words</span>
 
-Found 8 symbols in carry_flag.log
+<span class="n">Found</span> <span class="mi">8</span> <span class="n">symbols</span> <span class="ow">in</span> <span class="n">carry_flag</span><span class="o">.</span><span class="n">log</span>
 
-Quitting simulation
+<span class="n">Quitting</span> <span class="n">simulation</span>
 
 
-Executed 16 instructions (640 ns @ 50 MHz, CPU time = 15 us, 0.04x realtime)
-16 instructions visited of 27 total (59%)
-0 testbench error(s)
-Normal termination
+<span class="n">Executed</span> <span class="mi">16</span> <span class="n">instructions</span> <span class="p">(</span><span class="mi">640</span> <span class="n">ns</span> <span class="o">@</span> <span class="mi">50</span> <span class="n">MHz</span><span class="p">,</span> <span class="n">CPU</span> <span class="n">time</span> <span class="o">=</span> <span class="mi">15</span> <span class="n">us</span><span class="p">,</span> <span class="mf">0.04</span><span class="n">x</span> <span class="n">realtime</span><span class="p">)</span>
+<span class="mi">16</span> <span class="n">instructions</span> <span class="n">visited</span> <span class="n">of</span> <span class="mi">27</span> <span class="n">total</span> <span class="p">(</span><span class="mi">59</span><span class="o">%</span><span class="p">)</span>
+<span class="mi">0</span> <span class="n">testbench</span> <span class="n">error</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">Normal</span> <span class="n">termination</span>
 </pre></div>
 </div>
 <p>The execution time estimate is based on a 50 MHz clock. The overhead of setting up the simulation and priming the processor cache causes the realtime performance comparison to be extremely low for small programs. The simulator will exceed realtime performance on longer programs where the overhead is a smaller percentage of the total execution time.</p>
 <p>The JSON output mode is used for automated testing. Once simulation ends, a dictionary is output containing the final state of registers, ports, simulated console output, and additional information. You can read this data into any tool that can parse JSON to evaluate the simulation results. Quiet mode is forced on when JSON mode is selected.</p>
-<div class="highlight-default"><div class="highlight"><pre><span class="o">&gt;</span> <span class="n">opbsim</span> <span class="o">--</span><span class="n">pb6</span> <span class="o">-</span><span class="n">m</span><span class="p">:</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">mem</span> <span class="o">-</span><span class="n">j</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;</span> <span class="n">opbsim</span> <span class="o">--</span><span class="n">pb6</span> <span class="o">-</span><span class="n">m</span><span class="p">:</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">mem</span> <span class="o">-</span><span class="n">j</span>
 
-<span class="p">{</span><span class="s">&quot;regs_a&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">253</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">63</span><span class="p">],</span>
- <span class="s">&quot;regs_b&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-  <span class="s">&quot;scratchpad&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+<span class="p">{</span><span class="s2">&quot;regs_a&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">253</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">63</span><span class="p">],</span>
+ <span class="s2">&quot;regs_b&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+  <span class="s2">&quot;scratchpad&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-  <span class="s">&quot;ports_in&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="s2">&quot;ports_in&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
@@ -140,7 +136,7 @@ Normal termination
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-  <span class="s">&quot;ports_out&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+  <span class="s2">&quot;ports_out&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
@@ -151,85 +147,86 @@ Normal termination
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
   <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-  <span class="s">&quot;total_insts&quot;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span> <span class="s">&quot;cpu_runtime&quot;</span><span class="p">:</span> <span class="mf">4.999999999999796e-06</span><span class="p">,</span> <span class="s">&quot;executed&quot;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
-  <span class="s">&quot;inst_count&quot;</span><span class="p">:</span> <span class="mi">27</span><span class="p">,</span> <span class="s">&quot;termination&quot;</span><span class="p">:</span> <span class="s">&quot;termNormal&quot;</span><span class="p">,</span> <span class="s">&quot;console&quot;</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">}</span>
+  <span class="s2">&quot;total_insts&quot;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">&quot;cpu_runtime&quot;</span><span class="p">:</span> <span class="mf">4.999999999999796e-06</span><span class="p">,</span> <span class="s2">&quot;executed&quot;</span><span class="p">:</span> <span class="mi">16</span><span class="p">,</span>
+  <span class="s2">&quot;inst_count&quot;</span><span class="p">:</span> <span class="mi">27</span><span class="p">,</span> <span class="s2">&quot;termination&quot;</span><span class="p">:</span> <span class="s2">&quot;termNormal&quot;</span><span class="p">,</span> <span class="s2">&quot;console&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">}</span>
 </pre></div>
 </div>
-<p>When run manually, Opbsim will provide basic information about the program executed. You can use <code class="docutils literal"><span class="pre">--verbose</span></code> to get more detailed output of the final processor state including registers, scratchpad memory, and the output port values. The <code class="docutils literal"><span class="pre">--trace</span></code> option will provide a trace of all instructions executed. This will slow down simulation significantly in long programs due to the large amount of text output so it is best used to debug short code snippets. Opbsim will look for a log file with the same base name as the MEM file. When found, it will load all of the address symbols and display these names next to JUMP and CALL instructions.</p>
-<div class="highlight-default"><div class="highlight"><pre>&gt; opbsim --pb6 -m:carry_flag.mem -t
+<p>When run manually, Opbsim will provide basic information about the program executed. You can use <code class="docutils literal notranslate"><span class="pre">--verbose</span></code> to get more detailed output of the final processor state including registers, scratchpad memory, and the output port values. The <code class="docutils literal notranslate"><span class="pre">--trace</span></code> option will provide a trace of all instructions executed. This will slow down simulation significantly in long programs due to the large amount of text output so it is best used to debug short code snippets. Opbsim will look for a log file with the same base name as the MEM file. When found, it will load all of the address symbols and display these names next to JUMP and CALL instructions.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&gt;</span> <span class="n">opbsim</span> <span class="o">--</span><span class="n">pb6</span> <span class="o">-</span><span class="n">m</span><span class="p">:</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">mem</span> <span class="o">-</span><span class="n">t</span>
 
-PicoBlaze simulator
-Running in PicoBlaze-6 mode
-Input: carry_flag.mem
-Read 4096 words
+<span class="n">PicoBlaze</span> <span class="n">simulator</span>
+<span class="n">Running</span> <span class="ow">in</span> <span class="n">PicoBlaze</span><span class="o">-</span><span class="mi">6</span> <span class="n">mode</span>
+<span class="n">Input</span><span class="p">:</span> <span class="n">carry_flag</span><span class="o">.</span><span class="n">mem</span>
+<span class="n">Read</span> <span class="mi">4096</span> <span class="n">words</span>
 
-Found 8 symbols in carry_flag.log
+<span class="n">Found</span> <span class="mi">8</span> <span class="n">symbols</span> <span class="ow">in</span> <span class="n">carry_flag</span><span class="o">.</span><span class="n">log</span>
 
-000 01F3F Load  sF = 0x3F
-001 01D00 Load  sD = 0x00
-002 22006 Jump  init_done (carry_flag.psm4)
-006 02EE0 And  sE &amp; 0x00
-007 3E00A Jump NC  true  GE_f1_0001 (carry_flag.psm4)
-00A 14E80 Hwbuild sE = 00
-00B 3A00E Jump C  true  LT_f1_0003 (carry_flag.psm4)
-00E 010FF Load  s0 = 0xFF
-00F 11002 Add  s0 + 0x02
-010 3A013 Jump C  true  LT_f1_0005 (carry_flag.psm4)
-013 19002 Sub  s0 - 0x02
-014 3A017 Jump C  true  LT_f1_0007 (carry_flag.psm4)
-017 19002 Sub  s0 - 0x02
-018 3E01B Jump NC  true  GE_f1_0009 (carry_flag.psm4)
-01B 22003 Jump  terminate (carry_flag.psm4)
-003 2DDFF Output  port[FF] = sD
-Quitting simulation
+<span class="mi">000</span> <span class="mi">01</span><span class="n">F3F</span> <span class="n">Load</span>  <span class="n">sF</span> <span class="o">=</span> <span class="mh">0x3F</span>
+<span class="mi">001</span> <span class="mi">01</span><span class="n">D00</span> <span class="n">Load</span>  <span class="n">sD</span> <span class="o">=</span> <span class="mh">0x00</span>
+<span class="mi">002</span> <span class="mi">22006</span> <span class="n">Jump</span>  <span class="n">init_done</span> <span class="p">(</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">psm4</span><span class="p">)</span>
+<span class="mi">006</span> <span class="mi">02</span><span class="n">EE0</span> <span class="n">And</span>  <span class="n">sE</span> <span class="o">&amp;</span> <span class="mh">0x00</span>
+<span class="mi">007</span> <span class="mf">3E00</span><span class="n">A</span> <span class="n">Jump</span> <span class="n">NC</span>  <span class="n">true</span>  <span class="n">GE_f1_0001</span> <span class="p">(</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">psm4</span><span class="p">)</span>
+<span class="mi">00</span><span class="n">A</span> <span class="mf">14E80</span> <span class="n">Hwbuild</span> <span class="n">sE</span> <span class="o">=</span> <span class="mi">00</span>
+<span class="mi">00</span><span class="n">B</span> <span class="mi">3</span><span class="n">A00E</span> <span class="n">Jump</span> <span class="n">C</span>  <span class="n">true</span>  <span class="n">LT_f1_0003</span> <span class="p">(</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">psm4</span><span class="p">)</span>
+<span class="mi">00</span><span class="n">E</span> <span class="mi">010</span><span class="n">FF</span> <span class="n">Load</span>  <span class="n">s0</span> <span class="o">=</span> <span class="mh">0xFF</span>
+<span class="mi">00</span><span class="n">F</span> <span class="mi">11002</span> <span class="n">Add</span>  <span class="n">s0</span> <span class="o">+</span> <span class="mh">0x02</span>
+<span class="mi">010</span> <span class="mi">3</span><span class="n">A013</span> <span class="n">Jump</span> <span class="n">C</span>  <span class="n">true</span>  <span class="n">LT_f1_0005</span> <span class="p">(</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">psm4</span><span class="p">)</span>
+<span class="mi">013</span> <span class="mi">19002</span> <span class="n">Sub</span>  <span class="n">s0</span> <span class="o">-</span> <span class="mh">0x02</span>
+<span class="mi">014</span> <span class="mi">3</span><span class="n">A017</span> <span class="n">Jump</span> <span class="n">C</span>  <span class="n">true</span>  <span class="n">LT_f1_0007</span> <span class="p">(</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">psm4</span><span class="p">)</span>
+<span class="mi">017</span> <span class="mi">19002</span> <span class="n">Sub</span>  <span class="n">s0</span> <span class="o">-</span> <span class="mh">0x02</span>
+<span class="mi">018</span> <span class="mf">3E01</span><span class="n">B</span> <span class="n">Jump</span> <span class="n">NC</span>  <span class="n">true</span>  <span class="n">GE_f1_0009</span> <span class="p">(</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">psm4</span><span class="p">)</span>
+<span class="mi">01</span><span class="n">B</span> <span class="mi">22003</span> <span class="n">Jump</span>  <span class="n">terminate</span> <span class="p">(</span><span class="n">carry_flag</span><span class="o">.</span><span class="n">psm4</span><span class="p">)</span>
+<span class="mi">003</span> <span class="mi">2</span><span class="n">DDFF</span> <span class="n">Output</span>  <span class="n">port</span><span class="p">[</span><span class="n">FF</span><span class="p">]</span> <span class="o">=</span> <span class="n">sD</span>
+<span class="n">Quitting</span> <span class="n">simulation</span>
 
-Executed 16 instructions (640 ns @ 50 MHz, CPU time = 109 us, 0.01x realtime)
-16 instructions visited of 27 total (59%)
-0 testbench error(s)
-Normal termination
+<span class="n">Executed</span> <span class="mi">16</span> <span class="n">instructions</span> <span class="p">(</span><span class="mi">640</span> <span class="n">ns</span> <span class="o">@</span> <span class="mi">50</span> <span class="n">MHz</span><span class="p">,</span> <span class="n">CPU</span> <span class="n">time</span> <span class="o">=</span> <span class="mi">109</span> <span class="n">us</span><span class="p">,</span> <span class="mf">0.01</span><span class="n">x</span> <span class="n">realtime</span><span class="p">)</span>
+<span class="mi">16</span> <span class="n">instructions</span> <span class="n">visited</span> <span class="n">of</span> <span class="mi">27</span> <span class="n">total</span> <span class="p">(</span><span class="mi">59</span><span class="o">%</span><span class="p">)</span>
+<span class="mi">0</span> <span class="n">testbench</span> <span class="n">error</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="n">Normal</span> <span class="n">termination</span>
 </pre></div>
 </div>
 <p>The Opbsim program returns zero on success and one when an unrecoverable internal error occurs. Non-fatal errors in simulation are reported through the “termination” status value and the simulator returns zero.</p>
-<p>You can provide input data by passing a JSON array with the <code class="docutils literal"><span class="pre">-i</span></code> option. The first 256 values will be assigned to the input ports during initialization. No other interactive behavior is provided.</p>
-<div class="highlight-sh"><div class="highlight"><pre>&gt; opbsim --pb6 -m:foo.mem -i:<span class="s2">&quot;[0,1,2,3,4,5,6]&quot;</span>
+<p>You can provide input data by passing a JSON array with the <code class="docutils literal notranslate"><span class="pre">-i</span></code> option. The first 256 values will be assigned to the input ports during initialization. No other interactive behavior is provided.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>&gt;<span class="w"> </span>opbsim<span class="w"> </span>--pb6<span class="w"> </span>-m:foo.mem<span class="w"> </span>-i:<span class="s2">&quot;[0,1,2,3,4,5,6]&quot;</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="peripherals">
-<h2>Peripherals<a class="headerlink" href="#peripherals" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="peripherals">
+<h2>Peripherals<a class="headerlink" href="#peripherals" title="Permalink to this heading">¶</a></h2>
 <p>PicoBlaze firmware eventually needs to interact with external hardware and Opbsim provides a mechanism to simulate attached peripherals.</p>
 <p>Included with Opbsim are a number of basic peripherals that have general purpose utility:</p>
-<dl class="docutils">
-<dt>console</dt>
-<dd>This is a simulated terminal that collects ASCII characters written to port 0xFE into a buffer. When a newline character is
-received the buffer is written to stdout. The entire log of console data is captured and reported when JSON mode is active.</dd>
-<dt>quit</dt>
-<dd>This is a special peripheral used to terminate the simulation. A write to port 0xFF ends execution. The value written is reported
-to the output as the number of testbench errors.</dd>
-<dt>loopback</dt>
-<dd>A range of output ports from 0x00 to 0x0F are setup to copy whatever is written to them back to the corresponding input port.</dd>
-<dt>ROM</dt>
-<dd>To access INST directive data packed in the program memory, a dual ported ROM is simulated. An address to read is written to
-0xFA (high byte), 0xFB (low byte) and the low 16-bits of program memory are read back through the same input ports.</dd>
-<dt>IntGen</dt>
-<dd>Simulated interrupts can be generated by writing to port 0xFC. This will trigger the ISR for testing.</dd>
+<dl class="simple">
+<dt>console</dt><dd><p>This is a simulated terminal that collects ASCII characters written to port 0xFE into a buffer. When a newline character is
+received the buffer is written to stdout. The entire log of console data is captured and reported when JSON mode is active.</p>
+</dd>
+<dt>quit</dt><dd><p>This is a special peripheral used to terminate the simulation. A write to port 0xFF ends execution. The value written is reported
+to the output as the number of testbench errors.</p>
+</dd>
+<dt>loopback</dt><dd><p>A range of output ports from 0x00 to 0x0F are setup to copy whatever is written to them back to the corresponding input port.</p>
+</dd>
+<dt>ROM</dt><dd><p>To access INST directive data packed in the program memory, a dual ported ROM is simulated. An address to read is written to
+0xFA (high byte), 0xFB (low byte) and the low 16-bits of program memory are read back through the same input ports.</p>
+</dd>
+<dt>IntGen</dt><dd><p>Simulated interrupts can be generated by writing to port 0xFC. This will trigger the ISR for testing.</p>
+</dd>
 </dl>
-<div class="section" id="peripheral-interface">
-<h3>Peripheral Interface<a class="headerlink" href="#peripheral-interface" title="Permalink to this headline">¶</a></h3>
-<p>You can add your own peripherals by modifying the Opbsim source. They are implemented as objects initialized with a sequence of input and output ports they are attached to. Whenever an <code class="docutils literal"><span class="pre">input</span></code> or <code class="docutils literal"><span class="pre">output</span></code> instruction is executed, the associated port is checked for attached peripherals and portRead or portWrite method is called on the peripheral object. The methods have access to the processor state and can modify port values as needed. Multiple peripherals can be attached to a single port. They will be called in the order that they were defined during initialization of the processor state.</p>
-</div>
-</div>
-<div class="section" id="test-suite">
-<h2>Test suite<a class="headerlink" href="#test-suite" title="Permalink to this headline">¶</a></h2>
+<section id="peripheral-interface">
+<h3>Peripheral Interface<a class="headerlink" href="#peripheral-interface" title="Permalink to this heading">¶</a></h3>
+<p>You can add your own peripherals by modifying the Opbsim source. They are implemented as objects initialized with a sequence of input and output ports they are attached to. Whenever an <code class="docutils literal notranslate"><span class="pre">input</span></code> or <code class="docutils literal notranslate"><span class="pre">output</span></code> instruction is executed, the associated port is checked for attached peripherals and portRead or portWrite method is called on the peripheral object. The methods have access to the processor state and can modify port values as needed. Multiple peripherals can be attached to a single port. They will be called in the order that they were defined during initialization of the processor state.</p>
+</section>
+</section>
+<section id="test-suite">
+<h2>Test suite<a class="headerlink" href="#test-suite" title="Permalink to this heading">¶</a></h2>
 <p>Opbsim is used as part of an automated test suite. The tests are designed to run using the Python unittest framework with auto test discovery. If necessary, each test runs Opbasm to assemble a program for both PB6 and PB3 targets. The assembled code is then run in the simulator and the result is checked for any failures. You need to have Opbasm installed and accessible from your command line search path. Opbsim must be compiled and available from the /sim directory of the project or your search path. Run the tests from the root directory of the project with the following command:</p>
-<div class="highlight-sh"><div class="highlight"><pre>&gt; python -m unittest discover -v
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>&gt;<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>discover<span class="w"> </span>-v
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
+          
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -245,10 +242,14 @@ to the output as the number of testbench errors.</dd>
 
 
 
+
 <p>
-<iframe src="https://ghbtns.com/github-btn.html?user=kevinpt&repo=opbasm&type=watch&count=true&size=large"
+<iframe src="https://ghbtns.com/github-btn.html?user=kevinpt&repo=opbasm&type=watch&count=true&size=large&v=2"
   allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
 </p>
+
+
+
 
 
 <div class="relations">
@@ -260,8 +261,9 @@ to the output as the number of testbench errors.</dd>
   </ul></li>
 </ul>
 </div>
-  <h3><a href="../index.html">Table Of Contents</a></h3>
-  <ul>
+  <div>
+    <h3><a href="../index.html">Table of Contents</a></h3>
+    <ul>
 <li><a class="reference internal" href="#">Opbsim</a><ul>
 <li><a class="reference internal" href="#building-opbsim">Building Opbsim</a></li>
 <li><a class="reference internal" href="#using-opbsim">Using Opbsim</a></li>
@@ -273,7 +275,8 @@ to the output as the number of testbench errors.</dd>
 </ul>
 </li>
 </ul>
-<h3>Other projects</h3>
+
+  </div><h3>Other projects</h3>
 
 <div id="proj_list">
 <p>
@@ -351,21 +354,21 @@ if(sessionStorage.KTcacheTime && now - sessionStorage.KTcacheTime < 5*60*1000 ) 
 });
 </script>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
     </form>
+    </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2017, Kevin Thibedeau.
+      &copy;2023, Kevin Thibedeau.
       
       |
       <a href="../_sources/rst/opbsim.rst.txt"
